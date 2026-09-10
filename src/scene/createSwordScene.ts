@@ -89,7 +89,7 @@ function update(settings: ViewerSettings){
  const lift=settings.cameraHeight-cameraHeight;camera.position.y+=lift;controls.target.y+=lift;cameraHeight=settings.cameraHeight;
  physics.setDraw(settings.draw/100);
  aura.configure(settings.effect,settings.effectSpeed,settings.effectIntensity);
- bloom.enabled=settings.effect==='flame'&&settings.effectIntensity>0;
+ bloom.enabled=(settings.effect==='flame'||settings.effect==='electric')&&settings.effectIntensity>0;
  reflections.output=settings.reflections?SSRPass.OUTPUT.Default:SSRPass.OUTPUT.Beauty;
  scene.environmentRotation.y=THREE.MathUtils.degToRad(settings.lightAngle);
  controls.autoRotate=settings.rotating;
