@@ -35,3 +35,7 @@ npm run preview
 
 Dependencies download on the first npm ci. No API keys or accounts are needed.
 This export excludes hosted deployment configuration and repository credentials.
+
+## Performance
+
+See [Rendering optimization guide](PERFORMANCE.md) for the implemented caches, resource ownership, shadow invalidation rules, and profiling workflow.

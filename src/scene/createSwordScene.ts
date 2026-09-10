@@ -7,7 +7,7 @@ import {OutputPass} from 'three/addons/postprocessing/OutputPass.js';
 import {UnrealBloomPass} from 'three/addons/postprocessing/UnrealBloomPass.js';
 import {SMAAPass} from 'three/addons/postprocessing/SMAAPass.js';
 import {RectAreaLightUniformsLib} from 'three/addons/lights/RectAreaLightUniformsLib.js';
-import {surfaceMaps,createBladeGeometry,createLeatherWrap} from './craft';
+import {clearSurfaceMapCache,surfaceMaps,createBladeGeometry,createLeatherWrap} from './craft';
 import { initializePhysics, createSwordPhysics, FLOOR_Y, type MotionStatus } from './swordPhysics';
 import { createBladeAura, type EffectMode } from './aura';
 import { createScabbard } from './scabbard';
@@ -20,7 +20,7 @@ signal.throwIfAborted();
 const cleanups: Array<() => void> = [];
 try {
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x141413);scene.fog=new THREE.FogExp2(0x141413,.032);
-const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.85;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;RectAreaLightUniformsLib.init();container.appendChild(renderer.domElement);cleanups.push(()=>{renderer.dispose();renderer.domElement.remove()});
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.85;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;RectAreaLightUniformsLib.init();container.appendChild(renderer.domElement);cleanups.push(()=>{clearSurfaceMapCache(renderer);renderer.dispose();renderer.domElement.remove()});
 cleanups.push(()=>{
  const geometries=new Set<THREE.BufferGeometry>(), materials=new Set<THREE.Material>(), textures=new Set<THREE.Texture>();
  scene.traverse(object=>{
@@ -81,8 +81,9 @@ sword.add(createCrossguard(renderer));
 const grip=cylinder(.100,.105,1.67,-.98,leather,48);grip.scale.z=.83;
 const wrap=mesh(createLeatherWrap(),leather);wrap.scale.y=1.18;
 // Fine cord ribs beneath the leather and three silver grip collars.
+const gripRibGeometry=new THREE.TorusGeometry(.112,.0016,4,32);
 for(let i=0;i<85;i++){
- const rib=mesh(new THREE.TorusGeometry(.112,.0016,4,32),leather);rib.rotation.x=Math.PI/2;rib.scale.y=.83;rib.position.y=-.20-i*.0187;
+ const rib=mesh(gripRibGeometry,leather);rib.rotation.x=Math.PI/2;rib.scale.y=.83;rib.position.y=-.20-i*.0187;
 }
 const gripSilver=new THREE.MeshStandardMaterial({color:0xb7bbb7,metalness:1,roughness:.31});
 for(const [y,h] of [[-.99,.10],[-1.805,.10]]){
@@ -97,6 +98,14 @@ const sheathLeather=new THREE.MeshStandardMaterial({color:0x241d18,roughness:.88
 const scabbard=createScabbard(sheathLeather,fittings);scene.add(scabbard);
 const physics=createSwordPhysics(sword,onStatus);cleanups.push(()=>physics.dispose());
 const aura=createBladeAura(sword,renderer.getPixelRatio());
+// The fixed studio light only needs a new shadow map when a caster moves.
+renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=true;
+const shadowPosition=new THREE.Vector3(Infinity,Infinity,Infinity),shadowRotation=new THREE.Quaternion();
+function updateShadowCache(){
+ if(!sword.position.equals(shadowPosition)||!sword.quaternion.equals(shadowRotation)){
+  renderer.shadowMap.needsUpdate=true;shadowPosition.copy(sword.position);shadowRotation.copy(sword.quaternion);
+ }
+}
 // Canvas AA does not cover offscreen postprocessing. Multisample the HDR buffer.
 const gl=renderer.getContext();
 const supportedSamples='getInternalformatParameter' in gl ? Array.from(gl.getInternalformatParameter(gl.RENDERBUFFER,gl.RGBA16F,gl.SAMPLES) as Int32Array) : [];
@@ -129,7 +138,7 @@ function reset(){clearArrows();const mobile=container.clientWidth<700;camera.pos
 function resize(){const w=Math.max(1,container.clientWidth),h=Math.max(1,container.clientHeight);const pixelRatio=Math.min(window.devicePixelRatio,2);renderer.setPixelRatio(pixelRatio);composer.setPixelRatio(pixelRatio);renderer.setSize(w,h);camera.aspect=w/h;camera.fov=w<700?44:34;camera.updateProjectionMatrix();composer.setSize(w,h)}
 const observer=new ResizeObserver(resize);observer.observe(container);cleanups.push(()=>observer.disconnect());resize();reset();
 const clock=new THREE.Clock();let frame=0,stopped=false;
-function animate(){if(stopped)return;frame=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.1);if(document.hidden)return;physics.step(dt);aura.update(dt,physics.draw);moveCamera(dt);controls.update(dt);composer.render();}
+function animate(){if(stopped)return;frame=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.1);if(document.hidden)return;physics.step(dt);updateShadowCache();aura.update(dt,physics.draw);moveCamera(dt);controls.update(dt);composer.render();}
 cleanups.push(()=>{stopped=true;cancelAnimationFrame(frame)});animate();
 function handleContextLost(event: Event){event.preventDefault();stopped=true;cancelAnimationFrame(frame);onError('The 3D renderer was interrupted. Reload this page to restore the sword.');}
 renderer.domElement.addEventListener('webglcontextlost',handleContextLost);

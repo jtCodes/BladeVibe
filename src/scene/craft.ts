@@ -2,7 +2,21 @@ import * as THREE from 'three';
 
 // Reproducible surface maps: scratches affect roughness and relief, not baked lighting.
 function randomSource(seed: number){return ()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};}
-export function surfaceMaps(kind: 'steel' | 'gold' | 'leather',renderer: THREE.WebGLRenderer){
+type SurfaceMaps={map:THREE.DataTexture;roughnessMap:THREE.DataTexture;bumpMap:THREE.DataTexture};
+const surfaceCache=new WeakMap<THREE.WebGLRenderer,Map<string,SurfaceMaps>>();
+// Scene cleanup owns texture disposal; drop references when its renderer retires.
+export function clearSurfaceMapCache(renderer:THREE.WebGLRenderer){surfaceCache.delete(renderer)}
+export function surfaceMaps(kind: 'steel' | 'gold' | 'leather',renderer: THREE.WebGLRenderer,repeat:[number,number]=[1,1]):SurfaceMaps{
+ let cache=surfaceCache.get(renderer);if(!cache){cache=new Map();surfaceCache.set(renderer,cache)}
+ const key=`${kind}:${repeat[0]}:${repeat[1]}`,cached=cache.get(key);if(cached)return cached;
+ // Tiling variants share pixel data and GPU source, but retain separate UV transforms.
+ if(repeat[0]!==1||repeat[1]!==1){
+  const base=surfaceMaps(kind,renderer);
+  const result={map:base.map.clone(),roughnessMap:base.roughnessMap.clone(),bumpMap:base.bumpMap.clone()};
+  for(const texture of Object.values(result))texture.repeat.set(...repeat);
+  cache.set(key,result);return result;
+ }
+
  const w=kind==='steel'?512:256,h=kind==='steel'?1024:512,random=randomSource(kind==='steel'?49:kind==='gold'?78:96);
  const heights=new Float32Array(w*h),values=new Float32Array(w*h),albedo=new Float32Array(w*h);
  const grain=Array.from({length:w},()=>random());
@@ -17,7 +31,7 @@ export function surfaceMaps(kind: 'steel' | 'gold' | 'leather',renderer: THREE.W
   for(let j=0;j<len;j++){const x=Math.floor(x0+j*dx),y=Math.floor(y0+j);if(x<0||x>=w||y>=h)continue;const i=y*w+x;heights[i]-=depth;values[i]=Math.min(.82,values[i]+.13);}
  }
  function texture(values: Float32Array,color=false){const bytes=new Uint8Array(w*h*4);for(let i=0;i<values.length;i++){const v=Math.round(THREE.MathUtils.clamp(values[i],0,1)*255);bytes.set([v,v,v,255],i*4);}const t=new THREE.DataTexture(bytes,w,h);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.magFilter=THREE.LinearFilter;t.minFilter=THREE.LinearMipmapLinearFilter;t.generateMipmaps=true;t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());if(color)t.colorSpace=THREE.SRGBColorSpace;t.needsUpdate=true;return t;}
- return {map:texture(albedo,true),roughnessMap:texture(values),bumpMap:texture(heights)};
+ const result={map:texture(albedo,true),roughnessMap:texture(values),bumpMap:texture(heights)};cache.set(key,result);return result;
 }
 // The blade shoulder continues through the guard into a concealed tang.
 export const bladeStations=[[-.14,.12,1],[-.04,.20,1],[0,.27,1],[.55,.27,1],[.84,.263,.97],[3.84,.205,.72],[4.52,.13,.48],[5.02,.0005,.008]];

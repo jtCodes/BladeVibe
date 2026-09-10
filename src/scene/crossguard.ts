@@ -2,8 +2,7 @@ import * as THREE from 'three';
 import {surfaceMaps} from './craft';
 
 function steel(renderer:THREE.WebGLRenderer) {
- const maps=surfaceMaps('steel',renderer);
- for(const texture of Object.values(maps))texture.repeat.set(2,.2);
+ const maps=surfaceMaps('steel',renderer,[2,.2]);
  return new THREE.MeshStandardMaterial({color:0xb6b9b6,metalness:1,roughness:.3,...maps,bumpScale:.00009});
 }
 function add(group:THREE.Group,geometry:THREE.BufferGeometry,material:THREE.Material) {

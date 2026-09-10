@@ -10,6 +10,7 @@ export function createBladeElectric(parent:THREE.Group,random:()=>number,onDisch
   geometry.setAttribute('position',new THREE.BufferAttribute(positions,3).setUsage(THREE.DynamicDrawUsage));
   geometry.setAttribute('radial',new THREE.BufferAttribute(radials,3).setUsage(THREE.DynamicDrawUsage));
   const opacity={value:0},exposed={value:0};
+  const meshes:THREE.Mesh[]=[];
   for(const halo of [true,false]){
    const material=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
     uniforms:{opacity,exposed,radius:{value:halo?.022:.0035},tint:{value:new THREE.Vector3(...(halo?[2.4,2.2,1.5]:[8.,7.6,6.4]) as [number,number,number])}},
@@ -18,9 +19,9 @@ export function createBladeElectric(parent:THREE.Group,random:()=>number,onDisch
     fragmentShader:`uniform float opacity;uniform float exposed;uniform vec3 tint;varying float bladeY;
      void main(){float reveal=1.-smoothstep(exposed-.035,exposed,bladeY);if(reveal<.001)discard;
       gl_FragColor=vec4(tint,opacity*reveal*${halo?'.075':'1.'});}`});
-   const mesh=new THREE.Mesh(geometry,material);mesh.frustumCulled=false;group.add(mesh);
+   const mesh=new THREE.Mesh(geometry,material);mesh.frustumCulled=false;group.add(mesh);meshes.push(mesh);
   }
-  return {geometry,positions,radials,opacity,exposed,age:10,life:.2};
+  return {meshes,geometry,positions,radials,opacity,exposed,age:10,life:.2};
  });
  const delta=new THREE.Vector3(),u=new THREE.Vector3(),v=new THREE.Vector3(),radial=new THREE.Vector3();
  function width(y:number){for(let j=1;j<bladeStations.length;j++){const a=bladeStations[j-1],b=bladeStations[j];if(y<=b[0])return THREE.MathUtils.lerp(a[1],b[1],(y-a[0])/(b[0]-a[0]))*.65;}return .001;}
@@ -56,7 +57,8 @@ export function createBladeElectric(parent:THREE.Group,random:()=>number,onDisch
    for(let k=1;k<=5;k++){const p=root.clone().addScaledVector(direction,k/5);p.x+=(random()-.5)*.06;p.z+=(random()-.5)*.06;p.y=THREE.MathUtils.clamp(p.y,.07,limit);segment(previous,p);previous=p;}
    if(random()<.7)discharges.push({point:previous,direction:direction.clone(),count:1+Math.floor(random()*3)});
   }
-  arc.geometry.setDrawRange(0,offset/3);arc.geometry.attributes.position.needsUpdate=true;arc.geometry.attributes.radial.needsUpdate=true;
+  arc.geometry.setDrawRange(0,offset/3);
+  for(const name of ['position','radial']){const attribute=arc.geometry.getAttribute(name) as THREE.BufferAttribute;attribute.clearUpdateRanges();attribute.addUpdateRange(0,offset);attribute.needsUpdate=true;}
   arc.age=0;arc.life=.09+random()*.16;
   for(const discharge of discharges)onDischarge(discharge.point,discharge.direction.normalize(),discharge.count);
  }
@@ -73,6 +75,7 @@ export function createBladeElectric(parent:THREE.Group,random:()=>number,onDisch
   }
   for(const arc of arcs){arc.age+=dt;arc.exposed.value=exposed;
    arc.opacity.value=Math.max(0,1.-arc.age/arc.life)*Math.min(1.5,intensity);
+   for(const mesh of arc.meshes)mesh.visible=arc.opacity.value>0;
   }
  }};
 }

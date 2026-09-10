@@ -32,7 +32,7 @@ export function createIceChips(parent:THREE.Object3D,random:()=>number){
    chip.spin.set((random()-.5)*5,(random()-.5)*7,(random()-.5)*4);
   },
   update(dt:number,positions:Float32Array,ages:Float32Array,lifetimes:Float32Array,opacities:Float32Array,intensity:number,visible:boolean){
-   group.visible=visible&&intensity>0;
+   group.visible=visible&&intensity>0;if(!group.visible)return;
    for(const chip of chips){
     const i=chip.index;
     chip.mesh.visible=i>=0&&ages[i]<lifetimes[i];

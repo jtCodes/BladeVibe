@@ -29,7 +29,7 @@ export function createColdMist(parent:THREE.Object3D,pixelRatio:number,random:()
  let cursor=0,emission=0;
  return {clear(){ages.fill(10);alpha.fill(0);emission=0;},
   update(dt:number,sword:THREE.Group,exposed:number,rootSpeed:THREE.Vector3,tipSpeed:THREE.Vector3,intensity:number,enabled:boolean){
-   points.visible=enabled&&intensity>0;uniforms.time.value+=dt;
+   points.visible=enabled&&intensity>0;if(!points.visible)return;uniforms.time.value+=dt;
    for(let i=0;i<count;i++){
     ages[i]+=dt;if(ages[i]>=lives[i]){alpha[i]=0;continue;}
     const t=ages[i]/lives[i],drag=Math.exp(-1.8*dt);
