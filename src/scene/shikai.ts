@@ -19,10 +19,17 @@ export function createShikai(sword:THREE.Group){
  for(const material of Array.isArray(blade.material)?blade.material:[blade.material]){
   const previous=material.onBeforeCompile.bind(material),key=material.customProgramCacheKey();
   material.onBeforeCompile=(shader,renderer)=>{previous(shader,renderer);inject(shader);
+   shader.fragmentShader=shader.fragmentShader.replace('#include <metalnessmap_fragment>',`#include <metalnessmap_fragment>
+    // A soft pink wave leads the dissolving edge, retaining the blade's surface detail.
+    float petalTint=smoothstep(0.,.12,bladeDissolve)*smoothstep(edge-1.3,edge-.06,dissolvePosition.y);
+    diffuseColor.rgb=mix(diffuseColor.rgb,vec3(1.,.46,.69),petalTint*.9);
+    metalnessFactor=mix(metalnessFactor,.3,petalTint);
+   `);
    shader.fragmentShader=shader.fragmentShader.replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
     float rim=1.-smoothstep(.01,.13,abs(dissolvePosition.y-5.02*(1.-bladeDissolve)));
+    totalEmissiveRadiance+=vec3(1.,.28,.52)*petalTint*.28;
     totalEmissiveRadiance+=vec3(5.,.55,2.)*rim*step(.001,bladeDissolve)*step(bladeDissolve,.999);`);
-  };material.customProgramCacheKey=()=>key+'-petal-dissolve-v1';material.needsUpdate=true;
+  };material.customProgramCacheKey=()=>key+'-petal-dissolve-v2-pink';material.needsUpdate=true;
  }
  const depth=new THREE.MeshDepthMaterial({depthPacking:THREE.RGBADepthPacking});depth.onBeforeCompile=inject;depth.customProgramCacheKey=()=> 'petal-dissolve-depth-v1';blade.customDepthMaterial=depth;
  // One shared, cupped petal mesh with the small notch of a cherry blossom.
