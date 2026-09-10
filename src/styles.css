@@ -27,3 +27,5 @@ input[type=range]{touch-action:pan-x}
 }
 
 .lighting-controls{margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #394c59}.reflection-toggle{display:flex;align-items:center;gap:10px;font-size:14px;min-height:44px;color:#bbcbd5}.reflection-toggle input{width:18px;height:18px;accent-color:#8ee8f6}
+
+.effects-controls select{width:100%;margin:0 0 18px;padding:10px 12px;color:#dce9ed;background:#17242c;border:1px solid #43535f;border-radius:4px;font:inherit;color-scheme:dark}.effects-controls select:focus-visible{outline:2px solid #a4e8fa;outline-offset:3px}

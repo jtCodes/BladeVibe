@@ -4,13 +4,15 @@ import {createStudioEnvironment} from './studio';
 import {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
 import {SSRPass} from 'three/addons/postprocessing/SSRPass.js';
 import {OutputPass} from 'three/addons/postprocessing/OutputPass.js';
+import {UnrealBloomPass} from 'three/addons/postprocessing/UnrealBloomPass.js';
 import {SMAAPass} from 'three/addons/postprocessing/SMAAPass.js';
 import {RectAreaLightUniformsLib} from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import {surfaceMaps,createBladeGeometry,createLeatherWrap} from './craft';
 import { initializePhysics, createSwordPhysics, FLOOR_Y, type MotionStatus } from './swordPhysics';
+import { createBladeAura, type EffectMode } from './aura';
 import { createScabbard } from './scabbard';
 import { createCrossguard, createPommel } from './crossguard';
-export interface ViewerSettings { rotating: boolean; draw: number; reflections: boolean; lightAngle: number; cameraHeight: number }
+export interface ViewerSettings { rotating: boolean; draw: number; reflections: boolean; lightAngle: number; cameraHeight: number; effect: EffectMode; effectSpeed: number; effectIntensity: number }
 export interface SwordScene { update(settings: ViewerSettings): void; reset(): void; release(): boolean; dispose(): void }
 export async function createSwordScene(container: HTMLDivElement, onError: (message: string) => void, onStatus: (status: MotionStatus) => void, signal: AbortSignal): Promise<SwordScene> {
 await initializePhysics();
@@ -63,6 +65,7 @@ const floor=mesh(new THREE.PlaneGeometry(1000,1000),new THREE.MeshStandardMateri
 const sheathLeather=new THREE.MeshStandardMaterial({color:0x241d18,roughness:.88,metalness:0,...surfaceMaps('leather',renderer),bumpScale:.002,side:THREE.DoubleSide});
 const scabbard=createScabbard(sheathLeather,fittings);scene.add(scabbard);
 const physics=createSwordPhysics(sword,onStatus);cleanups.push(()=>physics.dispose());
+const aura=createBladeAura(sword,renderer.getPixelRatio());
 // Canvas AA does not cover offscreen postprocessing. Multisample the HDR buffer.
 const gl=renderer.getContext();
 const supportedSamples='getInternalformatParameter' in gl ? Array.from(gl.getInternalformatParameter(gl.RENDERBUFFER,gl.RGBA16F,gl.SAMPLES) as Int32Array) : [];
@@ -77,12 +80,16 @@ reflections.resolutionScale=.5;reflections.opacity=.38;reflections.maxDistance=9
 reflections.beautyRenderTarget.samples=samples;
 composer.addPass(reflections);
 // This Three.js version expects SMAA in linear color space, before OutputPass.
-composer.addPass(new SMAAPass());composer.addPass(new OutputPass());
+composer.addPass(new SMAAPass());
+const bloom=new UnrealBloomPass(new THREE.Vector2(1,1),.14,0,3.);composer.addPass(bloom);
+composer.addPass(new OutputPass());
 cleanups.push(()=>{for(const pass of composer.passes)pass.dispose();composer.dispose()});
 let cameraHeight=0;
 function update(settings: ViewerSettings){
  const lift=settings.cameraHeight-cameraHeight;camera.position.y+=lift;controls.target.y+=lift;cameraHeight=settings.cameraHeight;
  physics.setDraw(settings.draw/100);
+ aura.configure(settings.effect,settings.effectSpeed,settings.effectIntensity);
+ bloom.enabled=settings.effect==='flame'&&settings.effectIntensity>0;
  reflections.output=settings.reflections?SSRPass.OUTPUT.Default:SSRPass.OUTPUT.Beauty;
  scene.environmentRotation.y=THREE.MathUtils.degToRad(settings.lightAngle);
  controls.autoRotate=settings.rotating;
@@ -91,7 +98,7 @@ function reset(){const mobile=container.clientWidth<700;camera.position.set(2.1,
 function resize(){const w=Math.max(1,container.clientWidth),h=Math.max(1,container.clientHeight);const pixelRatio=Math.min(window.devicePixelRatio,2);renderer.setPixelRatio(pixelRatio);composer.setPixelRatio(pixelRatio);renderer.setSize(w,h);camera.aspect=w/h;camera.fov=w<700?44:34;camera.updateProjectionMatrix();composer.setSize(w,h)}
 const observer=new ResizeObserver(resize);observer.observe(container);cleanups.push(()=>observer.disconnect());resize();reset();
 const clock=new THREE.Clock();let frame=0,stopped=false;
-function animate(){if(stopped)return;frame=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.1);if(document.hidden)return;physics.step(dt);controls.update(dt);composer.render();}
+function animate(){if(stopped)return;frame=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.1);if(document.hidden)return;physics.step(dt);aura.update(dt,physics.draw);controls.update(dt);composer.render();}
 cleanups.push(()=>{stopped=true;cancelAnimationFrame(frame)});animate();
 function handleContextLost(event: Event){event.preventDefault();stopped=true;cancelAnimationFrame(frame);onError('The 3D renderer was interrupted. Reload this page to restore the sword.');}
 renderer.domElement.addEventListener('webglcontextlost',handleContextLost);
