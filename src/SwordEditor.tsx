@@ -46,13 +46,13 @@ export default function SwordEditor({sword}:{sword:SwordAsset}) {
         <input id="sword-rotation" type="range" min={-180} max={180} step={1} value={swordRotation} disabled={status!=='drawn'} onChange={event=>{setRotating(false);setSwordRotation(Number(event.target.value))}}/>
         <div className="actions"><button disabled={status!=='drawn'} onClick={()=>{setRotating(false);setSwordRotation(180)}}>Blade up</button><button disabled={dropped} onClick={()=>setSwordRotation(0)}>Reset sword angle</button></div>
         <label className="range-label" htmlFor="draw">Draw sword <output>{draw}%</output></label>
-        <input id="draw" type="range" min={0} max={100} value={draw} disabled={dropped} onChange={event=>{setEffect(current=>current==='bankai'?'off':current);setSwordRotation(0);setDraw(Number(event.target.value))}}/>
-        <div className="actions"><button disabled={dropped} onClick={()=>{setEffect(current=>current==='bankai'?'off':current);setSwordRotation(0);setDraw(draw===100?0:100)}}>{draw===100?'Sheathe':'Draw'}</button><button disabled={status!=='drawn'||effect==='bankai'} onClick={()=>{setRotating(false);setDropVersion(v=>v+1)}}>Drop sword</button></div>
+        <input id="draw" type="range" min={0} max={100} value={draw} disabled={dropped} onChange={event=>{setEffect(current=>current==='shikai'?'off':current);setSwordRotation(0);setDraw(Number(event.target.value))}}/>
+        <div className="actions"><button disabled={dropped} onClick={()=>{setEffect(current=>current==='shikai'?'off':current);setSwordRotation(0);setDraw(draw===100?0:100)}}>{draw===100?'Sheathe':'Draw'}</button><button disabled={status!=='drawn'||effect==='shikai'} onClick={()=>{setRotating(false);setDropVersion(v=>v+1)}}>Drop sword</button></div>
         <p className="motion-status" role="status">{{sheathed:'Sheathed',drawing:'Guided draw',drawn:'Drawn · ready to release',falling:'Falling',resting:'At rest'}[status]}</p>
         {dropped&&<button className="restore" onClick={()=>setResetVersion(v=>v+1)}>Return to display</button>}
       </div>
       <div className="lighting-controls effects-controls">
-        {sword.model==='senbonzakura'?<button aria-pressed={effect==='bankai'} disabled={dropped} onClick={()=>{setDraw(100);setEffect(effect==='bankai'?'off':'bankai')}}>{effect==='bankai'?'Reform blade':'Bankai · Scatter'}</button>:<>
+        {sword.model==='senbonzakura'?<button aria-pressed={effect==='shikai'} disabled={dropped} onClick={()=>{setDraw(100);setEffect(effect==='shikai'?'off':'shikai')}}>{effect==='shikai'?'Reform blade':'Shikai · Scatter'}</button>:<>
         <label className="range-label" htmlFor="effect-mode">Effects</label>
         <select id="effect-mode" value={effect} onChange={event=>setEffect(event.target.value as EffectMode)}>
           <option value="off">Off</option><option value="glow">Glow & sparks</option><option value="flame">Flame</option><option value="ice">Ice</option><option value="electric">Electric</option>
