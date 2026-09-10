@@ -1,3 +1,4 @@
+import {createSenbonzakura,createKatanaBladeGeometry,createSayaGeometry,KATANA_RADIUS} from './senbonzakura';
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {createStudioEnvironment} from './studio';
@@ -14,7 +15,7 @@ import { createScabbard } from './scabbard';
 import { createCrossguard, createPommel } from './crossguard';
 export interface ViewerSettings { rotating: boolean; draw: number; reflections: boolean; lightAngle: number; cameraHeight: number; effect: EffectMode; effectSpeed: number; effectIntensity: number }
 export interface SwordScene { update(settings: ViewerSettings): void; reset(): void; release(): boolean; dispose(): void }
-export async function createSwordScene(container: HTMLDivElement, onError: (message: string) => void, onStatus: (status: MotionStatus) => void, signal: AbortSignal): Promise<SwordScene> {
+export async function createSwordScene(container: HTMLDivElement, onError: (message: string) => void, onStatus: (status: MotionStatus) => void, signal: AbortSignal, options:{preview?:boolean;model?:'longsword'|'senbonzakura'}={}): Promise<SwordScene> {
 await initializePhysics();
 signal.throwIfAborted();
 const cleanups: Array<() => void> = [];
@@ -45,6 +46,7 @@ function keyDown(event:KeyboardEvent){
 function keyUp(event:KeyboardEvent){heldArrows.delete(event.key)}
 function focusChanged(event:FocusEvent){if(ownsKeys(event.target))clearArrows()}
 function focusCanvas(){renderer.domElement.focus({preventScroll:true})}
+if(!options.preview){
 renderer.domElement.tabIndex=0;
 renderer.domElement.setAttribute('aria-label','Sword camera. Arrow keys move the camera; drag to orbit.');
 window.addEventListener('keydown',keyDown);window.addEventListener('keyup',keyUp);window.addEventListener('blur',clearArrows);
@@ -54,6 +56,7 @@ cleanups.push(()=>{
  clearArrows();window.removeEventListener('keydown',keyDown);window.removeEventListener('keyup',keyUp);window.removeEventListener('blur',clearArrows);
  document.removeEventListener('visibilitychange',clearArrows);document.removeEventListener('focusin',focusChanged);renderer.domElement.removeEventListener('pointerdown',focusCanvas);
 });
+}
 function moveCamera(dt:number){
  const x=Number(heldArrows.has('ArrowRight'))-Number(heldArrows.has('ArrowLeft'));
  const y=Number(heldArrows.has('ArrowUp'))-Number(heldArrows.has('ArrowDown'));
@@ -62,19 +65,23 @@ function moveCamera(dt:number){
  cameraStep.copy(cameraRight).multiplyScalar(x).addScaledVector(cameraUp,y).normalize().multiplyScalar(camera.position.distanceTo(controls.target)*.35*dt);
  camera.position.add(cameraStep);controls.target.add(cameraStep);
 }
+if(options.preview)controls.enabled=false;
 const environment=createStudioEnvironment(renderer);scene.environment=environment.texture;scene.environmentRotation.set(0,.35,0);cleanups.push(()=>environment.dispose());scene.environmentIntensity=.8;
 scene.add(new THREE.HemisphereLight(0xb9d8ed,0x1b1312,.12));
 function area(color: number,power: number,x: number,y: number,z: number,w: number,h: number){const l=new THREE.RectAreaLight(color,power,w,h);l.position.set(x,y,z);l.lookAt(0,1.5,0);scene.add(l)}
 area(0xf4f4f2,5,-4,5,5,3,8);area(0xffebd4,4,4,2,-3,2,7);area(0xe8efff,3,2,4,4,.6,6);
 // Broad off-camera illumination has no spotlight cone to draw a disc on the floor.
 const key=new THREE.DirectionalLight(0xfff1df,1.8);key.position.set(-12,18,10);key.target.position.set(0,0,0);key.castShadow=true;key.shadow.mapSize.set(2048,2048);key.shadow.bias=-.0002;key.shadow.normalBias=.015;key.shadow.camera.near=.5;key.shadow.camera.far=60;key.shadow.camera.left=-14;key.shadow.camera.right=14;key.shadow.camera.top=14;key.shadow.camera.bottom=-14;key.shadow.radius=3;scene.add(key,key.target);
+const sword=new THREE.Group();scene.add(sword);sword.rotation.z=Math.PI-.16;
+function mesh(geo: THREE.BufferGeometry,mat: THREE.Material | THREE.Material[],parent: THREE.Object3D=sword){const o=new THREE.Mesh(geo,mat);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o}
+function cylinder(r1: number,r2: number,h: number,y: number,mat: THREE.Material,segments=16){const o=mesh(new THREE.CylinderGeometry(r1,r2,h,segments),mat);o.position.y=y;return o}
+const isKatana=options.model==='senbonzakura';
+let scabbard:THREE.Group;
+if(isKatana){scabbard=createSenbonzakura(renderer,sword);}else{
 const steel=new THREE.MeshPhysicalMaterial({color:0xd0d3d8,metalness:1,roughness:.42,anisotropy:.2,anisotropyRotation:Math.PI/2,...surfaceMaps('steel',renderer),bumpScale:.0003});
 const edge=new THREE.MeshStandardMaterial({color:0xe4e7eb,metalness:1,roughness:.075});
 const fittings=new THREE.MeshStandardMaterial({color:0x969997,metalness:1,roughness:.65,...surfaceMaps('steel',renderer),bumpScale:.0005});
 const leather=new THREE.MeshStandardMaterial({color:0x30251f,metalness:0,roughness:.9,...surfaceMaps('leather',renderer),bumpScale:.003,side:THREE.DoubleSide});
-const sword=new THREE.Group();scene.add(sword);sword.rotation.z=Math.PI-.16;
-function mesh(geo: THREE.BufferGeometry,mat: THREE.Material | THREE.Material[],parent: THREE.Object3D=sword){const o=new THREE.Mesh(geo,mat);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o}
-function cylinder(r1: number,r2: number,h: number,y: number,mat: THREE.Material,segments=16){const o=mesh(new THREE.CylinderGeometry(r1,r2,h,segments),mat);o.position.y=y;return o}
 // Physically thin cutting bevels, a recessed fuller and continuous distal taper.
 mesh(createBladeGeometry(),[steel,edge,steel]);
 sword.add(createCrossguard(renderer));
@@ -93,11 +100,13 @@ for(const [y,h] of [[-.99,.10],[-1.805,.10]]){
  }
 }
 sword.add(createPommel(renderer));
-const floor=mesh(new THREE.PlaneGeometry(1000,1000),new THREE.MeshStandardMaterial({color:0x141413,metalness:0,roughness:.9}),scene);floor.rotation.x=-Math.PI/2;floor.position.y=FLOOR_Y;floor.castShadow=false;floor.receiveShadow=true;
 const sheathLeather=new THREE.MeshStandardMaterial({color:0x241d18,roughness:.88,metalness:0,...surfaceMaps('leather',renderer),bumpScale:.002,side:THREE.DoubleSide});
-const scabbard=createScabbard(sheathLeather,fittings);scene.add(scabbard);
-const physics=createSwordPhysics(sword,onStatus);cleanups.push(()=>physics.dispose());
-const aura=createBladeAura(sword,renderer.getPixelRatio());
+scabbard=createScabbard(sheathLeather,fittings);
+}
+const floor=mesh(new THREE.PlaneGeometry(1000,1000),new THREE.MeshStandardMaterial({color:0x141413,metalness:0,roughness:.9}),scene);floor.rotation.x=-Math.PI/2;floor.position.y=FLOOR_Y;floor.castShadow=false;floor.receiveShadow=true;
+scene.add(scabbard);if(options.preview)scabbard.visible=false;
+const physics=createSwordPhysics(sword,onStatus,isKatana?{bladeGeometry:createKatanaBladeGeometry,scabbardGeometry:createSayaGeometry,curveRadius:KATANA_RADIUS,katana:true}:undefined);cleanups.push(()=>physics.dispose());
+const aura=isKatana?{configure:(_mode:EffectMode,_speed:number,_intensity:number)=>{},update:(_dt:number,_draw:number)=>{}}:createBladeAura(sword,renderer.getPixelRatio());
 // The fixed studio light only needs a new shadow map when a caster moves.
 renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=true;
 const shadowPosition=new THREE.Vector3(Infinity,Infinity,Infinity),shadowRotation=new THREE.Quaternion();
@@ -129,13 +138,13 @@ function update(settings: ViewerSettings){
  const lift=settings.cameraHeight-cameraHeight;camera.position.y+=lift;controls.target.y+=lift;cameraHeight=settings.cameraHeight;
  physics.setDraw(settings.draw/100);
  aura.configure(settings.effect,settings.effectSpeed,settings.effectIntensity);
- bloom.enabled=(settings.effect==='flame'||settings.effect==='electric')&&settings.effectIntensity>0;
+ bloom.enabled=!isKatana&&(settings.effect==='flame'||settings.effect==='electric')&&settings.effectIntensity>0;
  reflections.output=settings.reflections?SSRPass.OUTPUT.Default:SSRPass.OUTPUT.Beauty;
  scene.environmentRotation.y=THREE.MathUtils.degToRad(settings.lightAngle);
  controls.autoRotate=settings.rotating;
 }
-function reset(){clearArrows();const mobile=container.clientWidth<700;camera.position.set(2.1,2.6,mobile?23:24);camera.position.y+=cameraHeight;controls.target.set(0,(mobile?1.1:.8)+cameraHeight,0);controls.update();physics.restore()}
-function resize(){const w=Math.max(1,container.clientWidth),h=Math.max(1,container.clientHeight);const pixelRatio=Math.min(window.devicePixelRatio,2);renderer.setPixelRatio(pixelRatio);composer.setPixelRatio(pixelRatio);renderer.setSize(w,h);camera.aspect=w/h;camera.fov=w<700?44:34;camera.updateProjectionMatrix();composer.setSize(w,h)}
+function reset(){clearArrows();if(options.preview){camera.position.set(1.3,4.7,15);controls.target.set(.4,3.65,0);controls.update();physics.setDraw(1);physics.restore();return;}const mobile=container.clientWidth<700;camera.position.set(2.1,2.6,mobile?23:24);camera.position.y+=cameraHeight;controls.target.set(0,(mobile?1.1:.8)+cameraHeight,0);controls.update();physics.restore()}
+function resize(){const w=Math.max(1,container.clientWidth),h=Math.max(1,container.clientHeight);const pixelRatio=Math.min(window.devicePixelRatio,2);renderer.setPixelRatio(pixelRatio);composer.setPixelRatio(pixelRatio);renderer.setSize(w,h);camera.aspect=w/h;camera.fov=options.preview?34:w<700?44:34;camera.updateProjectionMatrix();composer.setSize(w,h)}
 const observer=new ResizeObserver(resize);observer.observe(container);cleanups.push(()=>observer.disconnect());resize();reset();
 const clock=new THREE.Clock();let frame=0,stopped=false;
 function animate(){if(stopped)return;frame=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.1);if(document.hidden)return;physics.step(dt);updateShadowCache();aura.update(dt,physics.draw);moveCamera(dt);controls.update(dt);composer.render();}

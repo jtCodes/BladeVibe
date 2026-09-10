@@ -36,8 +36,9 @@ export function surfaceMaps(kind: 'steel' | 'gold' | 'leather',renderer: THREE.W
 // The blade shoulder continues through the guard into a concealed tang.
 export const bladeStations=[[-.14,.12,1],[-.04,.20,1],[0,.27,1],[.55,.27,1],[.84,.263,.97],[3.84,.205,.72],[4.52,.13,.48],[5.02,.0005,.008]];
 export function bladeThickness(y: number){for(let i=1;i<bladeStations.length;i++){const a=bladeStations[i-1],b=bladeStations[i];if(y<=b[0])return THREE.MathUtils.lerp(a[2],b[2],THREE.MathUtils.clamp((y-a[0])/(b[0]-a[0]),0,1));}return .008;}
+export const bladeCrossSection=[[-1,0],[-.80,.052],[-.30,.082],[-.22,.079],[-.18,.054],[.18,.054],[.22,.079],[.30,.082],[.80,.052],[1,0],[.80,-.052],[.30,-.082],[.22,-.079],[.18,-.054],[-.18,-.054],[-.22,-.079],[-.30,-.082],[-.80,-.052]];
 export function createBladeGeometry(){
- const cross=[[-1,0],[-.80,.052],[-.30,.082],[-.22,.079],[-.18,.054],[.18,.054],[.22,.079],[.30,.082],[.80,.052],[1,0],[.80,-.052],[.30,-.082],[.22,-.079],[.18,-.054],[-.18,-.054],[-.22,-.079],[-.30,-.082],[-.80,-.052]];
+ const cross=bladeCrossSection;
  const positions=[],uv=[],indices=[],groups=[];
  for(let k=0;k<cross.length;k++){
   const start=indices.length,base=positions.length/3;

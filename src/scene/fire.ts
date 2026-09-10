@@ -1,3 +1,4 @@
+import {bladeWidthGLSL} from './bladeSurface';
 import * as THREE from 'three';
 
 // Ray-march one shared 3D density field around the blade. The proxy box is
@@ -15,13 +16,7 @@ export function createContinuousFire(shared:Record<string,THREE.IUniform>) {
     return mix(mix(mix(hash(i),hash(i+vec3(1,0,0)),f.x),mix(hash(i+vec3(0,1,0)),hash(i+vec3(1,1,0)),f.x),f.y),
      mix(mix(hash(i+vec3(0,0,1)),hash(i+vec3(1,0,1)),f.x),mix(hash(i+vec3(0,1,1)),hash(i+vec3(1,1,1)),f.x),f.y),f.z);}
    float fbm(vec3 p){return noise(p)*.57+noise(p*2.07+17.3)*.28+noise(p*4.13+31.7)*.15;}
-   float bladeWidth(float y){
-    if(y<.55)return .1755;
-    if(y<.84)return mix(.1755,.17095,(y-.55)/.29);
-    if(y<3.84)return mix(.17095,.13325,(y-.84)/3.);
-    if(y<4.52)return mix(.13325,.0845,(y-3.84)/.68);
-    return mix(.0845,.000325,clamp((y-4.52)/.5,0.,1.));
-   }
+   ${bladeWidthGLSL}
    void main(){
     vec3 ray=normalize(exitPoint-eye);
     vec3 safeRay=vec3(ray.x>=0.?max(ray.x,.00001):min(ray.x,-.00001),ray.y>=0.?max(ray.y,.00001):min(ray.y,-.00001),ray.z>=0.?max(ray.z,.00001):min(ray.z,-.00001));

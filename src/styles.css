@@ -38,3 +38,42 @@ aside.settings-panel{z-index:2;top:calc(76px + env(safe-area-inset-top));bottom:
 .sword-info{border-top:1px solid #394c59;margin-top:24px;padding-top:18px;font-size:13px;color:#9cabb5;line-height:1.6}
 .sword-info summary{cursor:pointer;color:#bccbd3}.sword-info h3{font-family:Georgia,serif;font-size:22px;font-weight:400;color:#e9edf0;margin-bottom:8px}.sword-info p{margin:8px 0}.study-credit{font-size:10px;letter-spacing:1px}
 @media(max-width:700px){aside.settings-panel{padding:20px}.settings-panel input[type=range]{margin:10px 0 16px}.settings-panel .actions{margin-top:16px}.settings-panel .motion-panel .actions{margin-top:0}}
+
+/* Collection view: no WebGL scene is mounted until an asset is opened. */
+.gallery-page{overflow-y:auto;background:radial-gradient(ellipse at 60% 0%,#19242a 0%,#0b1014 52%);padding:32px clamp(22px,5vw,80px) 40px;touch-action:pan-y;overscroll-behavior:contain}
+.gallery-top{display:flex;justify-content:space-between;align-items:center;gap:20px;padding-bottom:40px}
+.gallery-brand{color:#e8edef;font-size:13px;letter-spacing:3px;text-decoration:none;font-weight:600}.gallery-brand span{color:#91b2b8}
+.gallery-top-note,.gallery-kicker,.gallery-section-label{color:#8d9da5;font-size:11px;letter-spacing:2px}.gallery-top-note{font-size:10px}
+.gallery-intro{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin:22px 0 52px}.gallery-kicker{color:#9ac0c5;margin:0 0 16px}
+.gallery-intro h1{font-size:clamp(42px,5vw,72px);letter-spacing:-2px;margin:0 0 16px;font-weight:400}.gallery-intro p:not(.gallery-kicker){color:#8e9ea7;font-size:14px;line-height:1.7;margin:0;max-width:420px}
+.gallery-primary{display:inline-flex;justify-content:center;align-items:center;gap:8px;padding:13px 19px;border:1px solid #b9cbd0;border-radius:6px;background:#dce8e9;color:#15212a;font:inherit;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap;min-height:44px}
+.gallery-primary:hover{background:#fff}
+.gallery-section-label{display:flex;justify-content:space-between;gap:20px;font-size:10px;padding:0 0 17px;border-bottom:1px solid #29343c;margin-bottom:24px}
+.sword-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:24px}
+.sword-card{display:block;color:inherit;text-decoration:none;background:#11191e;border:1px solid #28343c;border-radius:10px;overflow:hidden;transition:border-color .2s,transform .2s}
+.sword-card:hover{border-color:#627780;transform:translateY(-3px)}
+.sword-card-art{height:350px;position:relative;overflow:hidden;background:radial-gradient(ellipse at 50% 40%,#23343b88,transparent 65%),linear-gradient(145deg,#162128,#0d1318)}
+.sword-card-art:after{content:"";position:absolute;width:100px;height:230px;left:50%;top:80px;transform:translateX(-50%) rotate(23deg);background:var(--effect-color);opacity:.06;filter:blur(32px);pointer-events:none}
+.gallery-sword{display:block;position:absolute;width:140px;height:320px;left:50%;top:12px;transform:translateX(-50%) rotate(23deg);filter:drop-shadow(0 0 9px color-mix(in srgb,var(--effect-color) 22%,transparent));z-index:1}
+.card-number{position:absolute;top:20px;left:20px;font-size:11px;color:#65767f;letter-spacing:2px}
+.card-effect{position:absolute;right:18px;top:18px;display:flex;align-items:center;gap:6px;border:1px solid #3b474d;border-radius:20px;padding:5px 8px;font-size:10px;color:#b7c5ca}.card-effect i{width:4px;height:4px;background:var(--effect-color);border-radius:50%}
+.card-open{position:absolute;bottom:16px;right:18px;font-size:11px;color:#a0b6c0;z-index:2}
+.sword-card-meta{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px;border-top:1px solid #29333b}.sword-card-meta h2{font-family:Georgia,serif;font-weight:400;font-size:24px;line-height:1.25;overflow-wrap:anywhere;margin:0 0 7px}.sword-card-meta p{margin:0;font-size:11px;letter-spacing:.4px;color:#879aa5}.sword-card-meta>span{color:#8196a0}
+.gallery-back{position:absolute;z-index:3;top:calc(20px + env(safe-area-inset-top));left:calc(20px + env(safe-area-inset-left));padding:13px 16px;background:#111a20b8;border:1px solid #39464d;border-radius:24px;text-decoration:none;color:#c1d0d7;font-size:12px;backdrop-filter:blur(12px)}.gallery-back:hover{background:#26343d;color:white}
+.missing-sword{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;background:#0b1014}.missing-sword h1{font-size:clamp(32px,5vw,56px);margin:8px 0 20px;letter-spacing:-1px}.missing-sword p:not(.gallery-kicker){max-width:420px;line-height:1.7;color:#90a3ae;margin-bottom:26px}
+.gallery-page a:focus-visible,.gallery-page button:focus-visible,.gallery-page select:focus-visible,.gallery-back:focus-visible{outline:2px solid #d4ebed;outline-offset:4px}
+@media(max-width:700px){.gallery-top{padding-bottom:20px}.gallery-top-note{display:none}.gallery-intro{align-items:flex-start;flex-direction:column;margin-bottom:32px}.gallery-intro h1{font-size:48px}.sword-grid{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}.gallery-page{padding-top:calc(24px + env(safe-area-inset-top))}}
+@media(prefers-reduced-motion:reduce){.sword-card{transition:none}.sword-card:hover{transform:none}}
+
+/* Actual scene previews, with only the sword name around each render. */
+.simple-gallery{background:#090c0e;padding:28px clamp(18px,4vw,64px) 40px}
+.simple-gallery-heading{margin:0 0 22px}.simple-gallery-heading h1{font:400 20px Arial,Helvetica,sans-serif;letter-spacing:.2px;margin:0;color:#c4cfd5}
+.live-sword-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:28px}
+.live-sword-card{min-width:0}.live-sword-card>a{display:block;text-decoration:none;color:#dce4e8;border:1px solid #222b31;border-radius:8px;overflow:hidden;background:#080a0b;transition:border-color .2s}
+.live-sword-card>a:hover{border-color:#637780}.live-sword-card>a:focus-visible{outline:2px solid #d4ebed;outline-offset:4px}
+.live-sword-art{position:relative;height:clamp(440px,72dvh,760px);overflow:hidden;pointer-events:none;background:#141413}
+.live-sword-stage{position:absolute;inset:0;pointer-events:none}.live-sword-stage canvas{width:100%;height:100%;pointer-events:none;touch-action:pan-y}
+.live-sword-caption{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:17px 20px}.live-sword-caption h2{font-size:15px;font-weight:400;margin:0}.live-sword-caption span{color:#8399a4;font-size:18px}
+.preview-status{position:absolute;left:0;right:0;top:50%;text-align:center;font-size:12px;color:#83939c;padding:20px}
+@media(max-width:700px){.simple-gallery{padding-top:calc(24px + env(safe-area-inset-top))}.live-sword-art{height:66dvh;min-height:400px}.live-sword-grid{gap:22px}}
+@media(prefers-reduced-motion:reduce){.live-sword-card>a{transition:none}}

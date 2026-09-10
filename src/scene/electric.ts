@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {bladeStations} from './craft';
+import {BLADE_VISIBLE_ROOT,BLADE_TIP,sampleBladeSurface} from './bladeSurface';
 
 export function createBladeElectric(parent:THREE.Group,random:()=>number,onDischarge:(point:THREE.Vector3,direction:THREE.Vector3,count:number)=>void){
  const group=new THREE.Group();parent.add(group);
@@ -24,8 +24,7 @@ export function createBladeElectric(parent:THREE.Group,random:()=>number,onDisch
   return {meshes,geometry,positions,radials,opacity,exposed,age:10,life:.2};
  });
  const delta=new THREE.Vector3(),u=new THREE.Vector3(),v=new THREE.Vector3(),radial=new THREE.Vector3();
- function width(y:number){for(let j=1;j<bladeStations.length;j++){const a=bladeStations[j-1],b=bladeStations[j];if(y<=b[0])return THREE.MathUtils.lerp(a[1],b[1],(y-a[0])/(b[0]-a[0]))*.65;}return .001;}
- function surface(y:number,a:number){return new THREE.Vector3(Math.cos(a)*(width(y)+.008),y,Math.sin(a)*.03);}
+ function surface(y:number,a:number){return sampleBladeSurface(new THREE.Vector3(),y,Math.cos(a),Math.sin(a)<0?-1:1,.002);}
  function build(arc:typeof arcs[number],exposed:number,intensity:number){
   let offset=0;
   function segment(a:THREE.Vector3,b:THREE.Vector3){
@@ -37,8 +36,8 @@ export function createBladeElectric(parent:THREE.Group,random:()=>number,onDisch
     (end?b:a).toArray(arc.positions,offset);radial.toArray(arc.radials,offset);offset+=3;
    }
   }
-  const limit=Math.min(4.99,exposed-.045),start=.10+random()*Math.max(0,limit-.25);
-  const end=THREE.MathUtils.clamp(start+(random()<.35?-1:1)*(.35+random()*1.8),.09,limit);
+  const limit=Math.min(BLADE_TIP-.015,exposed-.045),start=BLADE_VISIBLE_ROOT+random()*Math.max(0,limit-BLADE_VISIBLE_ROOT);
+  const end=THREE.MathUtils.clamp(start+(random()<.35?-1:1)*(.35+random()*1.8),BLADE_VISIBLE_ROOT,limit);
   const angle=random()*Math.PI*2,turn=(random()-.5)*4.2,steps=18+Math.floor(random()*12);
   const spread=(.12+random()*.26)*(.65+intensity*.35),points:THREE.Vector3[]=[];
   for(let j=0;j<=steps;j++){
@@ -54,7 +53,7 @@ export function createBladeElectric(parent:THREE.Group,random:()=>number,onDisch
   for(let branch=0;branch<2+Math.floor(random()*3);branch++){
    const root=points[3+Math.floor(random()*(steps-5))];let previous=root;
    const direction=new THREE.Vector3((random()-.5)*.5,(random()-.5)*.5,(random()-.5)*.5);
-   for(let k=1;k<=5;k++){const p=root.clone().addScaledVector(direction,k/5);p.x+=(random()-.5)*.06;p.z+=(random()-.5)*.06;p.y=THREE.MathUtils.clamp(p.y,.07,limit);segment(previous,p);previous=p;}
+   for(let k=1;k<=5;k++){const p=root.clone().addScaledVector(direction,k/5);p.x+=(random()-.5)*.06;p.z+=(random()-.5)*.06;p.y=THREE.MathUtils.clamp(p.y,BLADE_VISIBLE_ROOT,limit);segment(previous,p);previous=p;}
    if(random()<.7)discharges.push({point:previous,direction:direction.clone(),count:1+Math.floor(random()*3)});
   }
   arc.geometry.setDrawRange(0,offset/3);

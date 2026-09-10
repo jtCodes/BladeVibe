@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {bladeThickness} from './craft';
+import {BLADE_VISIBLE_ROOT,BLADE_TIP,sampleBladeSurface} from './bladeSurface';
 import {FLOOR_Y} from './swordPhysics';
 
 export function createColdMist(parent:THREE.Object3D,pixelRatio:number,random:()=>number){
@@ -44,8 +44,8 @@ export function createColdMist(parent:THREE.Object3D,pixelRatio:number,random:()
     emission+=dt*52*Math.min(1.5,intensity)*Math.min(1,exposed/5);
     sword.getWorldQuaternion(rotation);
     while(emission>=1){emission--;const i=cursor;cursor=(cursor+1)%count;
-     const y=.15+random()*(Math.min(4.95,exposed-.03)-.15),side=random()<.5?-1:1;
-     origin.set((random()-.5)*.20*bladeThickness(y),y,side*(.024*bladeThickness(y)+.012)).applyMatrix4(sword.matrixWorld);
+     const y=BLADE_VISIBLE_ROOT+random()*(Math.min(BLADE_TIP-.015,exposed-.03)-BLADE_VISIBLE_ROOT),side=random()<.5?-1:1;
+     sampleBladeSurface(origin,y,(random()-.5)*1.4,side,.012).applyMatrix4(sword.matrixWorld);
      velocity.lerpVectors(rootSpeed,tipSpeed,y/5).multiplyScalar(.18);
      velocity.x+=(random()-.5)*.10;velocity.y-=.035;velocity.z+=(random()-.5)*.10;
      origin.toArray(positions,i*3);velocity.toArray(velocities,i*3);ages[i]=0;lives[i]=1.8+random()*1.5;alpha[i]=0;

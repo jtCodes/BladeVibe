@@ -4,7 +4,8 @@ import {createIceChips} from './iceChips';
 import {createColdMist} from './coldMist';
 import {createBladeElectric} from './electric';
 import {createContinuousFire} from './fire';
-import {bladeThickness,bladeStations} from './craft';
+import {bladeThickness} from './craft';
+import {BLADE_ROOT,BLADE_VISIBLE_ROOT,BLADE_TIP,sampleBladeSurface} from './bladeSurface';
 import {DRAW_DISTANCE, FLOOR_Y} from './swordPhysics';
 
 export type EffectMode='off'|'glow'|'flame'|'ice'|'electric';
@@ -17,7 +18,7 @@ export function createBladeAura(sword:THREE.Group, pixelRatio:number) {
  for(const face of [-1,1])for(const halo of [false,true]) {
   const positions:number[]=[],uv:number[]=[],indices:number[]=[],rows=100;
   for(let i=0;i<=rows;i++) {
-   const y=.18+i/rows*4.68,taper=bladeThickness(y);
+   const y=BLADE_ROOT+i/rows*(BLADE_TIP-BLADE_ROOT),taper=bladeThickness(y);
    const width=(halo?.075:.005)*taper;
    const z=face*((halo?.082:.054)*.23*taper+.001);
    positions.push(-width,y,z,width,y,z);uv.push(0,i/rows,1,i/rows);
@@ -30,7 +31,7 @@ export function createBladeAura(sword:THREE.Group, pixelRatio:number) {
    fragmentShader:`uniform float electric;uniform float time;uniform float exposed;uniform float strength;uniform float motion;uniform float flame;uniform float ice;uniform float intensity;varying vec2 vUv;varying float bladeY;
     void main(){float reveal=1.-smoothstep(exposed-.04,exposed,bladeY);
      float edge=pow(max(0.,1.-abs(vUv.x*2.-1.)),2.5);
-     float ends=smoothstep(0.,.04,vUv.y)*(1.-smoothstep(.94,1.,vUv.y));
+     float ends=1.-smoothstep(.97,1.,vUv.y);
      float pulse=.93+.07*sin(time*.8*motion-vUv.y*3.);
      gl_FragColor=vec4(mix(mix(vec3(.16,.65,1.15),vec3(1.25,1.18,.95),electric),vec3(5.,1.2,.08),flame)*strength*intensity,edge*ends*reveal*pulse*(1.-ice));}`});
   group.add(new THREE.Mesh(geometry,material));
@@ -126,14 +127,9 @@ export function createBladeAura(sword:THREE.Group, pixelRatio:number) {
  }
  function spawn(exposed:number){
   const i=cursor;cursor=(cursor+1)%count;
-  const y=.20+random()*(Math.min(4.83,exposed-.025)-.20),face=random()<.5?-1:1,side=random()<.5?-1:1;
-  let halfWidth=.1755;
-  for(let j=1;j<bladeStations.length;j++)if(y<=bladeStations[j][0]){
-   const a=bladeStations[j-1],b=bladeStations[j];halfWidth=THREE.MathUtils.lerp(a[1],b[1],(y-a[0])/(b[0]-a[0]))*.65;break;
-  }
+  const y=BLADE_VISIBLE_ROOT+random()*(Math.min(BLADE_TIP-.015,exposed-.025)-BLADE_VISIBLE_ROOT),face=random()<.5?-1:1,side=random()<.5?-1:1;
   const edge=random()<.75,across=edge?.88+random()*.10:random()*.12;
-  const z=(edge?.052*(1.-(across-.80)/.20):.054)*.23*bladeThickness(y);
-  origin.set(side*halfWidth*across,y,face*(z+.0015)).applyMatrix4(sword.matrixWorld);
+  sampleBladeSurface(origin,y,side*across,face,.0015).applyMatrix4(sword.matrixWorld);
   velocity.set(side*(edge?.10+random()*.13:.03+random()*.07),-.035,face*(.025+random()*.075)).applyQuaternion(rotation);
   velocity.y+=mode==='flame'?.45+random()*.25:.065;
   if(mode==='flame'){velocity.x*=1.8;velocity.z*=1.8;velocity.y+=.25;rawSpeed.lerpVectors(rootSpeed,tipSpeed,y/5);velocity.addScaledVector(rawSpeed,.65);}
