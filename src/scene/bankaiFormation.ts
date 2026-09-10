@@ -123,15 +123,16 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
    objectNormal=tumble(objectNormal,angles);
   `);
   shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
-   float birth=smoothstep(0.,.12,flight);
-   float coast=(1.-exp(-flight*.24))/.24;
+   float birth=smoothstep(0.,.06,flight);
+   // Reach the existing spread sooner, beginning at each petal's surface release.
+   float coast=(1.-exp(-flight*.55))/.24;
    vec3 drift=petalVelocity*coast;
    drift+=vec3(sin(flight*.6+petalPhase)-sin(petalPhase),sin(flight*.4+petalPhase)-sin(petalPhase),cos(flight*.53+petalPhase)-cos(petalPhase))*.55;
    drift+=petalVelocity*flight*.12;
    transformed=petalOrigin+drift+tumble(position*petalSize*birth,angles);
   `);
  };
- petalMaterial.customProgramCacheKey=()=> 'bankai-row-petals-v1';
+ petalMaterial.customProgramCacheKey=()=> 'bankai-row-petals-early-spread-v2';
  const petals=new THREE.InstancedMesh(petalGeometry,petalMaterial,COUNT);petals.frustumCulled=false;petals.visible=false;
  const identity=new THREE.Matrix4();for(let i=0;i<COUNT;i++)petals.setMatrixAt(i,identity);petals.instanceMatrix.needsUpdate=true;group.add(petals);
  // A separate fine layer gives depth between the larger, cupped petals.
@@ -151,7 +152,7 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
   uniforms:{formationTime:clock},
   vertexShader:`uniform float formationTime;attribute vec3 drift;attribute float releaseAt;attribute float phase;varying float glow;
    void main(){float age=max(0.,formationTime-releaseAt);
-    float coast=(1.-exp(-age*.2))/.2;
+    float coast=(1.-exp(-age*.46))/.2;
     vec3 p=position+drift*coast;
     p.x+=.45*(sin(age*.8+phase)-sin(phase));
     p.y-=.065*age*age;
