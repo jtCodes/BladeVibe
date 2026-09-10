@@ -1,17 +1,16 @@
+import {petalBreakup,PETAL_BREAKUP_GLSL} from './petalBreakup';
+import {addSakuraGlow} from './sakuraGlow';
 import * as THREE from 'three';
 import {FLOOR_Y} from './swordPhysics';
 
 const HEIGHT=12,PAIRS=24,BLADES=PAIRS*2;
-const RISE_STAGGER=.1,DISSOLVE_STAGGER=.22;
+const RISE_STAGGER=.1,DISSOLVE_STAGGER=.07;
 const RISE_END=(PAIRS-1)*RISE_STAGGER+2.1;
 const DISSOLVE_AT=RISE_END+1.1,DISSOLVE_DURATION=1.9;
 const DISSOLVE_END=DISSOLVE_AT+(PAIRS-1)*DISSOLVE_STAGGER+DISSOLVE_DURATION;
 // Match the surface breakup field on the CPU so particles leave only removed steel.
 function breakupThreshold(p:THREE.Vector3,delay:number){
- const seed=delay*12.;
- const noise=.065*Math.sin(p.x*18.+p.y*5.+seed)
-  +.035*Math.sin(p.z*42.-p.y*13.+p.x*9.)
-  +.018*Math.sin(p.x*61.+p.y*31.+seed);
+ const noise=petalBreakup(p.x,p.y,delay);
  return THREE.MathUtils.clamp(1-p.y/HEIGHT+noise,.003,.997);
 }
 
@@ -34,35 +33,30 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
  material.clippingPlanes=[new THREE.Plane(new THREE.Vector3(0,1,0),-FLOOR_Y)];
  material.onBeforeCompile=(shader,renderer)=>{
   // Preserve the source steel and hamon shader. Its Shikai dissolve is reset before Bankai.
-  inherit(shader,renderer);
+  inherit(shader,renderer);addSakuraGlow(shader);
   shader.uniforms.formationTime=clock;
   shader.vertexShader='attribute float bladeDelay;varying float bladeHeight;varying float rowDelay;varying vec3 breakupPoint;\n'+shader.vertexShader;
   shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
    bladeHeight=position.y/${HEIGHT.toFixed(1)};rowDelay=bladeDelay;breakupPoint=position;
   `);
-  shader.fragmentShader='uniform float formationTime;varying float bladeHeight;varying float rowDelay;varying vec3 breakupPoint;\n'+shader.fragmentShader;
+  shader.fragmentShader=PETAL_BREAKUP_GLSL+'uniform float formationTime;varying float bladeHeight;varying float rowDelay;varying vec3 breakupPoint;\n'+shader.fragmentShader;
   shader.fragmentShader=shader.fragmentShader.replace('#include <clipping_planes_fragment>',`#include <clipping_planes_fragment>
    float dissolve=clamp((formationTime-${DISSOLVE_AT}-rowDelay*${DISSOLVE_STAGGER/RISE_STAGGER})/${DISSOLVE_DURATION},0.,1.);
-   float breakupSeed=rowDelay*12.;
-   float breakupNoise=.065*sin(breakupPoint.x*18.+breakupPoint.y*5.+breakupSeed)
-    +.035*sin(breakupPoint.z*42.-breakupPoint.y*13.+breakupPoint.x*9.)
-    +.018*sin(breakupPoint.x*61.+breakupPoint.y*31.+breakupSeed);
+   float breakupNoise=petalBreakup(breakupPoint.xy,rowDelay);
    float threshold=clamp(1.-bladeHeight+breakupNoise,.003,.997);
    if(dissolve>=threshold)discard;
-   float pink=smoothstep(0.,.04,dissolve)*(1.-smoothstep(0.,.065,threshold-dissolve));
+   float glowDistance=(threshold-dissolve)*5.02;
+   float pink=sakuraTint(glowDistance,dissolve);
   `);
   shader.fragmentShader=shader.fragmentShader.replace('#include <metalnessmap_fragment>',`#include <metalnessmap_fragment>
-   diffuseColor.rgb=mix(diffuseColor.rgb,vec3(1.,.34,.64),pink);
-   metalnessFactor=mix(metalnessFactor,.2,pink);
+   diffuseColor.rgb=mix(diffuseColor.rgb,SAKURA_PINK,pink*.9);
+   metalnessFactor=mix(metalnessFactor,.3,pink);
   `);
   shader.fragmentShader=shader.fragmentShader.replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
-   float ignition=smoothstep(-.25,0.,formationTime-${DISSOLVE_AT}-rowDelay*${DISSOLVE_STAGGER/RISE_STAGGER});
-   float tipHalo=ignition*(1.-smoothstep(.015,.13,threshold-dissolve));
-   float tipCore=ignition*(1.-smoothstep(0.,.025,threshold-dissolve));
-   totalEmissiveRadiance+=vec3(4.,.45,2.)*tipHalo+vec3(12.,6.,9.)*tipCore;
+   totalEmissiveRadiance+=sakuraEmission(glowDistance,dissolve,pink);
   `);
  };
- material.customProgramCacheKey=()=>baseKey+'-bankai-matching-row-ragged-glow-v3';
+ material.customProgramCacheKey=()=>baseKey+'-bankai-matching-row-patch-breakup-v6';
  }
  const blades=new THREE.InstancedMesh(geometry,materials,BLADES);blades.frustumCulled=false;
  blades.instanceMatrix.setUsage(THREE.DynamicDrawUsage);group.add(blades);
