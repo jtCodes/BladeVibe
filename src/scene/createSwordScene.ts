@@ -31,6 +31,37 @@ cleanups.push(()=>{
  for(const geometry of geometries)geometry.dispose();for(const texture of textures)texture.dispose();
 });
 const camera=new THREE.PerspectiveCamera(34,1,.1,100);const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.enablePan=true;controls.screenSpacePanning=true;controls.panSpeed=.8;controls.touches.ONE=THREE.TOUCH.ROTATE;controls.touches.TWO=THREE.TOUCH.DOLLY_PAN;controls.minDistance=4;controls.maxDistance=34;controls.autoRotate=true;controls.autoRotateSpeed=.25;cleanups.push(()=>controls.dispose());
+// Hold arrow keys to pan in the camera's screen plane, independent of frame rate.
+const heldArrows=new Set<string>();
+const arrowKeys=new Set(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown']);
+const cameraStep=new THREE.Vector3(),cameraRight=new THREE.Vector3(),cameraUp=new THREE.Vector3();
+const ownsKeys=(target:EventTarget|null)=>target instanceof Element&&!!target.closest('input,textarea,select,button,a,[contenteditable]:not([contenteditable="false"]),[role="slider"],[role="textbox"]');
+function clearArrows(){heldArrows.clear()}
+function keyDown(event:KeyboardEvent){
+ if(!arrowKeys.has(event.key))return;
+ if(ownsKeys(event.target)||event.altKey||event.ctrlKey||event.metaKey){clearArrows();return;}
+ event.preventDefault();heldArrows.add(event.key);
+}
+function keyUp(event:KeyboardEvent){heldArrows.delete(event.key)}
+function focusChanged(event:FocusEvent){if(ownsKeys(event.target))clearArrows()}
+function focusCanvas(){renderer.domElement.focus({preventScroll:true})}
+renderer.domElement.tabIndex=0;
+renderer.domElement.setAttribute('aria-label','Sword camera. Arrow keys move the camera; drag to orbit.');
+window.addEventListener('keydown',keyDown);window.addEventListener('keyup',keyUp);window.addEventListener('blur',clearArrows);
+document.addEventListener('visibilitychange',clearArrows);document.addEventListener('focusin',focusChanged);
+renderer.domElement.addEventListener('pointerdown',focusCanvas);
+cleanups.push(()=>{
+ clearArrows();window.removeEventListener('keydown',keyDown);window.removeEventListener('keyup',keyUp);window.removeEventListener('blur',clearArrows);
+ document.removeEventListener('visibilitychange',clearArrows);document.removeEventListener('focusin',focusChanged);renderer.domElement.removeEventListener('pointerdown',focusCanvas);
+});
+function moveCamera(dt:number){
+ const x=Number(heldArrows.has('ArrowRight'))-Number(heldArrows.has('ArrowLeft'));
+ const y=Number(heldArrows.has('ArrowUp'))-Number(heldArrows.has('ArrowDown'));
+ if(!x&&!y)return;
+ camera.updateMatrix();cameraRight.setFromMatrixColumn(camera.matrix,0);cameraUp.setFromMatrixColumn(camera.matrix,1);
+ cameraStep.copy(cameraRight).multiplyScalar(x).addScaledVector(cameraUp,y).normalize().multiplyScalar(camera.position.distanceTo(controls.target)*.35*dt);
+ camera.position.add(cameraStep);controls.target.add(cameraStep);
+}
 const environment=createStudioEnvironment(renderer);scene.environment=environment.texture;scene.environmentRotation.set(0,.35,0);cleanups.push(()=>environment.dispose());scene.environmentIntensity=.8;
 scene.add(new THREE.HemisphereLight(0xb9d8ed,0x1b1312,.12));
 function area(color: number,power: number,x: number,y: number,z: number,w: number,h: number){const l=new THREE.RectAreaLight(color,power,w,h);l.position.set(x,y,z);l.lookAt(0,1.5,0);scene.add(l)}
@@ -94,11 +125,11 @@ function update(settings: ViewerSettings){
  scene.environmentRotation.y=THREE.MathUtils.degToRad(settings.lightAngle);
  controls.autoRotate=settings.rotating;
 }
-function reset(){const mobile=container.clientWidth<700;camera.position.set(2.1,2.6,mobile?23:24);camera.position.y+=cameraHeight;controls.target.set(0,(mobile?1.1:.8)+cameraHeight,0);controls.update();physics.restore()}
+function reset(){clearArrows();const mobile=container.clientWidth<700;camera.position.set(2.1,2.6,mobile?23:24);camera.position.y+=cameraHeight;controls.target.set(0,(mobile?1.1:.8)+cameraHeight,0);controls.update();physics.restore()}
 function resize(){const w=Math.max(1,container.clientWidth),h=Math.max(1,container.clientHeight);const pixelRatio=Math.min(window.devicePixelRatio,2);renderer.setPixelRatio(pixelRatio);composer.setPixelRatio(pixelRatio);renderer.setSize(w,h);camera.aspect=w/h;camera.fov=w<700?44:34;camera.updateProjectionMatrix();composer.setSize(w,h)}
 const observer=new ResizeObserver(resize);observer.observe(container);cleanups.push(()=>observer.disconnect());resize();reset();
 const clock=new THREE.Clock();let frame=0,stopped=false;
-function animate(){if(stopped)return;frame=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.1);if(document.hidden)return;physics.step(dt);aura.update(dt,physics.draw);controls.update(dt);composer.render();}
+function animate(){if(stopped)return;frame=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.1);if(document.hidden)return;physics.step(dt);aura.update(dt,physics.draw);moveCamera(dt);controls.update(dt);composer.render();}
 cleanups.push(()=>{stopped=true;cancelAnimationFrame(frame)});animate();
 function handleContextLost(event: Event){event.preventDefault();stopped=true;cancelAnimationFrame(frame);onError('The 3D renderer was interrupted. Reload this page to restore the sword.');}
 renderer.domElement.addEventListener('webglcontextlost',handleContextLost);

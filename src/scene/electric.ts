@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {bladeStations} from './craft';
 
-export function createBladeElectric(parent:THREE.Group,random:()=>number){
+export function createBladeElectric(parent:THREE.Group,random:()=>number,onDischarge:(point:THREE.Vector3,direction:THREE.Vector3,count:number)=>void){
  const group=new THREE.Group();parent.add(group);
  const maxSegments=100,sides=5;
  const arcs=Array.from({length:10},()=>{
@@ -46,13 +46,19 @@ export function createBladeElectric(parent:THREE.Group,random:()=>number){
    if(j>0&&j<steps){p.x+=(random()-.5)*.13;p.y+=(random()-.5)*.065;p.z+=(random()-.5)*.13;}
    points.push(p);if(j)segment(points[j-1],p);
   }
+  const discharges=[
+   {point:points[0],direction:points[1].clone().sub(points[0]),count:4+Math.floor(random()*4)},
+   {point:points[steps],direction:points[steps-1].clone().sub(points[steps]),count:4+Math.floor(random()*4)}
+  ];
   for(let branch=0;branch<2+Math.floor(random()*3);branch++){
    const root=points[3+Math.floor(random()*(steps-5))];let previous=root;
    const direction=new THREE.Vector3((random()-.5)*.5,(random()-.5)*.5,(random()-.5)*.5);
    for(let k=1;k<=5;k++){const p=root.clone().addScaledVector(direction,k/5);p.x+=(random()-.5)*.06;p.z+=(random()-.5)*.06;p.y=THREE.MathUtils.clamp(p.y,.07,limit);segment(previous,p);previous=p;}
+   if(random()<.7)discharges.push({point:previous,direction:direction.clone(),count:1+Math.floor(random()*3)});
   }
   arc.geometry.setDrawRange(0,offset/3);arc.geometry.attributes.position.needsUpdate=true;arc.geometry.attributes.radial.needsUpdate=true;
   arc.age=0;arc.life=.09+random()*.16;
+  for(const discharge of discharges)onDischarge(discharge.point,discharge.direction.normalize(),discharge.count);
  }
  let timer=0,cursor=0,active=false;
  return {update(dt:number,exposed:number,intensity:number,enabled:boolean){
