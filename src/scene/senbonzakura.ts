@@ -82,7 +82,7 @@ export function createSenbonzakura(renderer:THREE.WebGLRenderer,sword:THREE.Grou
  const skin=new THREE.MeshStandardMaterial({color:0x9c904d,metalness:.42,roughness:.57,bumpMap:raySkinMap(),bumpScale:.0018});
  const lacquer=new THREE.MeshPhysicalMaterial({color:0xf0efeb,roughness:.21,metalness:.04,clearcoat:.9,clearcoatRoughness:.12});
  const add=(geometry:THREE.BufferGeometry,material:THREE.Material|THREE.Material[],parent:THREE.Group=sword)=>{const mesh=new THREE.Mesh(geometry,material);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh;};
- add(createKatanaBladeGeometry(),[metal,spine]);
+ add(createKatanaBladeGeometry(),[metal,spine]).name='senbonzakura-blade';
  function collar(y:number,height:number,radius:number,mat:THREE.Material,parent=sword){const m=add(new THREE.CylinderGeometry(radius,radius,height,48),mat,parent);m.scale.z=.72;m.position.y=y;return m;}
  // Habaki and seppa seat the blade directly against the tsuba.
  const habakiMetal=bronze.clone();habakiMetal.bumpMap=raySkinMap();habakiMetal.bumpMap.repeat.set(3,2);habakiMetal.bumpScale=.0005;

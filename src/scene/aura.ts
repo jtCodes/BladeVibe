@@ -8,7 +8,7 @@ import {bladeThickness} from './craft';
 import {BLADE_ROOT,BLADE_VISIBLE_ROOT,BLADE_TIP,sampleBladeSurface} from './bladeSurface';
 import {DRAW_DISTANCE, FLOOR_Y} from './swordPhysics';
 
-export type EffectMode='off'|'glow'|'flame'|'ice'|'electric';
+export type EffectMode='off'|'glow'|'flame'|'ice'|'electric'|'bankai';
 
 export function createBladeAura(sword:THREE.Group, pixelRatio:number) {
  const group=new THREE.Group();sword.add(group);

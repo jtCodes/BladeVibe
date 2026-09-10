@@ -40,21 +40,22 @@ export default function SwordEditor({sword}:{sword:SwordAsset}) {
       <h2 className="settings-heading">Settings</h2>
       <div className="motion-panel">
         <label className="range-label" htmlFor="draw">Draw sword <output>{draw}%</output></label>
-        <input id="draw" type="range" min={0} max={100} value={draw} disabled={dropped} onChange={event=>setDraw(Number(event.target.value))}/>
-        <div className="actions"><button disabled={dropped} onClick={()=>setDraw(draw===100?0:100)}>{draw===100?'Sheathe':'Draw'}</button><button disabled={status!=='drawn'} onClick={()=>{setRotating(false);setDropVersion(v=>v+1)}}>Drop sword</button></div>
+        <input id="draw" type="range" min={0} max={100} value={draw} disabled={dropped} onChange={event=>{setEffect(current=>current==='bankai'?'off':current);setDraw(Number(event.target.value))}}/>
+        <div className="actions"><button disabled={dropped} onClick={()=>{setEffect(current=>current==='bankai'?'off':current);setDraw(draw===100?0:100)}}>{draw===100?'Sheathe':'Draw'}</button><button disabled={status!=='drawn'||effect==='bankai'} onClick={()=>{setRotating(false);setDropVersion(v=>v+1)}}>Drop sword</button></div>
         <p className="motion-status" role="status">{{sheathed:'Sheathed',drawing:'Guided draw',drawn:'Drawn · ready to release',falling:'Falling',resting:'At rest'}[status]}</p>
         {dropped&&<button className="restore" onClick={()=>setResetVersion(v=>v+1)}>Return to display</button>}
       </div>
-      {sword.model==='longsword'&&<div className="lighting-controls effects-controls">
+      <div className="lighting-controls effects-controls">
+        {sword.model==='senbonzakura'?<button aria-pressed={effect==='bankai'} disabled={dropped} onClick={()=>{setDraw(100);setEffect(effect==='bankai'?'off':'bankai')}}>{effect==='bankai'?'Reform blade':'Bankai · Scatter'}</button>:<>
         <label className="range-label" htmlFor="effect-mode">Effects</label>
         <select id="effect-mode" value={effect} onChange={event=>setEffect(event.target.value as EffectMode)}>
           <option value="off">Off</option><option value="glow">Glow & sparks</option><option value="flame">Flame</option><option value="ice">Ice</option><option value="electric">Electric</option>
-        </select>
+        </select></>}
         <label className="range-label" htmlFor="effect-intensity">Effect intensity <output>{effectIntensity}%</output></label>
         <input id="effect-intensity" type="range" min={0} max={200} step={5} value={effectIntensity} disabled={effect==='off'} onChange={event=>setEffectIntensity(Number(event.target.value))}/>
         <label className="range-label" htmlFor="effect-speed">Effect speed <output>{effectSpeed===0?'Paused':`${effectSpeed.toFixed(1)}×`}</output></label>
         <input id="effect-speed" type="range" min={0} max={3} step={.1} value={effectSpeed} disabled={effect==='off'} onChange={event=>setEffectSpeed(Number(event.target.value))}/>
-      </div>}
+      </div>
       <div className="lighting-controls">
         <label className="range-label" htmlFor="light-angle">Studio light angle <output>{lightAngle}°</output></label>
         <input id="light-angle" type="range" min={0} max={360} value={lightAngle} onChange={event=>setLightAngle(Number(event.target.value))}/>

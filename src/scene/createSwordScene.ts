@@ -1,3 +1,4 @@
+import {createBankai} from './bankai';
 import {createSenbonzakura,createKatanaBladeGeometry,createSayaGeometry,KATANA_RADIUS} from './senbonzakura';
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
@@ -106,12 +107,17 @@ scabbard=createScabbard(sheathLeather,fittings);
 const floor=mesh(new THREE.PlaneGeometry(1000,1000),new THREE.MeshStandardMaterial({color:0x141413,metalness:0,roughness:.9}),scene);floor.rotation.x=-Math.PI/2;floor.position.y=FLOOR_Y;floor.castShadow=false;floor.receiveShadow=true;
 scene.add(scabbard);if(options.preview)scabbard.visible=false;
 const physics=createSwordPhysics(sword,onStatus,isKatana?{bladeGeometry:createKatanaBladeGeometry,scabbardGeometry:createSayaGeometry,curveRadius:KATANA_RADIUS,katana:true}:undefined);cleanups.push(()=>physics.dispose());
-const aura=isKatana?{configure:(_mode:EffectMode,_speed:number,_intensity:number)=>{},update:(_dt:number,_draw:number)=>{}}:createBladeAura(sword,renderer.getPixelRatio());
+const bankai=isKatana?createBankai(sword):null;
+if(bankai)cleanups.push(()=>bankai.dispose());
+const aura=bankai??createBladeAura(sword,renderer.getPixelRatio());
 // The fixed studio light only needs a new shadow map when a caster moves.
 renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=true;
 const shadowPosition=new THREE.Vector3(Infinity,Infinity,Infinity),shadowRotation=new THREE.Quaternion();
+let shadowRevision=-1;
 function updateShadowCache(){
- if(!sword.position.equals(shadowPosition)||!sword.quaternion.equals(shadowRotation)){
+ const revision=sword.userData.shadowRevision??0;
+ if(revision!==shadowRevision||!sword.position.equals(shadowPosition)||!sword.quaternion.equals(shadowRotation)){
+  shadowRevision=revision;
   renderer.shadowMap.needsUpdate=true;shadowPosition.copy(sword.position);shadowRotation.copy(sword.quaternion);
  }
 }
@@ -138,7 +144,9 @@ function update(settings: ViewerSettings){
  const lift=settings.cameraHeight-cameraHeight;camera.position.y+=lift;controls.target.y+=lift;cameraHeight=settings.cameraHeight;
  physics.setDraw(settings.draw/100);
  aura.configure(settings.effect,settings.effectSpeed,settings.effectIntensity);
- bloom.enabled=!isKatana&&(settings.effect==='flame'||settings.effect==='electric')&&settings.effectIntensity>0;
+ bloom.enabled=(settings.effect==='bankai'||settings.effect==='flame'||settings.effect==='electric')&&settings.effectIntensity>0;
+ bloom.threshold=isKatana?1.1:3.;
+ bloom.strength=isKatana?.24:.14;
  reflections.output=settings.reflections?SSRPass.OUTPUT.Default:SSRPass.OUTPUT.Beauty;
  scene.environmentRotation.y=THREE.MathUtils.degToRad(settings.lightAngle);
  controls.autoRotate=settings.rotating;
@@ -147,7 +155,7 @@ function reset(){clearArrows();if(options.preview){camera.position.set(1.3,4.7,1
 function resize(){const w=Math.max(1,container.clientWidth),h=Math.max(1,container.clientHeight);const pixelRatio=Math.min(window.devicePixelRatio,2);renderer.setPixelRatio(pixelRatio);composer.setPixelRatio(pixelRatio);renderer.setSize(w,h);camera.aspect=w/h;camera.fov=options.preview?34:w<700?44:34;camera.updateProjectionMatrix();composer.setSize(w,h)}
 const observer=new ResizeObserver(resize);observer.observe(container);cleanups.push(()=>observer.disconnect());resize();reset();
 const clock=new THREE.Clock();let frame=0,stopped=false;
-function animate(){if(stopped)return;frame=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.1);if(document.hidden)return;physics.step(dt);updateShadowCache();aura.update(dt,physics.draw);moveCamera(dt);controls.update(dt);composer.render();}
+function animate(){if(stopped)return;frame=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.1);if(document.hidden)return;physics.step(dt);aura.update(dt,physics.draw);if(bankai)bloom.enabled=bankai.visible;updateShadowCache();moveCamera(dt);controls.update(dt);composer.render();}
 cleanups.push(()=>{stopped=true;cancelAnimationFrame(frame)});animate();
 function handleContextLost(event: Event){event.preventDefault();stopped=true;cancelAnimationFrame(frame);onError('The 3D renderer was interrupted. Reload this page to restore the sword.');}
 renderer.domElement.addEventListener('webglcontextlost',handleContextLost);
