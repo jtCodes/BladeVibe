@@ -4,10 +4,10 @@ import * as THREE from 'three';
 import {FLOOR_Y} from './swordPhysics';
 
 const HEIGHT=12,PAIRS=24,BLADES=PAIRS*2;
-const RISE_STAGGER=.1,DISSOLVE_STAGGER=.07;
+const RISE_STAGGER=.1,DISSOLVE_WINDOW=.65;
 const RISE_END=(PAIRS-1)*RISE_STAGGER+2.1;
 const DISSOLVE_AT=RISE_END+1.1,DISSOLVE_DURATION=1.9;
-const DISSOLVE_END=DISSOLVE_AT+(PAIRS-1)*DISSOLVE_STAGGER+DISSOLVE_DURATION;
+const DISSOLVE_END=DISSOLVE_AT+DISSOLVE_WINDOW+DISSOLVE_DURATION;
 // Match the surface breakup field on the CPU so particles leave only removed steel.
 function breakupThreshold(p:THREE.Vector3,delay:number){
  const noise=petalBreakup(p.x,p.y,delay);
@@ -27,6 +27,13 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
  const delays=new Float32Array(BLADES);
  for(let i=0;i<BLADES;i++)delays[i]=(PAIRS-1-Math.floor(i/2))*RISE_STAGGER;
  geometry.setAttribute('bladeDelay',new THREE.InstancedBufferAttribute(delays,1));
+ // Compress the front rows together while preserving the back-to-front order.
+ // Share these exact times with particle emission so petals stay attached until release.
+ const dissolveDelays=Float32Array.from(delays,delay=>{
+  const depth=delay/((PAIRS-1)*RISE_STAGGER);
+  return DISSOLVE_WINDOW*(1-Math.pow(1-depth,2));
+ });
+ geometry.setAttribute('bladeDissolveDelay',new THREE.InstancedBufferAttribute(dissolveDelays,1));
  for(let index=0;index<materials.length;index++){
  const material=materials[index],original=sourceMaterials[index];
  const inherit=original.onBeforeCompile.bind(original),baseKey=original.customProgramCacheKey();
@@ -35,13 +42,13 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
   // Preserve the source steel and hamon shader. Its Shikai dissolve is reset before Bankai.
   inherit(shader,renderer);addSakuraGlow(shader);
   shader.uniforms.formationTime=clock;
-  shader.vertexShader='attribute float bladeDelay;varying float bladeHeight;varying float rowDelay;varying vec3 breakupPoint;\n'+shader.vertexShader;
+  shader.vertexShader='attribute float bladeDelay;attribute float bladeDissolveDelay;varying float dissolveDelay;varying float bladeHeight;varying float rowDelay;varying vec3 breakupPoint;\n'+shader.vertexShader;
   shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
-   bladeHeight=position.y/${HEIGHT.toFixed(1)};rowDelay=bladeDelay;breakupPoint=position;
+   bladeHeight=position.y/${HEIGHT.toFixed(1)};rowDelay=bladeDelay;dissolveDelay=bladeDissolveDelay;breakupPoint=position;
   `);
-  shader.fragmentShader=PETAL_BREAKUP_GLSL+'uniform float formationTime;varying float bladeHeight;varying float rowDelay;varying vec3 breakupPoint;\n'+shader.fragmentShader;
+  shader.fragmentShader=PETAL_BREAKUP_GLSL+'uniform float formationTime;varying float dissolveDelay;varying float bladeHeight;varying float rowDelay;varying vec3 breakupPoint;\n'+shader.fragmentShader;
   shader.fragmentShader=shader.fragmentShader.replace('#include <clipping_planes_fragment>',`#include <clipping_planes_fragment>
-   float dissolve=clamp((formationTime-${DISSOLVE_AT}-rowDelay*${DISSOLVE_STAGGER/RISE_STAGGER})/${DISSOLVE_DURATION},0.,1.);
+   float dissolve=clamp((formationTime-${DISSOLVE_AT}-dissolveDelay)/${DISSOLVE_DURATION},0.,1.);
    float breakupNoise=petalBreakup(breakupPoint.xy,rowDelay);
    float threshold=clamp(1.-bladeHeight+breakupNoise,.003,.997);
    if(dissolve>=threshold)discard;
@@ -56,7 +63,7 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
    totalEmissiveRadiance+=sakuraEmission(glowDistance,dissolve,pink);
   `);
  };
- material.customProgramCacheKey=()=>baseKey+'-bankai-matching-row-patch-breakup-v6';
+ material.customProgramCacheKey=()=>baseKey+'-bankai-overlapping-row-breakup-v7';
  }
  const blades=new THREE.InstancedMesh(geometry,materials,BLADES);blades.frustumCulled=false;
  blades.instanceMatrix.setUsage(THREE.DynamicDrawUsage);group.add(blades);
@@ -98,7 +105,7 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
   const angle=random()*Math.PI*2,launch=.7+random()*2;
   velocities.set([Math.cos(angle)*launch-row.side*.65,(random()-.5)*1.6,Math.sin(angle)*launch],i*3);
   spins.set([(random()-.5)*3,(random()-.5)*4,(random()-.5)*3],i*3);
-  releases[i]=DISSOLVE_AT+row.delay*(DISSOLVE_STAGGER/RISE_STAGGER)+DISSOLVE_DURATION*releaseThreshold;
+  releases[i]=DISSOLVE_AT+dissolveDelays[i%BLADES]+DISSOLVE_DURATION*releaseThreshold;
   sizes[i]=.055+Math.pow(random(),2)*.16;phases[i]=random()*Math.PI*2;
  }
  for(const [name,array,size] of [['petalOrigin',origins,3],['petalVelocity',velocities,3],['petalSpin',spins,3],['petalRelease',releases,1],['petalSize',sizes,1],['petalPhase',phases,1]] as const){
