@@ -56,11 +56,13 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
    metalnessFactor=mix(metalnessFactor,.2,pink);
   `);
   shader.fragmentShader=shader.fragmentShader.replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
-   float whiteCore=pow(pink,4.);
-   totalEmissiveRadiance+=vec3(3.,.35,1.5)*pink+vec3(7.,3.5,5.)*whiteCore;
+   float ignition=smoothstep(-.25,0.,formationTime-${DISSOLVE_AT}-rowDelay*${DISSOLVE_STAGGER/RISE_STAGGER});
+   float tipHalo=ignition*(1.-smoothstep(.015,.13,threshold-dissolve));
+   float tipCore=ignition*(1.-smoothstep(0.,.025,threshold-dissolve));
+   totalEmissiveRadiance+=vec3(4.,.45,2.)*tipHalo+vec3(12.,6.,9.)*tipCore;
   `);
  };
- material.customProgramCacheKey=()=>baseKey+'-bankai-matching-row-ragged-v2';
+ material.customProgramCacheKey=()=>baseKey+'-bankai-matching-row-ragged-glow-v3';
  }
  const blades=new THREE.InstancedMesh(geometry,materials,BLADES);blades.frustumCulled=false;
  blades.instanceMatrix.setUsage(THREE.DynamicDrawUsage);group.add(blades);
@@ -176,7 +178,7 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
  const glowLights=[0,-12,-26].map(z=>{const light=new THREE.PointLight(0xff7ac4,0,16,2);light.position.set(0,2,z);group.add(light);return light;});
  let lastTime=-1;
  return {
-  get glowing(){return group.visible&&clock.value>DISSOLVE_AT;},
+  get glowing(){return group.visible&&clock.value>DISSOLVE_AT-.25;},
   start(x:number,z:number){group.position.set(x,0,z);group.visible=false;lastTime=-1;clock.value=-1;},
   hide(){group.visible=false;},
   update(time:number,intensity:number){
