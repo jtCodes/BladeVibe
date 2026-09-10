@@ -15,7 +15,7 @@ import { initializePhysics, createSwordPhysics, FLOOR_Y, type MotionStatus } fro
 import { createBladeAura, type EffectMode } from './aura';
 import { createScabbard } from './scabbard';
 import { createCrossguard, createPommel } from './crossguard';
-export interface ViewerSettings { rotating: boolean; draw: number; reflections: boolean; lightAngle: number; cameraHeight: number; showSheath?: boolean; swordRotation?: number; effect: EffectMode; effectSpeed: number; effectIntensity: number }
+export interface ViewerSettings { rotating: boolean; draw: number; reflections: boolean; lightAngle: number; floorColor?: string; cameraHeight: number; showSheath?: boolean; swordRotation?: number; effect: EffectMode; effectSpeed: number; effectIntensity: number }
 export interface SwordScene { update(settings: ViewerSettings): void; reset(): void; release(): boolean; dispose(): void }
 export async function createSwordScene(container: HTMLDivElement, onError: (message: string) => void, onStatus: (status: MotionStatus) => void, signal: AbortSignal, options:{preview?:boolean;model?:'longsword'|'senbonzakura'}={}): Promise<SwordScene> {
 await initializePhysics();
@@ -105,7 +105,8 @@ sword.add(createPommel(renderer));
 const sheathLeather=new THREE.MeshStandardMaterial({color:0x241d18,roughness:.88,metalness:0,...surfaceMaps('leather',renderer),bumpScale:.002,side:THREE.DoubleSide});
 scabbard=createScabbard(sheathLeather,fittings);
 }
-const floor=mesh(new THREE.PlaneGeometry(1000,1000),new THREE.MeshStandardMaterial({color:0x141413,metalness:0,roughness:.9}),scene);floor.rotation.x=-Math.PI/2;floor.position.y=FLOOR_Y;floor.castShadow=false;floor.receiveShadow=true;
+const floorMaterial=new THREE.MeshStandardMaterial({color:0x141413,metalness:0,roughness:.9});
+const floor=mesh(new THREE.PlaneGeometry(1000,1000),floorMaterial,scene);floor.rotation.x=-Math.PI/2;floor.position.y=FLOOR_Y;floor.castShadow=false;floor.receiveShadow=true;
 scene.add(scabbard);if(options.preview)scabbard.visible=false;
 const physics=createSwordPhysics(sword,onStatus,isKatana?{bladeGeometry:createKatanaBladeGeometry,scabbardGeometry:createSayaGeometry,curveRadius:KATANA_RADIUS,katana:true}:undefined);cleanups.push(()=>physics.dispose());
 const shikai=isKatana?createShikai(sword):null;
@@ -144,6 +145,7 @@ composer.addPass(new OutputPass());
 cleanups.push(()=>{for(const pass of composer.passes)pass.dispose();composer.dispose()});
 let cameraHeight=0,effectSpeed=1,effectIntensity=1;
 function update(settings: ViewerSettings){
+ floorMaterial.color.set(settings.floorColor??'#141413');
  effectSpeed=settings.effectSpeed;effectIntensity=settings.effectIntensity;
  if(bankai?.active&&settings.effect!=='bankai'){bankai.cancel();physics.setDraw(settings.draw/100);physics.restore();}
  const showSheath=!options.preview&&settings.effect!=='bankai'&&(settings.showSheath??true);

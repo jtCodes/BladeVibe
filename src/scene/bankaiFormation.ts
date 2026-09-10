@@ -57,18 +57,46 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
   `);
   shader.fragmentShader=shader.fragmentShader.replace('#include <metalnessmap_fragment>',`#include <metalnessmap_fragment>
    diffuseColor.rgb=mix(diffuseColor.rgb,SAKURA_PINK,pink*.9);
+   diffuseColor.rgb*=mix(.48,1.,smoothstep(0.,.85,breakupPoint.y));
    metalnessFactor=mix(metalnessFactor,.3,pink);
   `);
   shader.fragmentShader=shader.fragmentShader.replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
    totalEmissiveRadiance+=sakuraEmission(glowDistance,dissolve,pink);
   `);
  };
- material.customProgramCacheKey=()=>baseKey+'-bankai-overlapping-row-breakup-v7';
+ material.customProgramCacheKey=()=>baseKey+'-bankai-grounded-row-breakup-v8';
  }
  const blades=new THREE.InstancedMesh(geometry,materials,BLADES);blades.frustumCulled=false;
  blades.instanceMatrix.setUsage(THREE.DynamicDrawUsage);group.add(blades);
  const dummy=new THREE.Object3D();
  const placement=Array.from({length:BLADES},(_,i)=>({side:i%2===0?-1:1,z:2-Math.floor(i/2)*2.05,delay:delays[i]}));
+ // Soft contact occlusion anchors the roots without another shadow-map render.
+ const contactGeometry=new THREE.PlaneGeometry(2.2,1.2);
+ contactGeometry.setAttribute('riseDelay',new THREE.InstancedBufferAttribute(delays,1));
+ contactGeometry.setAttribute('releaseDelay',new THREE.InstancedBufferAttribute(dissolveDelays,1));
+ const contactMaterial=new THREE.ShaderMaterial({transparent:true,depthWrite:false,
+  uniforms:{formationTime:clock},
+  vertexShader:`attribute float riseDelay;attribute float releaseDelay;
+   varying vec2 contactUV;varying float contactRise;varying float contactRelease;
+   void main(){contactUV=uv;contactRise=riseDelay;contactRelease=releaseDelay;
+    gl_Position=projectionMatrix*modelViewMatrix*instanceMatrix*vec4(position,1.);
+   }`,
+  fragmentShader:`uniform float formationTime;
+   varying vec2 contactUV;varying float contactRise;varying float contactRelease;
+   void main(){
+    vec2 p=(contactUV-.5)*2.;float r=dot(p,p);
+    float soft=exp(-r*4.5)*(1.-smoothstep(.5,1.,r));
+    float core=exp(-dot(p*vec2(2.,3.),p*vec2(2.,3.))*4.);
+    float rise=smoothstep(contactRise,contactRise+.45,formationTime);
+    float gone=smoothstep(${DISSOLVE_AT}+contactRelease+${DISSOLVE_DURATION*.85},${DISSOLVE_AT}+contactRelease+${DISSOLVE_DURATION},formationTime);
+    gl_FragColor=vec4(0.,0.,0.,min(.78,soft*.55+core*.28)*rise*(1.-gone));
+   }`});
+ const contacts=new THREE.InstancedMesh(contactGeometry,contactMaterial,BLADES);contacts.frustumCulled=false;
+ for(let i=0;i<BLADES;i++){
+  const p=placement[i];dummy.position.set(p.side*4.3,FLOOR_Y+.006,p.z);
+  dummy.rotation.set(-Math.PI/2,0,0);dummy.scale.setScalar(1);dummy.updateMatrix();contacts.setMatrixAt(i,dummy.matrix);
+ }
+ contacts.instanceMatrix.needsUpdate=true;group.add(contacts);
 
  const outline=new THREE.Shape();outline.moveTo(0,-.5);outline.bezierCurveTo(-.45,-.18,-.48,.3,-.18,.5);
  outline.quadraticCurveTo(-.07,.55,0,.37);outline.quadraticCurveTo(.1,.55,.22,.46);outline.bezierCurveTo(.47,.2,.34,-.22,0,-.5);
@@ -201,6 +229,6 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
    for(const light of glowLights)light.intensity=glow*Math.min(2,Math.max(0,intensity))*2.2;
    lastTime=time;
   },
-  dispose(){group.removeFromParent();blades.dispose();petals.dispose();geometry.dispose();for(const material of materials)material.dispose();petalGeometry.dispose();petalMaterial.dispose();dustGeometry.dispose();dustMaterial.dispose();}
+  dispose(){group.removeFromParent();contacts.dispose();contactGeometry.dispose();contactMaterial.dispose();blades.dispose();petals.dispose();geometry.dispose();for(const material of materials)material.dispose();petalGeometry.dispose();petalMaterial.dispose();dustGeometry.dispose();dustMaterial.dispose();}
  };
 }

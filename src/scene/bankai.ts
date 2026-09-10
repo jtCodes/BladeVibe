@@ -17,6 +17,8 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
  const uniforms={age:{value:-1},reveal:{value:0},power:{value:1},rippleCenter:{value:new THREE.Vector2()}};
  const originalGeometry=floor.geometry,originalMaterial=floor.material;
  const rippleMaterial=(floor.material as THREE.MeshStandardMaterial).clone();
+ // Keep live floor-color edits through the ripple and restoration.
+ rippleMaterial.color=(originalMaterial as THREE.MeshStandardMaterial).color;
  // Subdivide the existing floor locally, retaining its full outer extent and material.
  const coordinates=[-500,...Array.from({length:193},(_,i)=>-12+i/8),500];
  const positions:number[]=[],uvs:number[]=[],indices:number[]=[],width=coordinates.length;
