@@ -14,7 +14,7 @@ import { initializePhysics, createSwordPhysics, FLOOR_Y, type MotionStatus } fro
 import { createBladeAura, type EffectMode } from './aura';
 import { createScabbard } from './scabbard';
 import { createCrossguard, createPommel } from './crossguard';
-export interface ViewerSettings { rotating: boolean; draw: number; reflections: boolean; lightAngle: number; cameraHeight: number; effect: EffectMode; effectSpeed: number; effectIntensity: number }
+export interface ViewerSettings { rotating: boolean; draw: number; reflections: boolean; lightAngle: number; cameraHeight: number; showSheath?: boolean; swordRotation?: number; effect: EffectMode; effectSpeed: number; effectIntensity: number }
 export interface SwordScene { update(settings: ViewerSettings): void; reset(): void; release(): boolean; dispose(): void }
 export async function createSwordScene(container: HTMLDivElement, onError: (message: string) => void, onStatus: (status: MotionStatus) => void, signal: AbortSignal, options:{preview?:boolean;model?:'longsword'|'senbonzakura'}={}): Promise<SwordScene> {
 await initializePhysics();
@@ -141,6 +141,9 @@ composer.addPass(new OutputPass());
 cleanups.push(()=>{for(const pass of composer.passes)pass.dispose();composer.dispose()});
 let cameraHeight=0;
 function update(settings: ViewerSettings){
+ const showSheath=!options.preview&&(settings.showSheath??true);
+ if(scabbard.visible!==showSheath){scabbard.visible=showSheath;renderer.shadowMap.needsUpdate=true;}
+ physics.setRotation(settings.swordRotation??0);
  const lift=settings.cameraHeight-cameraHeight;camera.position.y+=lift;controls.target.y+=lift;cameraHeight=settings.cameraHeight;
  physics.setDraw(settings.draw/100);
  aura.configure(settings.effect,settings.effectSpeed,settings.effectIntensity);

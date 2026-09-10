@@ -31,12 +31,22 @@ export function createSwordPhysics(sword: THREE.Group, onStatus: (status: Motion
   world.createCollider(RAPIER.ColliderDesc.trimesh(Float32Array.from(shell.attributes.position.array,value=>value*scale),Uint32Array.from(shell.index!.array)).setFriction(.5),sheath);shell.dispose();
   let draw=0,target=0,accumulator=0,released=false,status: MotionStatus='sheathed';
   function notify(next: MotionStatus){if(next!==status){status=next;onStatus(next)}}
+  let displayAngle=0;
+  const displayRotation=new THREE.Quaternion(),posedRotation=new THREE.Quaternion();
+  const centerBefore=new THREE.Vector3(),centerAfter=new THREE.Vector3();
   function position(){
-   if(options.curveRadius){const radius=options.curveRadius,a=draw*DRAW_DISTANCE/radius;return new THREE.Vector3(radius*(1-Math.cos(a)),-radius*Math.sin(a),0).applyQuaternion(rotation).multiplyScalar(scale);}
-   return origin.clone().addScaledVector(axis,draw*DRAW_DISTANCE).multiplyScalar(scale);
+   let p:THREE.Vector3;
+   if(options.curveRadius){const radius=options.curveRadius,a=draw*DRAW_DISTANCE/radius;p=new THREE.Vector3(radius*(1-Math.cos(a)),-radius*Math.sin(a),0).applyQuaternion(rotation).multiplyScalar(scale);}
+   else p=origin.clone().addScaledVector(axis,draw*DRAW_DISTANCE).multiplyScalar(scale);
+   // Turn around the sword's center so changing its pose keeps it in frame.
+   centerBefore.set(0,1.5*scale,0).applyQuaternion(baseOrientation());
+   centerAfter.set(0,1.5*scale,0).applyQuaternion(orientation());
+   return p.add(centerBefore).sub(centerAfter);
   }
   const drawRotation=new THREE.Quaternion(),curveRotation=new THREE.Quaternion(),zAxis=new THREE.Vector3(0,0,1);
-  function orientation(){return options.curveRadius?drawRotation.copy(rotation).multiply(curveRotation.setFromAxisAngle(zAxis,draw*DRAW_DISTANCE/options.curveRadius)):rotation;}
+  function baseOrientation(){return options.curveRadius?drawRotation.copy(rotation).multiply(curveRotation.setFromAxisAngle(zAxis,draw*DRAW_DISTANCE/options.curveRadius)):rotation;}
+  function orientation(){return posedRotation.copy(baseOrientation()).premultiply(displayRotation.setFromAxisAngle(zAxis,draw>=.999?displayAngle:0));}
+  function setRotation(degrees:number){if(!released)displayAngle=THREE.MathUtils.degToRad(degrees);}
   const previousPosition=new THREE.Vector3(),previousRotation=new THREE.Quaternion();
   const currentPosition=new THREE.Vector3(),currentRotation=new THREE.Quaternion();
   function capture(){const p=body.translation(),q=body.rotation();currentPosition.set(p.x/scale,p.y/scale,p.z/scale);currentRotation.set(q.x,q.y,q.z,q.w)}
@@ -53,5 +63,5 @@ export function createSwordPhysics(sword: THREE.Group, onStatus: (status: Motion
     sync();if(released&&body.isSleeping())notify('resting');
   }
   restore();onStatus(status);
-  return {setDraw,release,restore,step,get draw(){return draw},get released(){return released},world,body,dispose(){world.free()}};
+  return {setDraw,setRotation,release,restore,step,get draw(){return draw},get released(){return released},world,body,dispose(){world.free()}};
 }

@@ -19,6 +19,8 @@ export default function SwordEditor({sword}:{sword:SwordAsset}) {
   const [effectSpeed,setEffectSpeed]=useState(sword.effectSpeed);
   const [reflections,setReflections]=useState(sword.reflections);
   const [cameraHeight,setCameraHeight]=useState(0);
+  const [showSheath,setShowSheath]=useState(true);
+  const [swordRotation,setSwordRotation]=useState(0);
   const [lightAngle,setLightAngle]=useState(sword.lightAngle);
   const [rotating, setRotating] = useState(() => !window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const [resetVersion, setResetVersion] = useState(0);
@@ -30,7 +32,7 @@ export default function SwordEditor({sword}:{sword:SwordAsset}) {
 
   return <main>
     <AppLink className="gallery-back" href="/">← Gallery</AppLink>
-    <SwordViewer model={sword.model} effect={effect} effectSpeed={effectSpeed} effectIntensity={effectIntensity/100} cameraHeight={cameraHeight} rotating={rotating} resetVersion={resetVersion} draw={draw} reflections={reflections} lightAngle={lightAngle} dropVersion={dropVersion} onStatus={setStatus} />
+    <SwordViewer model={sword.model} effect={effect} effectSpeed={effectSpeed} effectIntensity={effectIntensity/100} cameraHeight={cameraHeight} showSheath={showSheath} swordRotation={swordRotation} rotating={rotating} resetVersion={resetVersion} draw={draw} reflections={reflections} lightAngle={lightAngle} dropVersion={dropVersion} onStatus={setStatus} />
     <button ref={settingsButton} className="settings-toggle" aria-label={settingsOpen?'Close settings':'Open settings'} aria-expanded={settingsOpen} aria-controls="sword-settings" onClick={()=>setSettingsOpen(open=>!open)}>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
         {settingsOpen?<path d="m6 6 12 12M18 6 6 18"/>:<><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="currentColor"/><circle cx="15" cy="17" r="3" fill="currentColor"/></>}
@@ -39,9 +41,13 @@ export default function SwordEditor({sword}:{sword:SwordAsset}) {
     {settingsOpen&&<aside id="sword-settings" className="settings-panel" aria-label="Sword settings">
       <h2 className="settings-heading">Settings</h2>
       <div className="motion-panel">
+        <label className="reflection-toggle"><input type="checkbox" checked={showSheath} onChange={event=>setShowSheath(event.target.checked)}/>Show sheath</label>
+        <label className="range-label" htmlFor="sword-rotation">Rotate sword <output>{swordRotation}°</output></label>
+        <input id="sword-rotation" type="range" min={-180} max={180} step={1} value={swordRotation} disabled={status!=='drawn'} onChange={event=>{setRotating(false);setSwordRotation(Number(event.target.value))}}/>
+        <div className="actions"><button disabled={status!=='drawn'} onClick={()=>{setRotating(false);setSwordRotation(180)}}>Blade up</button><button disabled={dropped} onClick={()=>setSwordRotation(0)}>Reset sword angle</button></div>
         <label className="range-label" htmlFor="draw">Draw sword <output>{draw}%</output></label>
-        <input id="draw" type="range" min={0} max={100} value={draw} disabled={dropped} onChange={event=>{setEffect(current=>current==='bankai'?'off':current);setDraw(Number(event.target.value))}}/>
-        <div className="actions"><button disabled={dropped} onClick={()=>{setEffect(current=>current==='bankai'?'off':current);setDraw(draw===100?0:100)}}>{draw===100?'Sheathe':'Draw'}</button><button disabled={status!=='drawn'||effect==='bankai'} onClick={()=>{setRotating(false);setDropVersion(v=>v+1)}}>Drop sword</button></div>
+        <input id="draw" type="range" min={0} max={100} value={draw} disabled={dropped} onChange={event=>{setEffect(current=>current==='bankai'?'off':current);setSwordRotation(0);setDraw(Number(event.target.value))}}/>
+        <div className="actions"><button disabled={dropped} onClick={()=>{setEffect(current=>current==='bankai'?'off':current);setSwordRotation(0);setDraw(draw===100?0:100)}}>{draw===100?'Sheathe':'Draw'}</button><button disabled={status!=='drawn'||effect==='bankai'} onClick={()=>{setRotating(false);setDropVersion(v=>v+1)}}>Drop sword</button></div>
         <p className="motion-status" role="status">{{sheathed:'Sheathed',drawing:'Guided draw',drawn:'Drawn · ready to release',falling:'Falling',resting:'At rest'}[status]}</p>
         {dropped&&<button className="restore" onClick={()=>setResetVersion(v=>v+1)}>Return to display</button>}
       </div>
