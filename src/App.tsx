@@ -3,7 +3,7 @@ import {Gallery} from './Gallery';
 import {AppLink,usePath} from './navigation';
 import {swords,type SwordAsset} from './swordLibrary';
 // Each model supplies its detailed editor separately from its gallery preview.
-const editors={longsword:lazy(()=>import('./SwordEditor')),senbonzakura:lazy(()=>import('./SwordEditor'))} satisfies Record<SwordAsset['model'],ReturnType<typeof lazy>>;
+const editors={longsword:lazy(()=>import('./SwordEditor')),senbonzakura:lazy(()=>import('./SwordEditor')),zangetsu:lazy(()=>import('./SwordEditor'))} satisfies Record<SwordAsset['model'],ReturnType<typeof lazy>>;
 
 export default function App(){
  const path=usePath();

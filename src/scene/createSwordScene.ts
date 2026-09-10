@@ -1,3 +1,4 @@
+import {createZangetsu,createZangetsuBladeGeometry} from './zangetsu';
 import {createBankai} from './bankai';
 import {createShikai} from './shikai';
 import {createSenbonzakura,createKatanaBladeGeometry,createSayaGeometry,KATANA_RADIUS} from './senbonzakura';
@@ -17,7 +18,7 @@ import { createScabbard } from './scabbard';
 import { createCrossguard, createPommel } from './crossguard';
 export interface ViewerSettings { rotating: boolean; draw: number; reflections: boolean; lightAngle: number; floorColor?: string; cameraHeight: number; showSheath?: boolean; swordRotation?: number; effect: EffectMode; effectSpeed: number; effectIntensity: number }
 export interface SwordScene { update(settings: ViewerSettings): void; reset(): void; release(): boolean; dispose(): void }
-export async function createSwordScene(container: HTMLDivElement, onError: (message: string) => void, onStatus: (status: MotionStatus) => void, signal: AbortSignal, options:{preview?:boolean;model?:'longsword'|'senbonzakura'}={}): Promise<SwordScene> {
+export async function createSwordScene(container: HTMLDivElement, onError: (message: string) => void, onStatus: (status: MotionStatus) => void, signal: AbortSignal, options:{preview?:boolean;model?:'longsword'|'senbonzakura'|'zangetsu'}={}): Promise<SwordScene> {
 await initializePhysics();
 signal.throwIfAborted();
 const cleanups: Array<() => void> = [];
@@ -77,9 +78,9 @@ const key=new THREE.DirectionalLight(0xfff1df,1.8);key.position.set(-12,18,10);k
 const sword=new THREE.Group();scene.add(sword);sword.rotation.z=Math.PI-.16;
 function mesh(geo: THREE.BufferGeometry,mat: THREE.Material | THREE.Material[],parent: THREE.Object3D=sword){const o=new THREE.Mesh(geo,mat);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o}
 function cylinder(r1: number,r2: number,h: number,y: number,mat: THREE.Material,segments=16){const o=mesh(new THREE.CylinderGeometry(r1,r2,h,segments),mat);o.position.y=y;return o}
-const isKatana=options.model==='senbonzakura';
+const isKatana=options.model==='senbonzakura',isZangetsu=options.model==='zangetsu';
 let scabbard:THREE.Group;
-if(isKatana){scabbard=createSenbonzakura(renderer,sword);}else{
+if(isZangetsu){scabbard=createZangetsu(renderer,sword);}else if(isKatana){scabbard=createSenbonzakura(renderer,sword);}else{
 const steel=new THREE.MeshPhysicalMaterial({color:0xd0d3d8,metalness:1,roughness:.42,anisotropy:.2,anisotropyRotation:Math.PI/2,...surfaceMaps('steel',renderer),bumpScale:.0003});
 const edge=new THREE.MeshStandardMaterial({color:0xe4e7eb,metalness:1,roughness:.075});
 const fittings=new THREE.MeshStandardMaterial({color:0x969997,metalness:1,roughness:.65,...surfaceMaps('steel',renderer),bumpScale:.0005});
@@ -107,8 +108,8 @@ scabbard=createScabbard(sheathLeather,fittings);
 }
 const floorMaterial=new THREE.MeshStandardMaterial({color:0x141413,metalness:0,roughness:.9});
 const floor=mesh(new THREE.PlaneGeometry(1000,1000),floorMaterial,scene);floor.rotation.x=-Math.PI/2;floor.position.y=FLOOR_Y;floor.castShadow=false;floor.receiveShadow=true;
-scene.add(scabbard);if(options.preview)scabbard.visible=false;
-const physics=createSwordPhysics(sword,onStatus,isKatana?{bladeGeometry:createKatanaBladeGeometry,scabbardGeometry:createSayaGeometry,curveRadius:KATANA_RADIUS,katana:true}:undefined);cleanups.push(()=>physics.dispose());
+(isZangetsu?sword:scene).add(scabbard);if(options.preview)scabbard.visible=false;
+const physics=createSwordPhysics(sword,onStatus,isZangetsu?{bladeGeometry:createZangetsuBladeGeometry,unsheathed:true}:isKatana?{bladeGeometry:createKatanaBladeGeometry,scabbardGeometry:createSayaGeometry,curveRadius:KATANA_RADIUS,katana:true}:undefined);cleanups.push(()=>physics.dispose());
 const shikai=isKatana?createShikai(sword):null;
 if(shikai)cleanups.push(()=>shikai.dispose());
 const aura=shikai??createBladeAura(sword,renderer.getPixelRatio());
@@ -148,6 +149,7 @@ function update(settings: ViewerSettings){
  floorMaterial.color.set(settings.floorColor??'#141413');
  effectSpeed=settings.effectSpeed;effectIntensity=settings.effectIntensity;
  if(bankai?.active&&settings.effect!=='bankai'){bankai.cancel();physics.setDraw(settings.draw/100);physics.restore();}
+ if(isZangetsu)scabbard.userData.setUnwrapped(settings.draw/100);
  const showSheath=!options.preview&&settings.effect!=='bankai'&&(settings.showSheath??true);
  if(scabbard.visible!==showSheath){scabbard.visible=showSheath;renderer.shadowMap.needsUpdate=true;}
  physics.setRotation(settings.swordRotation??0);
@@ -170,11 +172,11 @@ function update(settings: ViewerSettings){
  scene.environmentRotation.y=THREE.MathUtils.degToRad(settings.lightAngle);
  controls.autoRotate=settings.rotating&&settings.effect!=='bankai';
 }
-function reset(){clearArrows();bankai?.cancel();if(options.preview){camera.position.set(1.3,4.7,15);controls.target.set(.4,3.65,0);controls.update();physics.setDraw(1);physics.restore();return;}const mobile=container.clientWidth<700;camera.position.set(2.1,2.6,mobile?23:24);camera.position.y+=cameraHeight;controls.target.set(0,(mobile?1.1:.8)+cameraHeight,0);controls.update();physics.restore()}
+function reset(){clearArrows();bankai?.cancel();if(options.preview){camera.position.set(1.3,isZangetsu?3:4.7,isZangetsu?23:15);controls.target.set(.4,isZangetsu?3:3.65,0);controls.update();physics.setDraw(1);physics.restore();return;}const mobile=container.clientWidth<700;camera.position.set(2.1,isZangetsu?4.3:2.6,isZangetsu?30:mobile?23:24);camera.position.y+=cameraHeight;controls.target.set(0,(isZangetsu?3.4:mobile?1.1:.8)+cameraHeight,0);controls.update();physics.restore()}
 function resize(){const w=Math.max(1,container.clientWidth),h=Math.max(1,container.clientHeight);const pixelRatio=Math.min(window.devicePixelRatio,2);renderer.setPixelRatio(pixelRatio);composer.setPixelRatio(pixelRatio);renderer.setSize(w,h);camera.aspect=w/h;camera.fov=options.preview?34:w<700?44:34;camera.updateProjectionMatrix();composer.setSize(w,h)}
 const observer=new ResizeObserver(resize);observer.observe(container);cleanups.push(()=>observer.disconnect());resize();reset();
 const clock=new THREE.Clock();let frame=0,stopped=false;
-function animate(){if(stopped)return;frame=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.1);if(document.hidden)return;if(bankai?.active){bankai.update(dt,effectSpeed,effectIntensity);}else{physics.step(dt);aura.update(dt,physics.draw);}if(shikai){bloom.enabled=shikai.visible||!!bankai?.glowing;bloom.strength=.24;bloom.radius=0;}updateShadowCache();moveCamera(dt);controls.update(dt);composer.render();}
+function animate(){if(stopped)return;frame=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.1);if(document.hidden)return;if(bankai?.active){bankai.update(dt,effectSpeed,effectIntensity);}else{physics.step(dt);aura.update(dt,physics.draw);}if(shikai){bloom.enabled=shikai.visible||!!bankai?.glowing;bloom.strength=.24;bloom.radius=0;}if(isZangetsu)scabbard.userData.updateCloth(dt);updateShadowCache();moveCamera(dt);controls.update(dt);composer.render();}
 cleanups.push(()=>{stopped=true;cancelAnimationFrame(frame)});animate();
 function handleContextLost(event: Event){event.preventDefault();stopped=true;cancelAnimationFrame(frame);onError('The 3D renderer was interrupted. Reload this page to restore the sword.');}
 renderer.domElement.addEventListener('webglcontextlost',handleContextLost);

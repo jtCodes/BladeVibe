@@ -1,7 +1,7 @@
 import {lazy,Suspense,useEffect,useRef,useState} from 'react';
 import {AppLink} from './navigation';
 import {swordUrl,type SwordAsset} from './swordLibrary';
-const previews={longsword:lazy(()=>import('./SwordPreview')),senbonzakura:lazy(()=>import('./SwordPreview'))};
+const previews={longsword:lazy(()=>import('./SwordPreview')),senbonzakura:lazy(()=>import('./SwordPreview')),zangetsu:lazy(()=>import('./SwordPreview'))};
 
 function SwordCard({sword}:{sword:SwordAsset}){
  const card=useRef<HTMLDivElement>(null),[visible,setVisible]=useState(false);

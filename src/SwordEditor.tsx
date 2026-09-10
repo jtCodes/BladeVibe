@@ -30,6 +30,8 @@ export default function SwordEditor({sword}:{sword:SwordAsset}) {
   const [status,setStatus]=useState<MotionStatus>('sheathed');
   const dropped=status==='falling'||status==='resting';
   const bankaiActive=effect==='bankai';
+  const clothWrapped=sword.model==='zangetsu';
+  const hasSheath=true;
 
 
   return <main>
@@ -43,17 +45,18 @@ export default function SwordEditor({sword}:{sword:SwordAsset}) {
     {settingsOpen&&<aside id="sword-settings" className="settings-panel" aria-label="Sword settings">
       <h2 className="settings-heading">Settings</h2>
       <div className="motion-panel">
-        <label className="reflection-toggle"><input type="checkbox" checked={showSheath} disabled={bankaiActive} onChange={event=>setShowSheath(event.target.checked)}/>Show sheath</label>
+        {hasSheath&&<label className="reflection-toggle"><input type="checkbox" checked={showSheath} disabled={bankaiActive} onChange={event=>setShowSheath(event.target.checked)}/>{clothWrapped?'Show blade wrapping':'Show sheath'}</label>}
         <label className="range-label" htmlFor="sword-rotation">Rotate sword <output>{swordRotation}°</output></label>
         <input id="sword-rotation" type="range" min={-180} max={180} step={1} value={swordRotation} disabled={status!=='drawn'||bankaiActive} onChange={event=>{setRotating(false);setSwordRotation(Number(event.target.value))}}/>
         <div className="actions"><button disabled={status!=='drawn'||bankaiActive} onClick={()=>{setRotating(false);setSwordRotation(180)}}>Blade up</button><button disabled={dropped||bankaiActive} onClick={()=>setSwordRotation(0)}>Reset sword angle</button></div>
-        <label className="range-label" htmlFor="draw">Draw sword <output>{draw}%</output></label>
+        {hasSheath&&<><label className="range-label" htmlFor="draw">{clothWrapped?'Unwrap blade':'Draw sword'} <output>{draw}%</output></label>
         <input id="draw" type="range" min={0} max={100} value={draw} disabled={dropped||bankaiActive} onChange={event=>{setEffect(current=>current==='shikai'?'off':current);setSwordRotation(0);setDraw(Number(event.target.value))}}/>
-        <div className="actions"><button disabled={dropped||bankaiActive} onClick={()=>{setEffect(current=>current==='shikai'?'off':current);setSwordRotation(0);setDraw(draw===100?0:100)}}>{draw===100?'Sheathe':'Draw'}</button><button disabled={status!=='drawn'||effect==='shikai'||bankaiActive} onClick={()=>{setRotating(false);setDropVersion(v=>v+1)}}>Drop sword</button></div>
-        <p className="motion-status" role="status">{bankaiActive?'Bankai release':{sheathed:'Sheathed',drawing:'Guided draw',drawn:'Drawn · ready to release',falling:'Falling',resting:'At rest'}[status]}</p>
+        </>}
+        <div className="actions">{hasSheath&&<button disabled={dropped||bankaiActive} onClick={()=>{setEffect(current=>current==='shikai'?'off':current);setSwordRotation(0);setDraw(draw===100?0:100)}}>{clothWrapped?(draw===100?'Wrap blade':'Unwrap blade'):(draw===100?'Sheathe':'Draw')}</button>}<button disabled={status!=='drawn'||effect==='shikai'||bankaiActive} onClick={()=>{setRotating(false);setDropVersion(v=>v+1)}}>Drop sword</button></div>
+        <p className="motion-status" role="status">{bankaiActive?'Bankai release':clothWrapped&&!dropped?(draw===0?'Cloth wrapped':draw===100?'Unwrapped · ready to release':'Partially unwrapped'):{sheathed:'Sheathed',drawing:'Guided draw',drawn:'Drawn · ready to release',falling:'Falling',resting:'At rest'}[status]}</p>
         {dropped&&<button className="restore" onClick={()=>setResetVersion(v=>v+1)}>Return to display</button>}
       </div>
-      <div className="lighting-controls effects-controls">
+      {sword.model!=='zangetsu'&&<div className="lighting-controls effects-controls">
         {sword.model==='senbonzakura'?<><button aria-pressed={effect==='shikai'} disabled={dropped||bankaiActive} onClick={()=>{setDraw(100);setEffect(effect==='shikai'?'off':'shikai')}}>{effect==='shikai'?'Reform blade':'Shikai · Scatter'}</button>
         <button aria-pressed={bankaiActive} disabled={dropped} onClick={()=>{setRotating(false);setDraw(100);setEffect(bankaiActive?'off':'bankai')}}>{bankaiActive?'Restore sword':'Bankai · Release'}</button>
         {bankaiActive&&<p className="motion-status">Sword sinks → blade rows rise → petals scatter</p>}
@@ -66,7 +69,7 @@ export default function SwordEditor({sword}:{sword:SwordAsset}) {
         <input id="effect-intensity" type="range" min={0} max={200} step={5} value={effectIntensity} disabled={effect==='off'} onChange={event=>setEffectIntensity(Number(event.target.value))}/>
         <label className="range-label" htmlFor="effect-speed">Effect speed <output>{effectSpeed===0?'Paused':`${effectSpeed.toFixed(1)}×`}</output></label>
         <input id="effect-speed" type="range" min={0} max={3} step={.1} value={effectSpeed} disabled={effect==='off'} onChange={event=>setEffectSpeed(Number(event.target.value))}/>
-      </div>
+      </div>}
       <div className="lighting-controls">
         <label className="floor-color-control" htmlFor="floor-color">Floor color <input id="floor-color" type="color" value={floorColor} onChange={event=>setFloorColor(event.target.value)}/></label>
         <label className="range-label" htmlFor="light-angle">Studio light angle <output>{lightAngle}°</output></label>

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createSwordScene, type SwordScene, type ViewerSettings } from './scene/createSwordScene';
 import type { MotionStatus } from './scene/swordPhysics';
-interface Props extends ViewerSettings { model?:'longsword'|'senbonzakura'; resetVersion: number; dropVersion: number; onStatus: (status: MotionStatus) => void }
+interface Props extends ViewerSettings { model?:'longsword'|'senbonzakura'|'zangetsu'; resetVersion: number; dropVersion: number; onStatus: (status: MotionStatus) => void }
 export function SwordViewer({ model='longsword', floorColor='#141413', rotating, draw, reflections, lightAngle, cameraHeight,showSheath=true,swordRotation=0,effect,effectSpeed,effectIntensity, resetVersion, dropVersion, onStatus }: Props) {
  const container=useRef<HTMLDivElement>(null), scene=useRef<SwordScene|null>(null);
  const [error,setError]=useState<string|null>(null),[ready,setReady]=useState(false);
