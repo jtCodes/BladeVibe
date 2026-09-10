@@ -5,7 +5,7 @@ import * as THREE from 'three';
 export function createContinuousFire(shared:Record<string,THREE.IUniform>) {
  const group=new THREE.Group();
  const uniforms={...shared,volumeWorld:{value:new THREE.Matrix4()},eye:{value:new THREE.Vector3()}};
- const geometry=new THREE.BoxGeometry(2.4,6.,2.2);geometry.translate(0,2.5,0);
+ const geometry=new THREE.BoxGeometry(2.4,6.6,2.2);geometry.translate(0,2.2,0);
  const material=new THREE.ShaderMaterial({uniforms,transparent:true,depthTest:false,depthWrite:false,side:THREE.BackSide,blending:THREE.AdditiveBlending,
   vertexShader:`varying vec3 exitPoint;
    void main(){exitPoint=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
@@ -25,7 +25,7 @@ export function createContinuousFire(shared:Record<string,THREE.IUniform>) {
    void main(){
     vec3 ray=normalize(exitPoint-eye);
     vec3 safeRay=vec3(ray.x>=0.?max(ray.x,.00001):min(ray.x,-.00001),ray.y>=0.?max(ray.y,.00001):min(ray.y,-.00001),ray.z>=0.?max(ray.z,.00001):min(ray.z,-.00001));
-    vec3 a=(vec3(-1.2,-.5,-1.1)-eye)/safeRay,b=(vec3(1.2,5.5,1.1)-eye)/safeRay;
+    vec3 a=(vec3(-1.2,-1.1,-1.1)-eye)/safeRay,b=(vec3(1.2,5.5,1.1)-eye)/safeRay;
     vec3 lo=min(a,b),hi=max(a,b);
     float start=max(0.,max(lo.x,max(lo.y,lo.z))),end=min(hi.x,min(hi.y,hi.z));
     if(end<=start)discard;
@@ -40,12 +40,18 @@ export function createContinuousFire(shared:Record<string,THREE.IUniform>) {
      if(p.y>.10&&p.y<5.02&&abs(p.x)<bladeWidth(p.y)&&abs(p.z)<.017)break;
      // Backtrace outward wisps toward their source. Roots remain attached;
      // tips lean upward and trail the sword's smoothed translation/rotation.
+     float actualBladeY=p.y;
      float nearWidth=bladeWidth(clamp(p.y,0.,5.));
      float outward=length(vec2(max(abs(p.x)-nearWidth,0.),max(abs(p.z)-.018,0.)));
      float age=smoothstep(.025,.45,outward);
      vec3 lag=mix(lagRoot,lagTip,clamp(p.y/5.,0.,1.));
      p-=(upLocal*.34+lag)*age;
-     float ends=smoothstep(.12,.28,p.y)*(1.-smoothstep(4.8,5.,p.y));
+     // Fade along the upper blade before reaching the guard; stagger the
+     // tips so the fade stays soft without climbing toward the handle.
+     float crest=noise(vec3(p.x*5.,time*.7,p.z*5.))*.28;
+     float guardFade=smoothstep(.38+crest*.35,1.05,p.y);
+     float gripClearance=mix(smoothstep(.125,.21,length(p.xz)),1.,smoothstep(-.02,.12,p.y));
+     float ends=gripClearance*(1.-smoothstep(4.8,5.,p.y));
      float reveal=1.-smoothstep(exposed-.035,exposed,p.y);
      if(ends*reveal<.001)continue;
      float width=bladeWidth(p.y);
@@ -53,6 +59,10 @@ export function createContinuousFire(shared:Record<string,THREE.IUniform>) {
      vec2 d=vec2(max(abs(p.x)-width,0.),max(abs(p.z)-.018,0.));
      float radius=length(d);
      if(radius>.68)continue;
+     // Small surface flickers bridge the upper fade, stopping below the guard.
+     float flicker=.20+.12*noise(vec3(p.y*18.,time*3.,p.x*14.));
+     float tiny=(1.-smoothstep(.018,.075,radius))*smoothstep(.045,.14,actualBladeY)*flicker;
+     ends*=max(guardFade,tiny);
      // Stretch the turbulence along the rising flow, while keeping narrow
      // crosswise detail. Sharply eroded tongues replace soft billowing density.
      vec3 advected=p-upLocal*time*.95;

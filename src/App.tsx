@@ -4,7 +4,7 @@ import { SwordViewer } from './SwordViewer';
 import type { MotionStatus } from './scene/swordPhysics';
 
 export default function App() {
-  const [effect,setEffect]=useState<EffectMode>('flame');
+  const [effect,setEffect]=useState<EffectMode>('ice');
   const [effectIntensity,setEffectIntensity]=useState(100);
   const [effectSpeed,setEffectSpeed]=useState(1);
   const [reflections,setReflections]=useState(true);
@@ -33,7 +33,7 @@ export default function App() {
       <div className="lighting-controls effects-controls">
         <label className="range-label" htmlFor="effect-mode">Effects</label>
         <select id="effect-mode" value={effect} onChange={event=>setEffect(event.target.value as EffectMode)}>
-          <option value="off">Off</option><option value="glow">Glow & sparks</option><option value="flame">Flame</option>
+          <option value="off">Off</option><option value="glow">Glow & sparks</option><option value="flame">Flame</option><option value="ice">Ice</option>
         </select>
         <label className="range-label" htmlFor="effect-intensity">Effect intensity <output>{effectIntensity}%</output></label>
         <input id="effect-intensity" type="range" min={0} max={200} step={5} value={effectIntensity} disabled={effect==='off'} onChange={event=>setEffectIntensity(Number(event.target.value))}/>
