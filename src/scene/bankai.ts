@@ -1,8 +1,10 @@
+import {createBankaiFormation} from './bankaiFormation';
 import * as THREE from 'three';
 import {FLOOR_Y} from './swordPhysics';
 
 // A cinematic release owns the displayed pose while ordinary drop physics is paused.
-export function createBankai(sword:THREE.Group,floor:THREE.Mesh){
+export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scene){
+ const formation=createBankaiFormation(scene,sword);
  const waterY=FLOOR_Y+.002;
  const plane=new THREE.Plane(new THREE.Vector3(0,1,0),-waterY);
  const saved=new Map<THREE.Material,{planes:THREE.Plane[]|null;shadows:boolean}>();
@@ -67,19 +69,21 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh){
   temp.copy(tip).applyQuaternion(downRotation).add(endPosition);
   fallDistance=Math.max(.1,temp.y-waterY);fallDuration=Math.sqrt(2*fallDistance/9.8);
   contactTime=.65+fallDuration;
+  formation.start(endPosition.x,endPosition.z);
   uniforms.rippleCenter.value.set(endPosition.x,-endPosition.z);uniforms.age.value=-1;uniforms.reveal.value=0;
   for(const [material,previous] of saved){material.clippingPlanes=[...(previous.planes??[]),plane];material.clipShadows=true;material.needsUpdate=true;}
  }
  function cancel(){
   if(!active)return;
-  active=false;sword.visible=true;floor.geometry=originalGeometry;floor.material=originalMaterial;
+  active=false;formation.hide();sword.visible=true;floor.geometry=originalGeometry;floor.material=originalMaterial;
   for(const [material,previous] of saved){material.clippingPlanes=previous.planes;material.clipShadows=previous.shadows;material.needsUpdate=true;}
   sword.userData.shadowRevision=(sword.userData.shadowRevision??0)+1;
  }
- return {get active(){return active;},start,cancel,
+ return {get active(){return active;},get glowing(){return formation.glowing;},start,cancel,
   update(dt:number,speed:number,intensity:number){
    if(!active)return;
-   time=Math.min(12,time+dt*speed);if(reduced)time=contactTime+4;
+   time+=dt*speed;if(reduced)time=contactTime+10.5;
+   formation.update(time-contactTime-2.6,intensity);
    uniforms.power.value=Math.min(2,Math.max(0,intensity));
    uniforms.age.value=time-contactTime;
    uniforms.reveal.value=THREE.MathUtils.smoothstep(time,.2,contactTime)*(1-THREE.MathUtils.smoothstep(time,contactTime+3,contactTime+5));
@@ -92,7 +96,7 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh){
     const falling=Math.min(fallDuration,time-.65);
     let depth=.5*9.8*falling*falling;
     if(time>=contactTime){
-     const t=time-contactTime;
+     const t=Math.min(3,time-contactTime);
      // Water slows the fall continuously, then draws the entire hilt below the surface.
      const entrySpeed=9.8*fallDuration;
      depth=fallDistance+2.7*t+(entrySpeed-2.7)*(1-Math.exp(-3*t))/3;
@@ -101,6 +105,6 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh){
    }
    const visible=time<contactTime+2.9;
    if(sword.visible!==visible){sword.visible=visible;sword.userData.shadowRevision=(sword.userData.shadowRevision??0)+1;}
-  },dispose(){cancel();rippleGeometry.dispose();rippleMaterial.dispose();}
+  },dispose(){cancel();formation.dispose();rippleGeometry.dispose();rippleMaterial.dispose();}
  };
 }

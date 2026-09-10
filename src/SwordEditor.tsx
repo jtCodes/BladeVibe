@@ -55,7 +55,7 @@ export default function SwordEditor({sword}:{sword:SwordAsset}) {
       <div className="lighting-controls effects-controls">
         {sword.model==='senbonzakura'?<><button aria-pressed={effect==='shikai'} disabled={dropped||bankaiActive} onClick={()=>{setDraw(100);setEffect(effect==='shikai'?'off':'shikai')}}>{effect==='shikai'?'Reform blade':'Shikai · Scatter'}</button>
         <button aria-pressed={bankaiActive} disabled={dropped} onClick={()=>{setRotating(false);setDraw(100);setEffect(bankaiActive?'off':'bankai')}}>{bankaiActive?'Restore sword':'Bankai · Release'}</button>
-        {bankaiActive&&<p className="motion-status">Bankai release · Drop into the rippling surface</p>}
+        {bankaiActive&&<p className="motion-status">Sword sinks → blade rows rise → petals scatter</p>}
         </>:<>
         <label className="range-label" htmlFor="effect-mode">Effects</label>
         <select id="effect-mode" value={effect} onChange={event=>setEffect(event.target.value as EffectMode)}>
