@@ -34,7 +34,7 @@ export function createBladeAura(sword:THREE.Group, pixelRatio:number) {
  const continuousFire=createContinuousFire(uniforms);group.add(continuousFire);
  // Emit at the actual steel surface, then simulate in world space so sparks
  // detach naturally when drawing, orbiting or dropping the sword.
- const count=400,positions=new Float32Array(count*3),seeds=new Float32Array(count),opacities=new Float32Array(count);
+ const count=800,positions=new Float32Array(count*3),seeds=new Float32Array(count),opacities=new Float32Array(count);
  const velocities=new Float32Array(count*3),ages=new Float32Array(count).fill(10),lifetimes=new Float32Array(count).fill(1);
  let seed=78,cursor=0,emission=0;
  const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
@@ -132,7 +132,7 @@ export function createBladeAura(sword:THREE.Group, pixelRatio:number) {
    opacities[i]=(.75+seeds[i]*.25)*Math.pow(1.-life,1.6)*THREE.MathUtils.smoothstep(positions[i*3+1],FLOOR_Y,FLOOR_Y+.04);
   }
   if(uniforms.exposed.value>.23&&uniforms.motion.value&&mode!=='off'){
-   emission+=dt*uniforms.intensity.value*(mode==='flame'?75:95)*THREE.MathUtils.clamp(draw,0,1);
+   emission+=dt*uniforms.intensity.value*(mode==='flame'?180:190)*THREE.MathUtils.clamp(draw,0,1);
    while(emission>=1){spawn(uniforms.exposed.value);emission--;}
   }else emission=0;
   geometry.attributes.position.needsUpdate=true;geometry.attributes.alpha.needsUpdate=true;
