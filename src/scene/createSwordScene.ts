@@ -1,3 +1,4 @@
+import {createBankai} from './bankai';
 import {createShikai} from './shikai';
 import {createSenbonzakura,createKatanaBladeGeometry,createSayaGeometry,KATANA_RADIUS} from './senbonzakura';
 import * as THREE from 'three';
@@ -22,7 +23,7 @@ signal.throwIfAborted();
 const cleanups: Array<() => void> = [];
 try {
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x141413);scene.fog=new THREE.FogExp2(0x141413,.032);
-const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.85;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;RectAreaLightUniformsLib.init();container.appendChild(renderer.domElement);cleanups.push(()=>{clearSurfaceMapCache(renderer);renderer.dispose();renderer.domElement.remove()});
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.85;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.localClippingEnabled=true;RectAreaLightUniformsLib.init();container.appendChild(renderer.domElement);cleanups.push(()=>{clearSurfaceMapCache(renderer);renderer.dispose();renderer.domElement.remove()});
 cleanups.push(()=>{
  const geometries=new Set<THREE.BufferGeometry>(), materials=new Set<THREE.Material>(), textures=new Set<THREE.Texture>();
  scene.traverse(object=>{
@@ -110,6 +111,8 @@ const physics=createSwordPhysics(sword,onStatus,isKatana?{bladeGeometry:createKa
 const shikai=isKatana?createShikai(sword):null;
 if(shikai)cleanups.push(()=>shikai.dispose());
 const aura=shikai??createBladeAura(sword,renderer.getPixelRatio());
+const bankai=isKatana?createBankai(sword,floor):null;
+if(bankai)cleanups.push(()=>bankai.dispose());
 // The fixed studio light only needs a new shadow map when a caster moves.
 renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=true;
 const shadowPosition=new THREE.Vector3(Infinity,Infinity,Infinity),shadowRotation=new THREE.Quaternion();
@@ -139,31 +142,42 @@ composer.addPass(new SMAAPass());
 const bloom=new UnrealBloomPass(new THREE.Vector2(1,1),.14,0,3.);composer.addPass(bloom);
 composer.addPass(new OutputPass());
 cleanups.push(()=>{for(const pass of composer.passes)pass.dispose();composer.dispose()});
-let cameraHeight=0;
+let cameraHeight=0,effectSpeed=1,effectIntensity=1;
 function update(settings: ViewerSettings){
- const showSheath=!options.preview&&(settings.showSheath??true);
+ effectSpeed=settings.effectSpeed;effectIntensity=settings.effectIntensity;
+ if(bankai?.active&&settings.effect!=='bankai'){bankai.cancel();physics.setDraw(settings.draw/100);physics.restore();}
+ const showSheath=!options.preview&&settings.effect!=='bankai'&&(settings.showSheath??true);
  if(scabbard.visible!==showSheath){scabbard.visible=showSheath;renderer.shadowMap.needsUpdate=true;}
  physics.setRotation(settings.swordRotation??0);
  const lift=settings.cameraHeight-cameraHeight;camera.position.y+=lift;controls.target.y+=lift;cameraHeight=settings.cameraHeight;
  physics.setDraw(settings.draw/100);
  aura.configure(settings.effect,settings.effectSpeed,settings.effectIntensity);
+ if(bankai&&!bankai.active&&settings.effect==='bankai'){
+  physics.setDraw(1);physics.restore();shikai?.update(0,0);bankai.start();
+  // Keep the full drop and the ground contact in frame while preserving the viewing direction.
+  const direction=camera.position.clone().sub(controls.target).normalize();
+  controls.target.set(sword.position.x,-.2,sword.position.z);
+  const distance=Math.max(24,7/(Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*Math.min(1,camera.aspect)));
+  camera.position.copy(controls.target).addScaledVector(direction,distance);
+  controls.maxDistance=Math.max(34,distance);
+ }
  bloom.enabled=(settings.effect==='shikai'||settings.effect==='flame'||settings.effect==='electric')&&settings.effectIntensity>0;
  bloom.threshold=isKatana?1.1:3.;
  bloom.strength=isKatana?.24:.14;
  reflections.output=settings.reflections?SSRPass.OUTPUT.Default:SSRPass.OUTPUT.Beauty;
  scene.environmentRotation.y=THREE.MathUtils.degToRad(settings.lightAngle);
- controls.autoRotate=settings.rotating;
+ controls.autoRotate=settings.rotating&&settings.effect!=='bankai';
 }
-function reset(){clearArrows();if(options.preview){camera.position.set(1.3,4.7,15);controls.target.set(.4,3.65,0);controls.update();physics.setDraw(1);physics.restore();return;}const mobile=container.clientWidth<700;camera.position.set(2.1,2.6,mobile?23:24);camera.position.y+=cameraHeight;controls.target.set(0,(mobile?1.1:.8)+cameraHeight,0);controls.update();physics.restore()}
+function reset(){clearArrows();bankai?.cancel();if(options.preview){camera.position.set(1.3,4.7,15);controls.target.set(.4,3.65,0);controls.update();physics.setDraw(1);physics.restore();return;}const mobile=container.clientWidth<700;camera.position.set(2.1,2.6,mobile?23:24);camera.position.y+=cameraHeight;controls.target.set(0,(mobile?1.1:.8)+cameraHeight,0);controls.update();physics.restore()}
 function resize(){const w=Math.max(1,container.clientWidth),h=Math.max(1,container.clientHeight);const pixelRatio=Math.min(window.devicePixelRatio,2);renderer.setPixelRatio(pixelRatio);composer.setPixelRatio(pixelRatio);renderer.setSize(w,h);camera.aspect=w/h;camera.fov=options.preview?34:w<700?44:34;camera.updateProjectionMatrix();composer.setSize(w,h)}
 const observer=new ResizeObserver(resize);observer.observe(container);cleanups.push(()=>observer.disconnect());resize();reset();
 const clock=new THREE.Clock();let frame=0,stopped=false;
-function animate(){if(stopped)return;frame=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.1);if(document.hidden)return;physics.step(dt);aura.update(dt,physics.draw);if(shikai)bloom.enabled=shikai.visible;updateShadowCache();moveCamera(dt);controls.update(dt);composer.render();}
+function animate(){if(stopped)return;frame=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.1);if(document.hidden)return;if(bankai?.active){bankai.update(dt,effectSpeed,effectIntensity);}else{physics.step(dt);aura.update(dt,physics.draw);}if(shikai)bloom.enabled=shikai.visible;updateShadowCache();moveCamera(dt);controls.update(dt);composer.render();}
 cleanups.push(()=>{stopped=true;cancelAnimationFrame(frame)});animate();
 function handleContextLost(event: Event){event.preventDefault();stopped=true;cancelAnimationFrame(frame);onError('The 3D renderer was interrupted. Reload this page to restore the sword.');}
 renderer.domElement.addEventListener('webglcontextlost',handleContextLost);
 cleanups.push(()=>renderer.domElement.removeEventListener('webglcontextlost',handleContextLost));
 let disposed=false;
-return {update,reset,release:physics.release,dispose(){if(disposed)return;disposed=true;for(const cleanup of cleanups.reverse())cleanup();}};
+return {update,reset,release:()=>bankai?.active?false:physics.release(),dispose(){if(disposed)return;disposed=true;for(const cleanup of cleanups.reverse())cleanup();}};
 }catch(error){for(const cleanup of cleanups.reverse())cleanup();throw error;}
 }

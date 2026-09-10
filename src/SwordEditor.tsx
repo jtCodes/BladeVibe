@@ -28,6 +28,7 @@ export default function SwordEditor({sword}:{sword:SwordAsset}) {
   const [dropVersion,setDropVersion]=useState(0);
   const [status,setStatus]=useState<MotionStatus>('sheathed');
   const dropped=status==='falling'||status==='resting';
+  const bankaiActive=effect==='bankai';
 
 
   return <main>
@@ -41,18 +42,21 @@ export default function SwordEditor({sword}:{sword:SwordAsset}) {
     {settingsOpen&&<aside id="sword-settings" className="settings-panel" aria-label="Sword settings">
       <h2 className="settings-heading">Settings</h2>
       <div className="motion-panel">
-        <label className="reflection-toggle"><input type="checkbox" checked={showSheath} onChange={event=>setShowSheath(event.target.checked)}/>Show sheath</label>
+        <label className="reflection-toggle"><input type="checkbox" checked={showSheath} disabled={bankaiActive} onChange={event=>setShowSheath(event.target.checked)}/>Show sheath</label>
         <label className="range-label" htmlFor="sword-rotation">Rotate sword <output>{swordRotation}°</output></label>
-        <input id="sword-rotation" type="range" min={-180} max={180} step={1} value={swordRotation} disabled={status!=='drawn'} onChange={event=>{setRotating(false);setSwordRotation(Number(event.target.value))}}/>
-        <div className="actions"><button disabled={status!=='drawn'} onClick={()=>{setRotating(false);setSwordRotation(180)}}>Blade up</button><button disabled={dropped} onClick={()=>setSwordRotation(0)}>Reset sword angle</button></div>
+        <input id="sword-rotation" type="range" min={-180} max={180} step={1} value={swordRotation} disabled={status!=='drawn'||bankaiActive} onChange={event=>{setRotating(false);setSwordRotation(Number(event.target.value))}}/>
+        <div className="actions"><button disabled={status!=='drawn'||bankaiActive} onClick={()=>{setRotating(false);setSwordRotation(180)}}>Blade up</button><button disabled={dropped||bankaiActive} onClick={()=>setSwordRotation(0)}>Reset sword angle</button></div>
         <label className="range-label" htmlFor="draw">Draw sword <output>{draw}%</output></label>
-        <input id="draw" type="range" min={0} max={100} value={draw} disabled={dropped} onChange={event=>{setEffect(current=>current==='shikai'?'off':current);setSwordRotation(0);setDraw(Number(event.target.value))}}/>
-        <div className="actions"><button disabled={dropped} onClick={()=>{setEffect(current=>current==='shikai'?'off':current);setSwordRotation(0);setDraw(draw===100?0:100)}}>{draw===100?'Sheathe':'Draw'}</button><button disabled={status!=='drawn'||effect==='shikai'} onClick={()=>{setRotating(false);setDropVersion(v=>v+1)}}>Drop sword</button></div>
-        <p className="motion-status" role="status">{{sheathed:'Sheathed',drawing:'Guided draw',drawn:'Drawn · ready to release',falling:'Falling',resting:'At rest'}[status]}</p>
+        <input id="draw" type="range" min={0} max={100} value={draw} disabled={dropped||bankaiActive} onChange={event=>{setEffect(current=>current==='shikai'?'off':current);setSwordRotation(0);setDraw(Number(event.target.value))}}/>
+        <div className="actions"><button disabled={dropped||bankaiActive} onClick={()=>{setEffect(current=>current==='shikai'?'off':current);setSwordRotation(0);setDraw(draw===100?0:100)}}>{draw===100?'Sheathe':'Draw'}</button><button disabled={status!=='drawn'||effect==='shikai'||bankaiActive} onClick={()=>{setRotating(false);setDropVersion(v=>v+1)}}>Drop sword</button></div>
+        <p className="motion-status" role="status">{bankaiActive?'Bankai release':{sheathed:'Sheathed',drawing:'Guided draw',drawn:'Drawn · ready to release',falling:'Falling',resting:'At rest'}[status]}</p>
         {dropped&&<button className="restore" onClick={()=>setResetVersion(v=>v+1)}>Return to display</button>}
       </div>
       <div className="lighting-controls effects-controls">
-        {sword.model==='senbonzakura'?<button aria-pressed={effect==='shikai'} disabled={dropped} onClick={()=>{setDraw(100);setEffect(effect==='shikai'?'off':'shikai')}}>{effect==='shikai'?'Reform blade':'Shikai · Scatter'}</button>:<>
+        {sword.model==='senbonzakura'?<><button aria-pressed={effect==='shikai'} disabled={dropped||bankaiActive} onClick={()=>{setDraw(100);setEffect(effect==='shikai'?'off':'shikai')}}>{effect==='shikai'?'Reform blade':'Shikai · Scatter'}</button>
+        <button aria-pressed={bankaiActive} disabled={dropped} onClick={()=>{setRotating(false);setDraw(100);setEffect(bankaiActive?'off':'bankai')}}>{bankaiActive?'Restore sword':'Bankai · Release'}</button>
+        {bankaiActive&&<p className="motion-status">Bankai release · Drop into the rippling surface</p>}
+        </>:<>
         <label className="range-label" htmlFor="effect-mode">Effects</label>
         <select id="effect-mode" value={effect} onChange={event=>setEffect(event.target.value as EffectMode)}>
           <option value="off">Off</option><option value="glow">Glow & sparks</option><option value="flame">Flame</option><option value="ice">Ice</option><option value="electric">Electric</option>
@@ -72,7 +76,7 @@ export default function SwordEditor({sword}:{sword:SwordAsset}) {
         <input id="camera-height" type="range" min={-8} max={8} step={.1} value={cameraHeight} onChange={event=>setCameraHeight(Number(event.target.value))}/>
         <div className="actions"><button onClick={()=>setCameraHeight(v=>Math.min(8,v+.5))}>Move up</button><button onClick={()=>setCameraHeight(v=>Math.max(-8,v-.5))}>Move down</button></div>
       </div>
-      <div className="actions"><button id="spin" aria-pressed={rotating} onClick={() => setRotating(value => !value)}>{rotating ? 'Pause rotation' : 'Resume rotation'}</button><button id="reset" onClick={() => {setCameraHeight(0);setResetVersion(value => value + 1)}}>Reset view</button></div>
+      <div className="actions"><button id="spin" aria-pressed={rotating} onClick={() => setRotating(value => !value)}>{rotating ? 'Pause rotation' : 'Resume rotation'}</button><button id="reset" onClick={() => {setCameraHeight(0);if(bankaiActive)setEffect('off');setResetVersion(value => value + 1)}}>Reset view</button></div>
       <details className="sword-info"><summary>About this sword &amp; controls</summary>
         <h3>{sword.name}</h3><p>{sword.description}</p>
         <p>Drag to rotate · Arrow keys to move · Right-drag or two-finger drag to pan · Pinch or scroll to zoom</p>
