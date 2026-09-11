@@ -1,6 +1,6 @@
 import {createSakuraParticles,createSakuraSurfaceSampler,createSakuraRandom} from './sakuraPetals';
 import {petalBreakup,PETAL_BREAKUP_GLSL} from './petalBreakup';
-import {addSakuraGlow,addSakuraSurfaceTransition} from './sakuraGlow';
+import {addSakuraGlow,addSakuraSurfaceTransition,sakuraPinkBuild} from './sakuraGlow';
 import * as THREE from 'three';
 import {FLOOR_Y} from './swordPhysics';
 
@@ -75,7 +75,7 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
    totalEmissiveRadiance+=sakuraBladeEmission(bladeWidth,colorShift,riseLight,glowDistance,dissolve,pink)*formationPower;
   `);
  };
- material.customProgramCacheKey=()=>baseKey+'-bankai-soft-white-pink-v13';
+ material.customProgramCacheKey=()=>baseKey+'-bankai-progress-pink-v14';
  }
  const blades=new THREE.InstancedMesh(geometry,materials,BLADES);blades.frustumCulled=false;
  blades.instanceMatrix.setUsage(THREE.DynamicDrawUsage);group.add(blades);
@@ -141,7 +141,13 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
  return {
   get duration(){return DISSOLVE_END+6;},
   get glowing(){return group.visible&&clock.value>0;},
-  get pinkGlow(){return group.visible?THREE.MathUtils.smoothstep(clock.value,DISSOLVE_AT-.85,DISSOLVE_AT+.05):0;},
+  get pinkGlow(){
+   if(!group.visible)return 0;
+   // Bloom follows the whole formation rather than the first row to turn pink.
+   let glow=0;
+   for(const delay of dissolveDelays)glow+=sakuraPinkBuild((clock.value-DISSOLVE_AT-delay)/DISSOLVE_DURATION);
+   return glow/BLADES;
+  },
   start(x:number,z:number){group.position.set(x,0,z);group.visible=false;lastRiseTime=-1;clock.value=-1;},
   hide(){group.visible=false;},
   update(time:number,intensity:number,petalGlow=4){
@@ -160,9 +166,10 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
    for(const {light,delay,release} of glowLights){
     const emergence=THREE.MathUtils.smoothstep(time,delay+.15,delay+2.1);
     const pink=THREE.MathUtils.smoothstep(time,release-.85,release+.05);
+    const glow=sakuraPinkBuild((time-release)/DISSOLVE_DURATION);
     const dispersal=1-THREE.MathUtils.smoothstep(time,release+DISSOLVE_DURATION*.55,release+DISSOLVE_DURATION+2.5);
     light.color.setRGB(1,1,1).lerp(spillPink,pink);
-    light.intensity=emergence*dispersal*formationPower.value*THREE.MathUtils.lerp(15,140,pink);
+    light.intensity=emergence*dispersal*formationPower.value*THREE.MathUtils.lerp(15,140,glow);
    }
    lastRiseTime=riseTime;
   },

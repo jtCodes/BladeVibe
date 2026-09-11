@@ -1,5 +1,5 @@
 import {createSakuraParticles,createSakuraSurfaceSampler,createSakuraRandom} from './sakuraPetals';
-import {addSakuraGlow,addSakuraSurfaceTransition} from './sakuraGlow';
+import {addSakuraGlow,addSakuraSurfaceTransition,sakuraPinkBuild} from './sakuraGlow';
 import {petalBreakup,PETAL_BREAKUP_GLSL} from './petalBreakup';
 import * as THREE from 'three';
 import type {EffectMode} from './aura';
@@ -30,7 +30,7 @@ export function createShikai(sword:THREE.Group){
     float shikaiRise=smoothstep(0.,.35,shikaiTime);
     totalEmissiveRadiance+=sakuraBladeEmission(shikaiWidth,shikaiShift,shikaiRise,shikaiDistance,shikaiDissolve,shikaiTint)*shikaiPower;
    `);
-  };material.customProgramCacheKey=()=>key+'-shikai-bankai-release-v1';material.needsUpdate=true;
+  };material.customProgramCacheKey=()=>key+'-shikai-bankai-release-v2';material.needsUpdate=true;
  }
  const depth=new THREE.MeshDepthMaterial({depthPacking:THREE.RGBADepthPacking});depth.onBeforeCompile=inject;depth.customProgramCacheKey=()=> 'shikai-bankai-depth-v1';blade.customDepthMaterial=depth;
  const count=3000,random=createSakuraRandom(391),sampleSurface=createSakuraSurfaceSampler(blade.geometry,random);
@@ -60,11 +60,11 @@ export function createShikai(sword:THREE.Group){
    if(progress!==previousProgress)sword.userData.shadowRevision=(sword.userData.shadowRevision??0)+1;
    power.value=Math.min(2,Math.max(0,intensity));blade.visible=progress<1;
    particles.update(intensity,emission,clock.value>DISSOLVE_AT);
-   light.intensity=THREE.MathUtils.smoothstep(clock.value,0,.9)*power.value*3;
+   light.intensity=sakuraPinkBuild(progress)*power.value*3;
  }
  return {
   get visible(){return clock.value>0;},
-  get pinkGlow(){return THREE.MathUtils.smoothstep(clock.value,0,.9);},
+  get pinkGlow(){return sakuraPinkBuild((clock.value-DISSOLVE_AT)/DISSOLVE_DURATION);},
   get time(){return clock.value;},
   get duration(){return Math.max(DISSOLVE_AT+DISSOLVE_DURATION+6,furthestTime);},
   setPetalGlow(value:number){emission=value;},
