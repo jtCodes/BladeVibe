@@ -9,6 +9,7 @@ import { AppLink } from './navigation';
 export default function SwordEditor({sword}:{sword:SwordAsset}) {
   const [settingsOpen,setSettingsOpen]=useState(false);
   const [showPerformance,setShowPerformance]=useState(false);
+  const [antiAliasing,setAntiAliasing]=useState<'standard'|'smooth'|'high'>('smooth');
   const settingsButton=useRef<HTMLButtonElement>(null);
   useEffect(()=>{
     if(!settingsOpen)return;
@@ -41,7 +42,7 @@ export default function SwordEditor({sword}:{sword:SwordAsset}) {
 
   return <main>
     <AppLink className="gallery-back" href="/">← Gallery</AppLink>
-    <SwordViewer showPerformance={showPerformance} model={tensaActive?'tensa-zangetsu':sword.model} floorColor={floorColor} backgroundColor={backgroundColor} effect={tensaActive?'off':effect} effectSpeed={effectSpeed} effectIntensity={effectIntensity/100} cameraHeight={cameraHeight} showSheath={showSheath} swordRotation={swordRotation} rotating={rotating} resetVersion={resetVersion} draw={draw} reflections={reflections} lightAngle={lightAngle} lighting={lighting} dropVersion={dropVersion} onStatus={setStatus} />
+    <SwordViewer antiAliasing={antiAliasing} showPerformance={showPerformance} model={tensaActive?'tensa-zangetsu':sword.model} floorColor={floorColor} backgroundColor={backgroundColor} effect={tensaActive?'off':effect} effectSpeed={effectSpeed} effectIntensity={effectIntensity/100} cameraHeight={cameraHeight} showSheath={showSheath} swordRotation={swordRotation} rotating={rotating} resetVersion={resetVersion} draw={draw} reflections={reflections} lightAngle={lightAngle} lighting={lighting} dropVersion={dropVersion} onStatus={setStatus} />
     <button ref={settingsButton} className="settings-toggle" aria-label={settingsOpen?'Close settings':'Open settings'} aria-expanded={settingsOpen} aria-controls="sword-settings" onClick={()=>setSettingsOpen(open=>!open)}>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
         {settingsOpen?<path d="m6 6 12 12M18 6 6 18"/>:<><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="currentColor"/><circle cx="15" cy="17" r="3" fill="currentColor"/></>}
@@ -50,6 +51,13 @@ export default function SwordEditor({sword}:{sword:SwordAsset}) {
     {settingsOpen&&<aside id="sword-settings" className="settings-panel" aria-label="Sword settings">
       <h2 className="settings-heading">Settings</h2>
       <label className="reflection-toggle"><input type="checkbox" checked={showPerformance} onChange={event=>setShowPerformance(event.target.checked)}/>Performance meter</label>
+      <div className="lighting-controls effects-controls">
+        <label className="range-label" htmlFor="anti-aliasing">Edge smoothing</label>
+        <select id="anti-aliasing" value={antiAliasing} onChange={event=>setAntiAliasing(event.target.value as typeof antiAliasing)}>
+          <option value="standard">Standard</option><option value="smooth">Smooth</option><option value="high">High · extra resolution</option>
+        </select>
+        <p className="motion-status">High renders 56% more pixels. Smooth may soften fine detail.</p>
+      </div>
       <div className="motion-panel">
         {hasSheath&&<label className="reflection-toggle"><input type="checkbox" checked={showSheath} disabled={bankaiCinematic} onChange={event=>setShowSheath(event.target.checked)}/>{clothWrapped?'Show blade wrapping':'Show sheath'}</label>}
         <label className="range-label" htmlFor="sword-rotation">Rotate sword <output>{swordRotation}°</output></label>

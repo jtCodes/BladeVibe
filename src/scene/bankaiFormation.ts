@@ -16,7 +16,7 @@ function breakupThreshold(p:THREE.Vector3,delay:number){
 
 export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
  const group=new THREE.Group();group.visible=false;scene.add(group);
- const clock={value:-1};
+ const clock={value:-1},formationPower={value:1};
  const source=sword.getObjectByName('senbonzakura-blade') as THREE.Mesh;
  // Clone the authored blade, retaining its curve, tip, bevels, UVs and material groups.
  const geometry=source.geometry.clone();geometry.computeBoundingBox();
@@ -36,17 +36,23 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
  geometry.setAttribute('bladeDissolveDelay',new THREE.InstancedBufferAttribute(dissolveDelays,1));
  for(let index=0;index<materials.length;index++){
  const material=materials[index],original=sourceMaterials[index];
+ // Give the enlarged formation its own steel response instead of a near-white face.
+ if(material instanceof THREE.MeshStandardMaterial){
+  material.color.set(index===0?0x87939f:0x596672);
+  material.roughness=index===0?.46:.56;material.metalness=.82;
+  material.envMapIntensity=.6;
+ }
  const inherit=original.onBeforeCompile.bind(original),baseKey=original.customProgramCacheKey();
  material.clippingPlanes=[new THREE.Plane(new THREE.Vector3(0,1,0),-FLOOR_Y)];
  material.onBeforeCompile=(shader,renderer)=>{
   // Preserve the source steel and hamon shader. Its Shikai dissolve is reset before Bankai.
   inherit(shader,renderer);addSakuraGlow(shader);
-  shader.uniforms.formationTime=clock;
-  shader.vertexShader='attribute float bladeDelay;attribute float bladeDissolveDelay;varying float dissolveDelay;varying float bladeHeight;varying float rowDelay;varying vec3 breakupPoint;\n'+shader.vertexShader;
+  shader.uniforms.formationTime=clock;shader.uniforms.formationPower=formationPower;
+  shader.vertexShader='varying float bladeWidth;attribute float bladeDelay;attribute float bladeDissolveDelay;varying float dissolveDelay;varying float bladeHeight;varying float rowDelay;varying vec3 breakupPoint;\n'+shader.vertexShader;
   shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
-   bladeHeight=position.y/${HEIGHT.toFixed(1)};rowDelay=bladeDelay;dissolveDelay=bladeDissolveDelay;breakupPoint=position;
+   bladeWidth=uv.x;bladeHeight=position.y/${HEIGHT.toFixed(1)};rowDelay=bladeDelay;dissolveDelay=bladeDissolveDelay;breakupPoint=position;
   `);
-  shader.fragmentShader=PETAL_BREAKUP_GLSL+'uniform float formationTime;varying float dissolveDelay;varying float bladeHeight;varying float rowDelay;varying vec3 breakupPoint;\n'+shader.fragmentShader;
+  shader.fragmentShader=PETAL_BREAKUP_GLSL+'uniform float formationPower;varying float bladeWidth;uniform float formationTime;varying float dissolveDelay;varying float bladeHeight;varying float rowDelay;varying vec3 breakupPoint;\n'+shader.fragmentShader;
   shader.fragmentShader=shader.fragmentShader.replace('#include <clipping_planes_fragment>',`#include <clipping_planes_fragment>
    float dissolve=clamp((formationTime-${DISSOLVE_AT}-dissolveDelay)/${DISSOLVE_DURATION},0.,1.);
    float breakupNoise=petalBreakup(breakupPoint.xy,rowDelay);
@@ -54,17 +60,27 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
    if(dissolve>=threshold)discard;
    float glowDistance=(threshold-dissolve)*5.02;
    float pink=sakuraTint(glowDistance,dissolve);
+   float riseLight=smoothstep(rowDelay,rowDelay+.35,formationTime);
+   float colorShift=smoothstep(${DISSOLVE_AT} + dissolveDelay-.55,${DISSOLVE_AT} + dissolveDelay+.3,formationTime);
+   float luminousEdge=max(1.-smoothstep(.015,.09,bladeWidth),smoothstep(.78,.98,bladeWidth));
+   vec3 bladeGlow=mix(vec3(2.8,3.,3.25),vec3(3.2,.65,1.5),colorShift);
   `);
   shader.fragmentShader=shader.fragmentShader.replace('#include <metalnessmap_fragment>',`#include <metalnessmap_fragment>
    diffuseColor.rgb=mix(diffuseColor.rgb,SAKURA_PINK,pink*.9);
    diffuseColor.rgb*=mix(.48,1.,smoothstep(0.,.85,breakupPoint.y));
    metalnessFactor=mix(metalnessFactor,.3,pink);
   `);
+  // Apply after the inherited hamon roughness so broad studio highlights retain gradation.
+  shader.fragmentShader=shader.fragmentShader.replace('#include <lights_physical_fragment>',`
+   roughnessFactor=max(roughnessFactor,.46);
+   #include <lights_physical_fragment>
+  `);
   shader.fragmentShader=shader.fragmentShader.replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
-   totalEmissiveRadiance+=sakuraEmission(glowDistance,dissolve,pink);
+   // Bright edges surround a shaded steel center, rather than bleaching the full face.
+   totalEmissiveRadiance+=(bladeGlow*luminousEdge*riseLight+sakuraEmission(glowDistance,dissolve,pink))*formationPower;
   `);
  };
- material.customProgramCacheKey=()=>baseKey+'-bankai-grounded-row-breakup-v8';
+ material.customProgramCacheKey=()=>baseKey+'-bankai-white-to-pink-v10';
  }
  const blades=new THREE.InstancedMesh(geometry,materials,BLADES);blades.frustumCulled=false;
  blades.instanceMatrix.setUsage(THREE.DynamicDrawUsage);group.add(blades);
@@ -208,12 +224,12 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
  const glowLights=[0,-12,-26].map(z=>{const light=new THREE.PointLight(0xff7ac4,0,16,2);light.position.set(0,2,z);group.add(light);return light;});
  let lastTime=-1;
  return {
-  get glowing(){return group.visible&&clock.value>DISSOLVE_AT-.25;},
+  get glowing(){return group.visible&&clock.value>0;},
   start(x:number,z:number){group.position.set(x,0,z);group.visible=false;lastTime=-1;clock.value=-1;},
   hide(){group.visible=false;},
   update(time:number,intensity:number){
    group.visible=time>=0;if(!group.visible)return;
-   clock.value=time;
+   clock.value=time;formationPower.value=Math.min(2,Math.max(0,intensity));
    if(time!==lastTime&&(lastTime<RISE_END||time<RISE_END)){
     for(let i=0;i<BLADES;i++){
      const p=placement[i],rise=THREE.MathUtils.smoothstep(time,p.delay,p.delay+2.1);
@@ -225,8 +241,11 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
    blades.visible=time<DISSOLVE_END;
    petals.visible=time>DISSOLVE_AT&&intensity>0;petals.count=Math.round(COUNT*Math.min(1,Math.max(0,intensity)/2));
    dust.visible=petals.visible;dustGeometry.setDrawRange(0,Math.round(DUST_COUNT*Math.min(1,Math.max(0,intensity)/2)));
-   const glow=THREE.MathUtils.smoothstep(time,DISSOLVE_AT,DISSOLVE_AT+.7)*(1-THREE.MathUtils.smoothstep(time,DISSOLVE_END,DISSOLVE_END+3));
-   for(const light of glowLights)light.intensity=glow*Math.min(2,Math.max(0,intensity))*2.2;
+   const glow=THREE.MathUtils.smoothstep(time,0,.7)*(1-THREE.MathUtils.smoothstep(time,DISSOLVE_END,DISSOLVE_END+3));
+   for(const light of glowLights){
+    light.color.setRGB(1,1,1).lerp(new THREE.Color(0xff7ac4),THREE.MathUtils.smoothstep(time,DISSOLVE_AT-.55,DISSOLVE_AT+.3));
+    light.intensity=glow*formationPower.value*2.2;
+   }
    lastTime=time;
   },
   dispose(){group.removeFromParent();contacts.dispose();contactGeometry.dispose();contactMaterial.dispose();blades.dispose();petals.dispose();geometry.dispose();for(const material of materials)material.dispose();petalGeometry.dispose();petalMaterial.dispose();dustGeometry.dispose();dustMaterial.dispose();}

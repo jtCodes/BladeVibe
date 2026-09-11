@@ -1,3 +1,5 @@
+import {ShaderPass} from 'three/addons/postprocessing/ShaderPass.js';
+import {FXAAShader} from 'three/addons/shaders/FXAAShader.js';
 import {createPerformanceMeter} from './performanceMeter';
 import {createTensaZangetsu,createTensaZangetsuBladeGeometry} from './tensaZangetsu';
 import {createZangetsu,createZangetsuBladeGeometry} from './zangetsu';
@@ -19,7 +21,7 @@ import { createBladeAura, type EffectMode } from './aura';
 import { createScabbard } from './scabbard';
 import { createCrossguard, createPommel } from './crossguard';
 export interface LightingSettings { brightness:number; key:number; fill:number; rim:number; ambient:number }
-export interface ViewerSettings { showPerformance?:boolean; lighting?: LightingSettings; rotating: boolean; draw: number; reflections: boolean; lightAngle: number; floorColor?: string; backgroundColor?: string; cameraHeight: number; showSheath?: boolean; swordRotation?: number; effect: EffectMode; effectSpeed: number; effectIntensity: number }
+export interface ViewerSettings { antiAliasing?:'standard'|'smooth'|'high'; showPerformance?:boolean; lighting?: LightingSettings; rotating: boolean; draw: number; reflections: boolean; lightAngle: number; floorColor?: string; backgroundColor?: string; cameraHeight: number; showSheath?: boolean; swordRotation?: number; effect: EffectMode; effectSpeed: number; effectIntensity: number }
 export interface SwordScene { update(settings: ViewerSettings): void; reset(): void; release(): boolean; dispose(): void }
 export async function createSwordScene(container: HTMLDivElement, onError: (message: string) => void, onStatus: (status: MotionStatus) => void, signal: AbortSignal, options:{preview?:boolean;model?:'longsword'|'senbonzakura'|'zangetsu'|'tensa-zangetsu'}={}): Promise<SwordScene> {
 await initializePhysics();
@@ -155,9 +157,15 @@ composer.addPass(reflections);
 composer.addPass(new SMAAPass());
 const bloom=new UnrealBloomPass(new THREE.Vector2(1,1),.14,0,3.);composer.addPass(bloom);
 composer.addPass(new OutputPass());
+// Smooth the final display-space edges, including postprocessing and shader cutouts.
+const edgeAA=new ShaderPass(FXAAShader);composer.addPass(edgeAA);
+let aaMode:'standard'|'smooth'|'high'='standard';
 cleanups.push(()=>{for(const pass of composer.passes)pass.dispose();composer.dispose()});
 let cameraHeight=0,effectSpeed=1,effectIntensity=1;
 function update(settings: ViewerSettings){
+ const nextAA=options.preview?'standard':settings.antiAliasing??'smooth';
+ if(nextAA!==aaMode){aaMode=nextAA;resize();}
+ edgeAA.enabled=aaMode!=='standard';
  meter.setEnabled(!options.preview&&!!settings.showPerformance);
  const lighting=settings.lighting??{brightness:1,key:1,fill:1,rim:1,ambient:1};
  renderer.toneMappingExposure=.85*lighting.brightness;
@@ -193,7 +201,7 @@ function update(settings: ViewerSettings){
  controls.autoRotate=settings.rotating&&settings.effect!=='bankai';
 }
 function reset(){clearArrows();bankai?.cancel();if(options.preview){camera.position.set(1.3,isZangetsu?3:4.7,isZangetsu?23:15);controls.target.set(.4,isZangetsu?3:3.65,0);controls.update();physics.setDraw(1);physics.restore();return;}const mobile=container.clientWidth<700;camera.position.set(2.1,isZangetsu?4.3:2.6,isZangetsu?30:mobile?23:24);camera.position.y+=cameraHeight;controls.target.set(0,(isZangetsu?3.4:mobile?1.1:.8)+cameraHeight,0);controls.update();physics.restore()}
-function resize(){const w=Math.max(1,container.clientWidth),h=Math.max(1,container.clientHeight);const pixelRatio=Math.min(window.devicePixelRatio,2);renderer.setPixelRatio(pixelRatio);composer.setPixelRatio(pixelRatio);renderer.setSize(w,h);camera.aspect=w/h;camera.fov=options.preview?34:w<700?44:34;camera.updateProjectionMatrix();composer.setSize(w,h)}
+function resize(){const w=Math.max(1,container.clientWidth),h=Math.max(1,container.clientHeight);const pixelRatio=Math.min(window.devicePixelRatio,2)*(aaMode==='high'?1.25:1);renderer.setPixelRatio(pixelRatio);composer.setPixelRatio(pixelRatio);renderer.setSize(w,h);camera.aspect=w/h;camera.fov=options.preview?34:w<700?44:34;camera.updateProjectionMatrix();composer.setSize(w,h);edgeAA.uniforms.resolution.value.set(1/Math.max(1,Math.floor(w*pixelRatio)),1/Math.max(1,Math.floor(h*pixelRatio)))}
 const observer=new ResizeObserver(resize);observer.observe(container);cleanups.push(()=>observer.disconnect());resize();reset();
 const clock=new THREE.Clock();let frame=0,stopped=false;
 function animate(){if(stopped)return;frame=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.1);if(document.hidden)return;meter.begin();if(bankai?.active){bankai.update(dt,effectSpeed,effectIntensity);}else{physics.step(dt);aura.update(dt,physics.draw);}if(shikai){bloom.enabled=shikai.visible||!!bankai?.glowing;bloom.strength=.24;bloom.radius=0;}if(isZangetsu)scabbard.userData.updateCloth(dt);updateShadowCache();moveCamera(dt);controls.update(dt);composer.render();meter.end();}
