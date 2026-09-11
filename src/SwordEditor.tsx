@@ -22,7 +22,9 @@ export default function SwordEditor({sword}:{sword:SwordAsset}) {
   const [showSheath,setShowSheath]=useState(true);
   const [swordRotation,setSwordRotation]=useState(0);
   const [lightAngle,setLightAngle]=useState(sword.lightAngle);
+  const [lighting,setLighting]=useState({brightness:1,key:1,fill:1,rim:1,ambient:1});
   const [floorColor,setFloorColor]=useState('#141413');
+  const [backgroundColor,setBackgroundColor]=useState('#141413');
   const [rotating, setRotating] = useState(() => !window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const [resetVersion, setResetVersion] = useState(0);
   const [draw,setDraw]=useState(100);
@@ -38,7 +40,7 @@ export default function SwordEditor({sword}:{sword:SwordAsset}) {
 
   return <main>
     <AppLink className="gallery-back" href="/">← Gallery</AppLink>
-    <SwordViewer model={tensaActive?'tensa-zangetsu':sword.model} floorColor={floorColor} effect={tensaActive?'off':effect} effectSpeed={effectSpeed} effectIntensity={effectIntensity/100} cameraHeight={cameraHeight} showSheath={showSheath} swordRotation={swordRotation} rotating={rotating} resetVersion={resetVersion} draw={draw} reflections={reflections} lightAngle={lightAngle} dropVersion={dropVersion} onStatus={setStatus} />
+    <SwordViewer model={tensaActive?'tensa-zangetsu':sword.model} floorColor={floorColor} backgroundColor={backgroundColor} effect={tensaActive?'off':effect} effectSpeed={effectSpeed} effectIntensity={effectIntensity/100} cameraHeight={cameraHeight} showSheath={showSheath} swordRotation={swordRotation} rotating={rotating} resetVersion={resetVersion} draw={draw} reflections={reflections} lightAngle={lightAngle} lighting={lighting} dropVersion={dropVersion} onStatus={setStatus} />
     <button ref={settingsButton} className="settings-toggle" aria-label={settingsOpen?'Close settings':'Open settings'} aria-expanded={settingsOpen} aria-controls="sword-settings" onClick={()=>setSettingsOpen(open=>!open)}>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
         {settingsOpen?<path d="m6 6 12 12M18 6 6 18"/>:<><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="currentColor"/><circle cx="15" cy="17" r="3" fill="currentColor"/></>}
@@ -74,9 +76,21 @@ export default function SwordEditor({sword}:{sword:SwordAsset}) {
         <input id="effect-speed" type="range" min={0} max={3} step={.1} value={effectSpeed} disabled={effect==='off'} onChange={event=>setEffectSpeed(Number(event.target.value))}/>
       </div>}
       <div className="lighting-controls">
+        <label className="floor-color-control" htmlFor="background-color">Background color <input id="background-color" type="color" value={backgroundColor} onChange={event=>setBackgroundColor(event.target.value)}/></label>
         <label className="floor-color-control" htmlFor="floor-color">Floor color <input id="floor-color" type="color" value={floorColor} onChange={event=>setFloorColor(event.target.value)}/></label>
         <label className="range-label" htmlFor="light-angle">Studio light angle <output>{lightAngle}°</output></label>
         <input id="light-angle" type="range" min={0} max={360} value={lightAngle} onChange={event=>setLightAngle(Number(event.target.value))}/>
+        {([
+          ['brightness','Brightness',25,250],
+          ['key','Main light',0,400],
+          ['fill','Fill light',0,500],
+          ['rim','Rim light',0,400],
+          ['ambient','Ambient light',0,400],
+        ] as const).map(([control,label,min,max])=><div key={control}>
+          <label className="range-label" htmlFor={`lighting-${control}`}>{label} <output>{Math.round(lighting[control]*100)}%</output></label>
+          <input id={`lighting-${control}`} type="range" min={min} max={max} step={5} value={Math.round(lighting[control]*100)} onChange={event=>setLighting(current=>({...current,[control]:Number(event.target.value)/100}))}/>
+        </div>)}
+        <button onClick={()=>{setLighting({brightness:1,key:1,fill:1,rim:1,ambient:1});setLightAngle(sword.lightAngle)}}>Reset lighting</button>
         <label className="reflection-toggle"><input type="checkbox" checked={reflections} onChange={event=>setReflections(event.target.checked)}/>Local reflections</label>
       </div>
       <div className="lighting-controls">

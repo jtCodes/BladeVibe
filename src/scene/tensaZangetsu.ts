@@ -9,9 +9,9 @@ export function createTensaZangetsuBladeGeometry(){
  return geometry;
 }
 export function createTensaZangetsu(renderer:THREE.WebGLRenderer,sword:THREE.Group){
- const steel=new THREE.MeshStandardMaterial({color:0x171d25,metalness:.55,roughness:.86,...surfaceMaps('steel',renderer),roughnessMap:null,envMapIntensity:.22,bumpScale:.00008});
- const bevel=new THREE.MeshStandardMaterial({color:0x343e4b,metalness:.55,roughness:.8,envMapIntensity:.22});
- const fittings=new THREE.MeshStandardMaterial({color:0x101319,metalness:.4,roughness:.9,envMapIntensity:.15});
+ const steel=new THREE.MeshStandardMaterial({color:0x090a0c,metalness:.55,roughness:.86,...surfaceMaps('steel',renderer),roughnessMap:null,envMapIntensity:.08,bumpScale:.00008});
+ const bevel=new THREE.MeshStandardMaterial({color:0x111214,metalness:.55,roughness:.9,envMapIntensity:.08});
+ const fittings=new THREE.MeshStandardMaterial({color:0x08090a,metalness:.4,roughness:.9,envMapIntensity:.15});
  const guardMaterial=new THREE.MeshStandardMaterial({color:0x030303,metalness:.25,roughness:.92,envMapIntensity:.1});
  // Keep this black finish neutral under warm studio lights and atmospheric fog.
  guardMaterial.onBeforeCompile=shader=>{
@@ -21,7 +21,7 @@ export function createTensaZangetsu(renderer:THREE.WebGLRenderer,sword:THREE.Gro
  };
  guardMaterial.customProgramCacheKey=()=> 'tensa-neutral-black-guard-v1';
  const red=new THREE.MeshStandardMaterial({color:0x500b16,roughness:.88,...surfaceMaps('leather',renderer),roughnessMap:null,envMapIntensity:.12,bumpScale:.0005});
- const cotton=new THREE.MeshStandardMaterial({color:0x111216,roughness:.94,...surfaceMaps('leather',renderer),roughnessMap:null,envMapIntensity:.1,bumpScale:.00065,side:THREE.DoubleSide});
+ const cotton=new THREE.MeshStandardMaterial({color:0x09090b,roughness:.94,...surfaceMaps('leather',renderer),roughnessMap:null,envMapIntensity:.1,bumpScale:.00065,side:THREE.DoubleSide});
  const add=(geometry:THREE.BufferGeometry,material:THREE.Material|THREE.Material[])=>{const mesh=new THREE.Mesh(geometry,material);mesh.castShadow=true;mesh.receiveShadow=true;sword.add(mesh);return mesh;};
  add(createTensaZangetsuBladeGeometry(),[bevel,steel]).name='tensa-zangetsu-blade';
  // The bent arms are one extruded metal outline, including the open slots.

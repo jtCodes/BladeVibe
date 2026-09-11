@@ -17,7 +17,8 @@ import { initializePhysics, createSwordPhysics, FLOOR_Y, type MotionStatus } fro
 import { createBladeAura, type EffectMode } from './aura';
 import { createScabbard } from './scabbard';
 import { createCrossguard, createPommel } from './crossguard';
-export interface ViewerSettings { rotating: boolean; draw: number; reflections: boolean; lightAngle: number; floorColor?: string; cameraHeight: number; showSheath?: boolean; swordRotation?: number; effect: EffectMode; effectSpeed: number; effectIntensity: number }
+export interface LightingSettings { brightness:number; key:number; fill:number; rim:number; ambient:number }
+export interface ViewerSettings { lighting?: LightingSettings; rotating: boolean; draw: number; reflections: boolean; lightAngle: number; floorColor?: string; backgroundColor?: string; cameraHeight: number; showSheath?: boolean; swordRotation?: number; effect: EffectMode; effectSpeed: number; effectIntensity: number }
 export interface SwordScene { update(settings: ViewerSettings): void; reset(): void; release(): boolean; dispose(): void }
 export async function createSwordScene(container: HTMLDivElement, onError: (message: string) => void, onStatus: (status: MotionStatus) => void, signal: AbortSignal, options:{preview?:boolean;model?:'longsword'|'senbonzakura'|'zangetsu'|'tensa-zangetsu'}={}): Promise<SwordScene> {
 await initializePhysics();
@@ -71,9 +72,9 @@ function moveCamera(dt:number){
 }
 if(options.preview)controls.enabled=false;
 const environment=createStudioEnvironment(renderer);scene.environment=environment.texture;scene.environmentRotation.set(0,.35,0);cleanups.push(()=>environment.dispose());scene.environmentIntensity=.8;
-scene.add(new THREE.HemisphereLight(0xb9d8ed,0x1b1312,.12));
-function area(color: number,power: number,x: number,y: number,z: number,w: number,h: number){const l=new THREE.RectAreaLight(color,power,w,h);l.position.set(x,y,z);l.lookAt(0,1.5,0);scene.add(l)}
-area(0xf4f4f2,5,-4,5,5,3,8);area(0xffebd4,4,4,2,-3,2,7);area(0xe8efff,3,2,4,4,.6,6);
+const ambientLight=new THREE.HemisphereLight(0xb9d8ed,0x1b1312,.12);scene.add(ambientLight);
+function area(color: number,power: number,x: number,y: number,z: number,w: number,h: number){const l=new THREE.RectAreaLight(color,power,w,h);l.position.set(x,y,z);l.lookAt(0,1.5,0);scene.add(l);return l}
+const mainLight=area(0xf4f4f2,5,-4,5,5,3,8),rimLight=area(0xffebd4,4,4,2,-3,2,7),fillLight=area(0xe8efff,3,2,4,4,.6,6);
 // Broad off-camera illumination has no spotlight cone to draw a disc on the floor.
 const key=new THREE.DirectionalLight(0xfff1df,1.8);key.position.set(-12,18,10);key.target.position.set(0,0,0);key.castShadow=true;key.shadow.mapSize.set(2048,2048);key.shadow.bias=-.0002;key.shadow.normalBias=.015;key.shadow.camera.near=.5;key.shadow.camera.far=60;key.shadow.camera.left=-14;key.shadow.camera.right=14;key.shadow.camera.top=14;key.shadow.camera.bottom=-14;key.shadow.radius=3;scene.add(key,key.target);
 const sword=new THREE.Group();scene.add(sword);sword.rotation.z=Math.PI-.16;
@@ -110,6 +111,14 @@ scabbard=createScabbard(sheathLeather,fittings);
 const floorMaterial=new THREE.MeshStandardMaterial({color:0x141413,metalness:0,roughness:.9});
 const floor=mesh(new THREE.PlaneGeometry(1000,1000),floorMaterial,scene);floor.rotation.x=-Math.PI/2;floor.position.y=FLOOR_Y;floor.castShadow=false;floor.receiveShadow=true;
 (isZangetsu?sword:scene).add(scabbard);if(options.preview)scabbard.visible=false;
+// Atmospheric color belongs to the distant floor, not the displayed sword or cloth.
+for(const root of [sword,scabbard])root.traverse(object=>{
+ if(object instanceof THREE.Mesh){
+  for(const material of Array.isArray(object.material)?object.material:[object.material]){
+   if('fog' in material){material.fog=false;material.needsUpdate=true;}
+  }
+ }
+});
 const physics=createSwordPhysics(sword,onStatus,isTensa?{bladeGeometry:createTensaZangetsuBladeGeometry,unsheathed:true,katana:true}:isZangetsu?{bladeGeometry:createZangetsuBladeGeometry,unsheathed:true}:isKatana?{bladeGeometry:createKatanaBladeGeometry,scabbardGeometry:createSayaGeometry,curveRadius:KATANA_RADIUS,katana:true}:undefined);cleanups.push(()=>physics.dispose());
 const shikai=isKatana?createShikai(sword):null;
 if(shikai)cleanups.push(()=>shikai.dispose());
@@ -147,7 +156,14 @@ composer.addPass(new OutputPass());
 cleanups.push(()=>{for(const pass of composer.passes)pass.dispose();composer.dispose()});
 let cameraHeight=0,effectSpeed=1,effectIntensity=1;
 function update(settings: ViewerSettings){
+ const lighting=settings.lighting??{brightness:1,key:1,fill:1,rim:1,ambient:1};
+ renderer.toneMappingExposure=.85*lighting.brightness;
+ key.intensity=1.8*lighting.key;mainLight.intensity=5*lighting.key;
+ fillLight.intensity=3*lighting.fill;rimLight.intensity=4*lighting.rim;
+ ambientLight.intensity=.12*lighting.ambient;scene.environmentIntensity=.8*lighting.ambient;
  floorMaterial.color.set(settings.floorColor??'#141413');
+ if(scene.background instanceof THREE.Color)scene.background.set(settings.backgroundColor??'#141413');
+ if(scene.fog)scene.fog.color.set(settings.backgroundColor??'#141413');
  effectSpeed=settings.effectSpeed;effectIntensity=settings.effectIntensity;
  if(bankai?.active&&settings.effect!=='bankai'){bankai.cancel();physics.setDraw(settings.draw/100);physics.restore();}
  if(isZangetsu)scabbard.userData.setUnwrapped(settings.draw/100);

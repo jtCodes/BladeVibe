@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { createSwordScene, type SwordScene, type ViewerSettings } from './scene/createSwordScene';
 import type { MotionStatus } from './scene/swordPhysics';
 interface Props extends ViewerSettings { model?:'longsword'|'senbonzakura'|'zangetsu'|'tensa-zangetsu'; resetVersion: number; dropVersion: number; onStatus: (status: MotionStatus) => void }
-export function SwordViewer({ model='longsword', floorColor='#141413', rotating, draw, reflections, lightAngle, cameraHeight,showSheath=true,swordRotation=0,effect,effectSpeed,effectIntensity, resetVersion, dropVersion, onStatus }: Props) {
+export function SwordViewer({ model='longsword', floorColor='#141413', backgroundColor='#141413', lighting, rotating, draw, reflections, lightAngle, cameraHeight,showSheath=true,swordRotation=0,effect,effectSpeed,effectIntensity, resetVersion, dropVersion, onStatus }: Props) {
  const container=useRef<HTMLDivElement>(null), scene=useRef<SwordScene|null>(null);
  const [error,setError]=useState<string|null>(null),[ready,setReady]=useState(false);
- const settings=useRef({rotating,draw,reflections,lightAngle,floorColor,cameraHeight,showSheath,swordRotation,effect,effectSpeed,effectIntensity});settings.current={rotating,draw,reflections,lightAngle,floorColor,cameraHeight,showSheath,swordRotation,effect,effectSpeed,effectIntensity};
+ const settings=useRef({lighting,rotating,draw,reflections,lightAngle,floorColor,backgroundColor,cameraHeight,showSheath,swordRotation,effect,effectSpeed,effectIntensity});settings.current={lighting,rotating,draw,reflections,lightAngle,floorColor,backgroundColor,cameraHeight,showSheath,swordRotation,effect,effectSpeed,effectIntensity};
  useEffect(()=>{
   if(!container.current)return;
   const element=container.current;setReady(false);setError(null);
@@ -20,7 +20,7 @@ export function SwordViewer({ model='longsword', floorColor='#141413', rotating,
   }).catch(error=>{if(!controller.signal.aborted){console.error(error);setError('The 3D viewer could not start. Reload in a browser with WebGL and WebAssembly enabled.')}});
   return ()=>{for(const event of gestureEvents)element.removeEventListener(event,preventNativeGesture);controller.abort();owned?.dispose();if(scene.current===owned)scene.current=null};
  },[onStatus,model]);
- useEffect(()=>{scene.current?.update({rotating,draw,reflections,lightAngle,floorColor,cameraHeight,showSheath,swordRotation,effect,effectSpeed,effectIntensity})},[rotating,draw,reflections,lightAngle,floorColor,cameraHeight,showSheath,swordRotation,effect,effectSpeed,effectIntensity]);
+ useEffect(()=>{scene.current?.update({lighting,rotating,draw,reflections,lightAngle,floorColor,backgroundColor,cameraHeight,showSheath,swordRotation,effect,effectSpeed,effectIntensity})},[lighting,rotating,draw,reflections,lightAngle,floorColor,backgroundColor,cameraHeight,showSheath,swordRotation,effect,effectSpeed,effectIntensity]);
  useEffect(()=>{scene.current?.reset()},[resetVersion]);
  useEffect(()=>{if(dropVersion>0)scene.current?.release()},[dropVersion]);
  return <><div id="stage" ref={container} aria-label="Interactive 3D sword. Drag to orbit; use the draw control to unsheathe." />{!ready&&!error&&<div id="loading" role="status">Preparing sword physics…</div>}{error&&<div id="error" role="alert">{error}</div>}</>;
