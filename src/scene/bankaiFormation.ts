@@ -221,12 +221,12 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
     #include <colorspace_fragment>
    }`});
  const dust=new THREE.Points(dustGeometry,dustMaterial);dust.frustumCulled=false;dust.visible=false;group.add(dust);
- // Broad emitters approximate light spilling off the blade faces along both rows.
- // Area-light falloff gives a soft floor wash without visible spotlight circles.
+ // Overlapping omnidirectional emitters approximate spill from each section of the rows.
+ // No emitter plane or distance cutoff can stamp a straight boundary onto the floor.
  const spillPink=new THREE.Color(0xff7ac4);
  const glowLights=[3,11,19].flatMap(row=>[-1,1].map(side=>{
-  const z=2-row*2.05,light=new THREE.RectAreaLight(0xffffff,0,16.4,7);
-  light.position.set(side*4.05,FLOOR_Y+3.7,z);light.lookAt(0,FLOOR_Y+3.7,z);group.add(light);
+  const z=2-row*2.05,light=new THREE.PointLight(0xffffff,0,0,2);
+  light.position.set(side*4.05,FLOOR_Y+5,z);light.castShadow=false;group.add(light);
   return {light,delay:delays[row*2],release:DISSOLVE_AT+dissolveDelays[row*2]};
  }));
  let lastTime=-1;
@@ -253,7 +253,7 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
     const pink=THREE.MathUtils.smoothstep(time,release-.85,release+.05);
     const dispersal=1-THREE.MathUtils.smoothstep(time,release+DISSOLVE_DURATION*.55,release+DISSOLVE_DURATION+2.5);
     light.color.setRGB(1,1,1).lerp(spillPink,pink);
-    light.intensity=emergence*dispersal*formationPower.value*THREE.MathUtils.lerp(.85,2.6,pink);
+    light.intensity=emergence*dispersal*formationPower.value*THREE.MathUtils.lerp(45,140,pink);
    }
    lastTime=time;
   },
