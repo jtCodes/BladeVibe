@@ -7,6 +7,7 @@ import type { SwordAsset } from './swordLibrary';
 import { AppLink } from './navigation';
 
 export default function SwordEditor({sword}:{sword:SwordAsset}) {
+  const [upscaling,setUpscaling]=useState<'native'|'ultra'|'quality'>('ultra');
   const [dragTarget,setDragTarget]=useState<'sword'|'camera'>('sword');
   const [settingsOpen,setSettingsOpen]=useState(false);
   const [showPerformance,setShowPerformance]=useState(false);
@@ -43,7 +44,7 @@ export default function SwordEditor({sword}:{sword:SwordAsset}) {
 
   return <main>
     <AppLink className="gallery-back" href="/">← Gallery</AppLink>
-    <SwordViewer dragTarget={dragTarget} antiAliasing={antiAliasing} showPerformance={showPerformance} model={tensaActive?'tensa-zangetsu':sword.model} floorColor={floorColor} backgroundColor={backgroundColor} effect={tensaActive?'off':effect} effectSpeed={effectSpeed} effectIntensity={effectIntensity/100} cameraHeight={cameraHeight} showSheath={showSheath} swordRotation={swordRotation} rotating={rotating} resetVersion={resetVersion} draw={draw} reflections={reflections} lightAngle={lightAngle} lighting={lighting} dropVersion={dropVersion} onStatus={setStatus} />
+    <SwordViewer upscaling={upscaling} dragTarget={dragTarget} antiAliasing={antiAliasing} showPerformance={showPerformance} model={tensaActive?'tensa-zangetsu':sword.model} floorColor={floorColor} backgroundColor={backgroundColor} effect={tensaActive?'off':effect} effectSpeed={effectSpeed} effectIntensity={effectIntensity/100} cameraHeight={cameraHeight} showSheath={showSheath} swordRotation={swordRotation} rotating={rotating} resetVersion={resetVersion} draw={draw} reflections={reflections} lightAngle={lightAngle} lighting={lighting} dropVersion={dropVersion} onStatus={setStatus} />
     <button ref={settingsButton} className="settings-toggle" aria-label={settingsOpen?'Close settings':'Open settings'} aria-expanded={settingsOpen} aria-controls="sword-settings" onClick={()=>setSettingsOpen(open=>!open)}>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
         {settingsOpen?<path d="m6 6 12 12M18 6 6 18"/>:<><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="currentColor"/><circle cx="15" cy="17" r="3" fill="currentColor"/></>}
@@ -53,6 +54,11 @@ export default function SwordEditor({sword}:{sword:SwordAsset}) {
       <h2 className="settings-heading">Settings</h2>
       <label className="reflection-toggle"><input type="checkbox" checked={showPerformance} onChange={event=>setShowPerformance(event.target.checked)}/>Performance meter</label>
       <div className="lighting-controls effects-controls">
+        <label className="range-label" htmlFor="upscaling">Upscaling</label>
+        <select id="upscaling" value={upscaling} onChange={event=>setUpscaling(event.target.value as typeof upscaling)}>
+          <option value="native">Native · reference</option><option value="ultra">Ultra quality · 90%</option><option value="quality">Quality · 85%</option>
+        </select>
+        <p className="motion-status">Full-resolution output. Compare Native for fine edges and moving petals.</p>
         <label className="range-label" htmlFor="anti-aliasing">Edge smoothing</label>
         <select id="anti-aliasing" value={antiAliasing} onChange={event=>setAntiAliasing(event.target.value as typeof antiAliasing)}>
           <option value="standard">Standard</option><option value="smooth">Smooth</option><option value="high">High · extra resolution</option>

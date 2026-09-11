@@ -10,12 +10,14 @@ export function createPerformanceMeter(renderer:THREE.WebGLRenderer,container:HT
  let enabled=false,previous=0,start=0,windowStart=0,frames=0,intervals=0,cadence=0,cpu=0,gpu=0,gpuCount=0,calls=0,triangles=0,sample=0;
  let activeQuery:WebGLQuery|null=null;
  const pending:WebGLQuery[]=[];
+ let renderWidth=0,renderHeight=0;
  const originalAutoReset=renderer.info.autoReset,size=new THREE.Vector2();
  function clearQueries(){if(activeQuery&&timer){gl.endQuery(timer.TIME_ELAPSED_EXT);gl.deleteQuery(activeQuery);activeQuery=null;}for(const query of pending)gl.deleteQuery(query);pending.length=0;}
  function reset(){previous=0;windowStart=0;frames=0;intervals=0;cadence=0;cpu=0;gpu=0;gpuCount=0;calls=0;triangles=0;sample=0;}
  function pause(){if(enabled){clearQueries();reset();}}
  document.addEventListener('visibilitychange',pause);
  return {
+  setRenderSize(width:number,height:number){renderWidth=width;renderHeight=height;},
   setEnabled(value:boolean){
    if(enabled===value)return;enabled=value;panel.hidden=!value;reset();
    renderer.info.autoReset=value?false:originalAutoReset;
@@ -51,7 +53,8 @@ export function createPerformanceMeter(renderer:THREE.WebGLRenderer,container:HT
     `GPU render   ${!timer?'Unavailable':gpuCount?(gpu/gpuCount).toFixed(2)+' ms':'Sampling…'}`,
     `Draw calls   ${Math.round(calls/frames).toLocaleString()}`,
     `Triangles    ${Math.round(triangles/frames).toLocaleString()}`,
-    `Resolution   ${size.x} × ${size.y}`,
+    `Render       ${renderWidth||size.x} × ${renderHeight||size.y}`,
+    `Output       ${size.x} × ${size.y}`,
    ].join('\n');
    windowStart=now;frames=0;intervals=0;cadence=0;cpu=0;gpu=0;gpuCount=0;calls=0;triangles=0;
   },
