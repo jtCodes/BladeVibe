@@ -63,7 +63,7 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
    float riseLight=smoothstep(rowDelay,rowDelay+.35,formationTime);
    float colorShift=smoothstep(${DISSOLVE_AT} + dissolveDelay-.85,${DISSOLVE_AT} + dissolveDelay+.05,formationTime);
    float luminousEdge=max(1.-smoothstep(.015,.09,bladeWidth),smoothstep(.78,.98,bladeWidth));
-   vec3 bladeGlow=mix(vec3(2.8,3.,3.25),vec3(6.4,.55,2.6),colorShift);
+   vec3 bladeGlow=mix(vec3(2.1,2.25,2.45),vec3(6.4,.55,2.6),colorShift);
   `);
   shader.fragmentShader=shader.fragmentShader.replace('#include <metalnessmap_fragment>',`#include <metalnessmap_fragment>
    diffuseColor.rgb=mix(diffuseColor.rgb,SAKURA_PINK,pink*.9);
@@ -80,7 +80,7 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
    totalEmissiveRadiance+=(bladeGlow*mix(luminousEdge,max(luminousEdge,.32),colorShift)*riseLight+sakuraEmission(glowDistance,dissolve,pink)*1.5)*formationPower;
   `);
  };
- material.customProgramCacheKey=()=>baseKey+'-bankai-intense-pink-v11';
+ material.customProgramCacheKey=()=>baseKey+'-bankai-soft-white-pink-v13';
  }
  const blades=new THREE.InstancedMesh(geometry,materials,BLADES);blades.frustumCulled=false;
  blades.instanceMatrix.setUsage(THREE.DynamicDrawUsage);group.add(blades);
@@ -156,7 +156,7 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
   petalGeometry.setAttribute(name,new THREE.InstancedBufferAttribute(array,size));
  }
  const petalMaterial=new THREE.MeshStandardMaterial({color:0xffa8d1,metalness:.08,roughness:.45,
-  emissive:0xff5baf,emissiveIntensity:1.1,side:THREE.DoubleSide});
+  emissive:0xff5baf,emissiveIntensity:4,side:THREE.DoubleSide});
  petalMaterial.onBeforeCompile=shader=>{
   shader.uniforms.formationTime=clock;
   shader.vertexShader=`uniform float formationTime;
@@ -232,9 +232,11 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
  let lastTime=-1;
  return {
   get glowing(){return group.visible&&clock.value>0;},
+  get pinkGlow(){return group.visible?THREE.MathUtils.smoothstep(clock.value,DISSOLVE_AT-.85,DISSOLVE_AT+.05):0;},
   start(x:number,z:number){group.position.set(x,0,z);group.visible=false;lastTime=-1;clock.value=-1;},
   hide(){group.visible=false;},
-  update(time:number,intensity:number){
+  update(time:number,intensity:number,petalGlow=4){
+   petalMaterial.emissiveIntensity=petalGlow;
    group.visible=time>=0;if(!group.visible)return;
    clock.value=time;formationPower.value=Math.min(2,Math.max(0,intensity));
    if(time!==lastTime&&(lastTime<RISE_END||time<RISE_END)){
@@ -253,7 +255,7 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
     const pink=THREE.MathUtils.smoothstep(time,release-.85,release+.05);
     const dispersal=1-THREE.MathUtils.smoothstep(time,release+DISSOLVE_DURATION*.55,release+DISSOLVE_DURATION+2.5);
     light.color.setRGB(1,1,1).lerp(spillPink,pink);
-    light.intensity=emergence*dispersal*formationPower.value*THREE.MathUtils.lerp(45,140,pink);
+    light.intensity=emergence*dispersal*formationPower.value*THREE.MathUtils.lerp(15,140,pink);
    }
    lastTime=time;
   },

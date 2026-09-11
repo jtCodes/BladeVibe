@@ -81,11 +81,11 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
   for(const [material,previous] of saved){material.clippingPlanes=previous.planes;material.clipShadows=previous.shadows;material.needsUpdate=true;}
   sword.userData.shadowRevision=(sword.userData.shadowRevision??0)+1;
  }
- return {get active(){return active;},get glowing(){return formation.glowing;},start,cancel,
-  update(dt:number,speed:number,intensity:number){
+ return {get active(){return active;},get glowing(){return formation.glowing;},get pinkGlow(){return formation.pinkGlow;},start,cancel,
+  update(dt:number,speed:number,intensity:number,petalGlow=4){
    if(!active)return;
    time+=dt*speed;if(reduced)time=contactTime+10.5;
-   formation.update(time-contactTime-2.6,intensity);
+   formation.update(time-contactTime-2.6,intensity,petalGlow);
    uniforms.power.value=Math.min(2,Math.max(0,intensity));
    uniforms.age.value=time-contactTime;
    uniforms.reveal.value=THREE.MathUtils.smoothstep(time,.2,contactTime)*(1-THREE.MathUtils.smoothstep(time,contactTime+3,contactTime+5));

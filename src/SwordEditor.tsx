@@ -7,6 +7,9 @@ import type { SwordAsset } from './swordLibrary';
 import { AppLink } from './navigation';
 
 export default function SwordEditor({sword}:{sword:SwordAsset}) {
+  const [glowStrength,setGlowStrength]=useState(.42);
+  const [glowSpread,setGlowSpread]=useState(.8);
+  const [petalGlow,setPetalGlow]=useState(4);
   const [upscaling,setUpscaling]=useState<'native'|'ultra'|'quality'>('ultra');
   const [dragTarget,setDragTarget]=useState<'sword'|'camera'>('sword');
   const [settingsOpen,setSettingsOpen]=useState(false);
@@ -44,7 +47,7 @@ export default function SwordEditor({sword}:{sword:SwordAsset}) {
 
   return <main>
     <AppLink className="gallery-back" href="/">← Gallery</AppLink>
-    <SwordViewer upscaling={upscaling} dragTarget={dragTarget} antiAliasing={antiAliasing} showPerformance={showPerformance} model={tensaActive?'tensa-zangetsu':sword.model} floorColor={floorColor} backgroundColor={backgroundColor} effect={tensaActive?'off':effect} effectSpeed={effectSpeed} effectIntensity={effectIntensity/100} cameraHeight={cameraHeight} showSheath={showSheath} swordRotation={swordRotation} rotating={rotating} resetVersion={resetVersion} draw={draw} reflections={reflections} lightAngle={lightAngle} lighting={lighting} dropVersion={dropVersion} onStatus={setStatus} />
+    <SwordViewer glowStrength={glowStrength} glowSpread={glowSpread} petalGlow={petalGlow} upscaling={upscaling} dragTarget={dragTarget} antiAliasing={antiAliasing} showPerformance={showPerformance} model={tensaActive?'tensa-zangetsu':sword.model} floorColor={floorColor} backgroundColor={backgroundColor} effect={tensaActive?'off':effect} effectSpeed={effectSpeed} effectIntensity={effectIntensity/100} cameraHeight={cameraHeight} showSheath={showSheath} swordRotation={swordRotation} rotating={rotating} resetVersion={resetVersion} draw={draw} reflections={reflections} lightAngle={lightAngle} lighting={lighting} dropVersion={dropVersion} onStatus={setStatus} />
     <button ref={settingsButton} className="settings-toggle" aria-label={settingsOpen?'Close settings':'Open settings'} aria-expanded={settingsOpen} aria-controls="sword-settings" onClick={()=>setSettingsOpen(open=>!open)}>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
         {settingsOpen?<path d="m6 6 12 12M18 6 6 18"/>:<><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="currentColor"/><circle cx="15" cy="17" r="3" fill="currentColor"/></>}
@@ -94,6 +97,14 @@ export default function SwordEditor({sword}:{sword:SwordAsset}) {
         </select></>}
         <label className="range-label" htmlFor="effect-intensity">Effect intensity <output>{effectIntensity}%</output></label>
         <input id="effect-intensity" type="range" min={0} max={200} step={5} value={effectIntensity} disabled={effect==='off'} onChange={event=>setEffectIntensity(Number(event.target.value))}/>
+        {sword.model==='senbonzakura'&&<>
+          <label className="range-label" htmlFor="glow-strength">Bankai glow strength <output>{Math.round(glowStrength*100)}%</output></label>
+          <input id="glow-strength" type="range" min={0} max={1.5} step={.01} value={glowStrength} onChange={event=>setGlowStrength(Number(event.target.value))}/>
+          <label className="range-label" htmlFor="glow-spread">Glow spread <output>{Math.round(glowSpread*100)}%</output></label>
+          <input id="glow-spread" type="range" min={0} max={1} step={.01} value={glowSpread} onChange={event=>setGlowSpread(Number(event.target.value))}/>
+          <label className="range-label" htmlFor="petal-glow">Petal glow <output>{petalGlow.toFixed(1)}×</output></label>
+          <input id="petal-glow" type="range" min={0} max={8} step={.1} value={petalGlow} onChange={event=>setPetalGlow(Number(event.target.value))}/>
+        </>}
         <label className="range-label" htmlFor="effect-speed">Effect speed <output>{effectSpeed===0?'Paused':`${effectSpeed.toFixed(1)}×`}</output></label>
         <input id="effect-speed" type="range" min={0} max={3} step={.1} value={effectSpeed} disabled={effect==='off'} onChange={event=>setEffectSpeed(Number(event.target.value))}/>
       </div>}

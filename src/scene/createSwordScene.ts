@@ -23,7 +23,7 @@ import { createBladeAura, type EffectMode } from './aura';
 import { createScabbard } from './scabbard';
 import { createCrossguard, createPommel } from './crossguard';
 export interface LightingSettings { brightness:number; key:number; fill:number; rim:number; ambient:number }
-export interface ViewerSettings { upscaling?:'native'|'ultra'|'quality'; dragTarget?:'sword'|'camera'; antiAliasing?:'standard'|'smooth'|'high'; showPerformance?:boolean; lighting?: LightingSettings; rotating: boolean; draw: number; reflections: boolean; lightAngle: number; floorColor?: string; backgroundColor?: string; cameraHeight: number; showSheath?: boolean; swordRotation?: number; effect: EffectMode; effectSpeed: number; effectIntensity: number }
+export interface ViewerSettings { glowStrength?:number; glowSpread?:number; petalGlow?:number; upscaling?:'native'|'ultra'|'quality'; dragTarget?:'sword'|'camera'; antiAliasing?:'standard'|'smooth'|'high'; showPerformance?:boolean; lighting?: LightingSettings; rotating: boolean; draw: number; reflections: boolean; lightAngle: number; floorColor?: string; backgroundColor?: string; cameraHeight: number; showSheath?: boolean; swordRotation?: number; effect: EffectMode; effectSpeed: number; effectIntensity: number }
 export interface SwordScene { update(settings: ViewerSettings): void; reset(): void; release(): boolean; dispose(): void }
 export async function createSwordScene(container: HTMLDivElement, onError: (message: string) => void, onStatus: (status: MotionStatus) => void, signal: AbortSignal, options:{preview?:boolean;model?:'longsword'|'senbonzakura'|'zangetsu'|'tensa-zangetsu'}={}): Promise<SwordScene> {
 await initializePhysics();
@@ -207,6 +207,7 @@ let renderScale=1;
 let aaMode:'standard'|'smooth'|'high'='standard';
 cleanups.push(()=>{for(const pass of composer.passes)pass.dispose();composer.dispose()});
 let cameraHeight=0,effectSpeed=1,effectIntensity=1;
+let glowStrength=.42,glowSpread=.8,petalGlow=4;
 function update(settings: ViewerSettings){
  const nextDrag=settings.dragTarget??'sword';if(nextDrag!==dragTarget)stopSwordDrag();dragTarget=nextDrag;spinRequested=settings.rotating;
  const nextAA=options.preview?'standard':settings.antiAliasing??'smooth';
@@ -224,6 +225,7 @@ function update(settings: ViewerSettings){
  if(scene.background instanceof THREE.Color)scene.background.set(settings.backgroundColor??'#141413');
  if(scene.fog)scene.fog.color.set(settings.backgroundColor??'#141413');
  effectSpeed=settings.effectSpeed;effectIntensity=settings.effectIntensity;
+ glowStrength=THREE.MathUtils.clamp(settings.glowStrength??.42,0,1.5);glowSpread=THREE.MathUtils.clamp(settings.glowSpread??.8,0,1);petalGlow=THREE.MathUtils.clamp(settings.petalGlow??4,0,8);
  if(bankai?.active&&settings.effect!=='bankai'){bankai.cancel();physics.setDraw(settings.draw/100);physics.restore();}
  if(isZangetsu)scabbard.userData.setUnwrapped(settings.draw/100);
  const showSheath=!options.preview&&settings.effect!=='bankai'&&(settings.showSheath??true);
@@ -252,7 +254,7 @@ function reset(){stopSwordDrag();physics.resetOrientation();clearArrows();bankai
 function resize(){const w=Math.max(1,container.clientWidth),h=Math.max(1,container.clientHeight);const pixelRatio=Math.min(window.devicePixelRatio,2)*(aaMode==='high'?1.25:1);renderer.setPixelRatio(pixelRatio);composer.setPixelRatio(pixelRatio*renderScale);renderer.setSize(w,h);camera.aspect=w/h;camera.fov=options.preview?34:w<700?44:34;camera.updateProjectionMatrix();composer.setSize(w,h);const renderWidth=Math.max(1,Math.floor(composer.renderTarget1.width)),renderHeight=Math.max(1,Math.floor(composer.renderTarget1.height));edgeAA.uniforms.resolution.value.set(1/renderWidth,1/renderHeight);upscale.uniforms.inputSize.value.set(renderWidth,renderHeight);meter.setRenderSize(renderWidth,renderHeight)}
 const observer=new ResizeObserver(resize);observer.observe(container);cleanups.push(()=>observer.disconnect());resize();reset();
 const clock=new THREE.Clock();let frame=0,stopped=false;
-function animate(){if(stopped)return;frame=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.1);if(document.hidden)return;meter.begin();if(bankai?.active){bankai.update(dt,effectSpeed,effectIntensity);}else{if(!options.preview&&dragTarget==='sword'&&spinRequested&&dragPointer===null)physics.rotateBy(dragTurn.setFromAxisAngle(spinAxis,dt*.07));physics.step(dt);aura.update(dt,physics.draw);}if(shikai){bloom.enabled=shikai.visible||!!bankai?.glowing;bloom.strength=.24;bloom.radius=0;}if(isZangetsu)scabbard.userData.updateCloth(dt);updateShadowCache();moveCamera(dt);controls.update(dt);updateReflectionPath();composer.render();meter.end();}
+function animate(){if(stopped)return;frame=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.1);if(document.hidden)return;meter.begin();if(bankai?.active){bankai.update(dt,effectSpeed,effectIntensity,petalGlow);}else{if(!options.preview&&dragTarget==='sword'&&spinRequested&&dragPointer===null)physics.rotateBy(dragTurn.setFromAxisAngle(spinAxis,dt*.07));physics.step(dt);aura.update(dt,physics.draw);}if(shikai){const bankaiGlow=!!bankai?.glowing;bloom.enabled=shikai.visible||bankaiGlow;bloom.strength=bankaiGlow?glowStrength*THREE.MathUtils.lerp(.6,1,bankai?.pinkGlow??0):.24;bloom.radius=bankaiGlow?glowSpread*THREE.MathUtils.lerp(.7,1,bankai?.pinkGlow??0):0;}if(isZangetsu)scabbard.userData.updateCloth(dt);updateShadowCache();moveCamera(dt);controls.update(dt);updateReflectionPath();composer.render();meter.end();}
 cleanups.push(()=>{stopped=true;cancelAnimationFrame(frame)});animate();
 function handleContextLost(event: Event){event.preventDefault();stopped=true;cancelAnimationFrame(frame);onError('The 3D renderer was interrupted. Reload this page to restore the sword.');}
 renderer.domElement.addEventListener('webglcontextlost',handleContextLost);
