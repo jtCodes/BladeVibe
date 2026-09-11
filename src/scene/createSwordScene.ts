@@ -22,7 +22,7 @@ import { createBladeAura, type EffectMode } from './aura';
 import { createScabbard } from './scabbard';
 import { createCrossguard, createPommel } from './crossguard';
 export interface LightingSettings { brightness:number; key:number; fill:number; rim:number; ambient:number }
-export interface ViewerSettings { antiAliasing?:'standard'|'smooth'|'high'; showPerformance?:boolean; lighting?: LightingSettings; rotating: boolean; draw: number; reflections: boolean; lightAngle: number; floorColor?: string; backgroundColor?: string; cameraHeight: number; showSheath?: boolean; swordRotation?: number; effect: EffectMode; effectSpeed: number; effectIntensity: number }
+export interface ViewerSettings { dragTarget?:'sword'|'camera'; antiAliasing?:'standard'|'smooth'|'high'; showPerformance?:boolean; lighting?: LightingSettings; rotating: boolean; draw: number; reflections: boolean; lightAngle: number; floorColor?: string; backgroundColor?: string; cameraHeight: number; showSheath?: boolean; swordRotation?: number; effect: EffectMode; effectSpeed: number; effectIntensity: number }
 export interface SwordScene { update(settings: ViewerSettings): void; reset(): void; release(): boolean; dispose(): void }
 export async function createSwordScene(container: HTMLDivElement, onError: (message: string) => void, onStatus: (status: MotionStatus) => void, signal: AbortSignal, options:{preview?:boolean;model?:'longsword'|'senbonzakura'|'zangetsu'|'tensa-zangetsu'}={}): Promise<SwordScene> {
 await initializePhysics();
@@ -135,6 +135,30 @@ if(shikai)cleanups.push(()=>shikai.dispose());
 const aura=shikai??createBladeAura(sword,renderer.getPixelRatio());
 const bankai=isKatana?createBankai(sword,floor,scene):null;
 if(bankai)cleanups.push(()=>bankai.dispose());
+let dragTarget:'sword'|'camera'='sword',spinRequested=false,dragPointer:number|null=null,dragX=0,dragY=0;
+const dragRight=new THREE.Vector3(),dragUp=new THREE.Vector3(),dragTurn=new THREE.Quaternion(),dragPitch=new THREE.Quaternion(),spinAxis=new THREE.Vector3(0,1,0);
+function stopSwordDrag(){if(dragPointer!==null&&renderer.domElement.hasPointerCapture(dragPointer))renderer.domElement.releasePointerCapture(dragPointer);dragPointer=null;}
+function swordPointerDown(event:PointerEvent){
+ if(dragTarget!=='sword'||event.button!==0||event.pointerType==='touch')return;
+ event.preventDefault();event.stopImmediatePropagation();renderer.domElement.focus({preventScroll:true});
+ if(bankai?.active||physics.released||physics.draw<.999)return;
+ dragPointer=event.pointerId;dragX=event.clientX;dragY=event.clientY;renderer.domElement.setPointerCapture(event.pointerId);
+}
+function swordPointerMove(event:PointerEvent){
+ if(event.pointerId!==dragPointer)return;event.preventDefault();event.stopImmediatePropagation();
+ if(bankai?.active||physics.released){stopSwordDrag();return;}
+ camera.updateMatrixWorld();dragRight.setFromMatrixColumn(camera.matrixWorld,0);dragUp.setFromMatrixColumn(camera.matrixWorld,1);
+ const sensitivity=Math.PI/Math.max(250,container.clientHeight);
+ dragTurn.setFromAxisAngle(dragUp,(event.clientX-dragX)*sensitivity);dragPitch.setFromAxisAngle(dragRight,(event.clientY-dragY)*sensitivity);
+ physics.rotateBy(dragTurn.premultiply(dragPitch));dragX=event.clientX;dragY=event.clientY;
+}
+function swordPointerUp(event:PointerEvent){if(event.pointerId===dragPointer){event.stopImmediatePropagation();stopSwordDrag();}}
+if(!options.preview){
+ renderer.domElement.addEventListener('pointerdown',swordPointerDown,true);renderer.domElement.addEventListener('pointermove',swordPointerMove,true);
+ renderer.domElement.addEventListener('pointerup',swordPointerUp,true);renderer.domElement.addEventListener('pointercancel',swordPointerUp,true);
+ renderer.domElement.addEventListener('lostpointercapture',stopSwordDrag);window.addEventListener('blur',stopSwordDrag);
+ cleanups.push(()=>{stopSwordDrag();renderer.domElement.removeEventListener('pointerdown',swordPointerDown,true);renderer.domElement.removeEventListener('pointermove',swordPointerMove,true);renderer.domElement.removeEventListener('pointerup',swordPointerUp,true);renderer.domElement.removeEventListener('pointercancel',swordPointerUp,true);renderer.domElement.removeEventListener('lostpointercapture',stopSwordDrag);window.removeEventListener('blur',stopSwordDrag);});
+}
 // The fixed studio light only needs a new shadow map when a caster moves.
 renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=true;
 const shadowPosition=new THREE.Vector3(Infinity,Infinity,Infinity),shadowRotation=new THREE.Quaternion();
@@ -181,6 +205,7 @@ let aaMode:'standard'|'smooth'|'high'='standard';
 cleanups.push(()=>{for(const pass of composer.passes)pass.dispose();composer.dispose()});
 let cameraHeight=0,effectSpeed=1,effectIntensity=1;
 function update(settings: ViewerSettings){
+ const nextDrag=settings.dragTarget??'sword';if(nextDrag!==dragTarget)stopSwordDrag();dragTarget=nextDrag;spinRequested=settings.rotating;
  const nextAA=options.preview?'standard':settings.antiAliasing??'smooth';
  if(nextAA!==aaMode){aaMode=nextAA;resize();}
  edgeAA.enabled=aaMode!=='standard';
@@ -216,13 +241,13 @@ function update(settings: ViewerSettings){
  bloom.strength=isKatana?.24:.14;
  reflectionsRequested=settings.reflections;reflections.output=SSRPass.OUTPUT.Default;updateReflectionPath();
  scene.environmentRotation.y=THREE.MathUtils.degToRad(settings.lightAngle);
- controls.autoRotate=settings.rotating&&settings.effect!=='bankai';
+ controls.autoRotate=settings.rotating&&settings.effect!=='bankai'&&(options.preview||dragTarget==='camera');
 }
-function reset(){clearArrows();bankai?.cancel();if(options.preview){camera.position.set(1.3,isZangetsu?3:4.7,isZangetsu?23:15);controls.target.set(.4,isZangetsu?3:3.65,0);controls.update();physics.setDraw(1);physics.restore();return;}const mobile=container.clientWidth<700;camera.position.set(2.1,isZangetsu?4.3:2.6,isZangetsu?30:mobile?23:24);camera.position.y+=cameraHeight;controls.target.set(0,(isZangetsu?3.4:mobile?1.1:.8)+cameraHeight,0);controls.update();physics.restore()}
+function reset(){stopSwordDrag();physics.resetOrientation();clearArrows();bankai?.cancel();if(options.preview){camera.position.set(1.3,isZangetsu?3:4.7,isZangetsu?23:15);controls.target.set(.4,isZangetsu?3:3.65,0);controls.update();physics.setDraw(1);physics.restore();return;}const mobile=container.clientWidth<700;camera.position.set(2.1,isZangetsu?4.3:2.6,isZangetsu?30:mobile?23:24);camera.position.y+=cameraHeight;controls.target.set(0,(isZangetsu?3.4:mobile?1.1:.8)+cameraHeight,0);controls.update();physics.restore()}
 function resize(){const w=Math.max(1,container.clientWidth),h=Math.max(1,container.clientHeight);const pixelRatio=Math.min(window.devicePixelRatio,2)*(aaMode==='high'?1.25:1);renderer.setPixelRatio(pixelRatio);composer.setPixelRatio(pixelRatio);renderer.setSize(w,h);camera.aspect=w/h;camera.fov=options.preview?34:w<700?44:34;camera.updateProjectionMatrix();composer.setSize(w,h);edgeAA.uniforms.resolution.value.set(1/Math.max(1,Math.floor(w*pixelRatio)),1/Math.max(1,Math.floor(h*pixelRatio)))}
 const observer=new ResizeObserver(resize);observer.observe(container);cleanups.push(()=>observer.disconnect());resize();reset();
 const clock=new THREE.Clock();let frame=0,stopped=false;
-function animate(){if(stopped)return;frame=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.1);if(document.hidden)return;meter.begin();if(bankai?.active){bankai.update(dt,effectSpeed,effectIntensity);}else{physics.step(dt);aura.update(dt,physics.draw);}if(shikai){bloom.enabled=shikai.visible||!!bankai?.glowing;bloom.strength=.24;bloom.radius=0;}if(isZangetsu)scabbard.userData.updateCloth(dt);updateShadowCache();moveCamera(dt);controls.update(dt);updateReflectionPath();composer.render();meter.end();}
+function animate(){if(stopped)return;frame=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.1);if(document.hidden)return;meter.begin();if(bankai?.active){bankai.update(dt,effectSpeed,effectIntensity);}else{if(!options.preview&&dragTarget==='sword'&&spinRequested&&dragPointer===null)physics.rotateBy(dragTurn.setFromAxisAngle(spinAxis,dt*.07));physics.step(dt);aura.update(dt,physics.draw);}if(shikai){bloom.enabled=shikai.visible||!!bankai?.glowing;bloom.strength=.24;bloom.radius=0;}if(isZangetsu)scabbard.userData.updateCloth(dt);updateShadowCache();moveCamera(dt);controls.update(dt);updateReflectionPath();composer.render();meter.end();}
 cleanups.push(()=>{stopped=true;cancelAnimationFrame(frame)});animate();
 function handleContextLost(event: Event){event.preventDefault();stopped=true;cancelAnimationFrame(frame);onError('The 3D renderer was interrupted. Reload this page to restore the sword.');}
 renderer.domElement.addEventListener('webglcontextlost',handleContextLost);

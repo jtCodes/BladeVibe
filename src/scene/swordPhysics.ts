@@ -34,6 +34,7 @@ export function createSwordPhysics(sword: THREE.Group, onStatus: (status: Motion
   let draw=options.unsheathed?1:0,target=draw,accumulator=0,released=false,status: MotionStatus='sheathed';
   function notify(next: MotionStatus){if(next!==status){status=next;onStatus(next)}}
   let displayAngle=0;
+  const dragRotation=new THREE.Quaternion(),identityRotation=new THREE.Quaternion();
   const displayRotation=new THREE.Quaternion(),posedRotation=new THREE.Quaternion();
   const centerBefore=new THREE.Vector3(),centerAfter=new THREE.Vector3();
   function position(){
@@ -47,8 +48,10 @@ export function createSwordPhysics(sword: THREE.Group, onStatus: (status: Motion
   }
   const drawRotation=new THREE.Quaternion(),curveRotation=new THREE.Quaternion(),zAxis=new THREE.Vector3(0,0,1);
   function baseOrientation(){return options.curveRadius?drawRotation.copy(rotation).multiply(curveRotation.setFromAxisAngle(zAxis,draw*DRAW_DISTANCE/options.curveRadius)):rotation;}
-  function orientation(){return posedRotation.copy(baseOrientation()).premultiply(displayRotation.setFromAxisAngle(zAxis,draw>=.999?displayAngle:0));}
-  function setRotation(degrees:number){if(!released)displayAngle=THREE.MathUtils.degToRad(degrees);}
+  function orientation(){return posedRotation.copy(baseOrientation()).premultiply(displayRotation.setFromAxisAngle(zAxis,draw>=.999?displayAngle:0)).premultiply(draw>=.999?dragRotation:identityRotation);}
+  function setRotation(degrees:number){if(!released){const angle=THREE.MathUtils.degToRad(degrees);if(angle!==displayAngle)dragRotation.identity();displayAngle=angle;}}
+  function rotateBy(delta:THREE.Quaternion){if(!released&&draw>=.999)dragRotation.premultiply(delta).normalize();}
+  function resetOrientation(){dragRotation.identity();}
   const previousPosition=new THREE.Vector3(),previousRotation=new THREE.Quaternion();
   const currentPosition=new THREE.Vector3(),currentRotation=new THREE.Quaternion();
   function capture(){const p=body.translation(),q=body.rotation();currentPosition.set(p.x/scale,p.y/scale,p.z/scale);currentRotation.set(q.x,q.y,q.z,q.w)}
@@ -65,5 +68,5 @@ export function createSwordPhysics(sword: THREE.Group, onStatus: (status: Motion
     sync();if(released&&body.isSleeping())notify('resting');
   }
   restore();onStatus(status);
-  return {setDraw,setRotation,release,restore,step,get draw(){return draw},get released(){return released},world,body,dispose(){world.free()}};
+  return {setDraw,setRotation,rotateBy,resetOrientation,release,restore,step,get draw(){return draw},get released(){return released},world,body,dispose(){world.free()}};
 }

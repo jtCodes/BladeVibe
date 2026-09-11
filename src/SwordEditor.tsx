@@ -7,6 +7,7 @@ import type { SwordAsset } from './swordLibrary';
 import { AppLink } from './navigation';
 
 export default function SwordEditor({sword}:{sword:SwordAsset}) {
+  const [dragTarget,setDragTarget]=useState<'sword'|'camera'>('sword');
   const [settingsOpen,setSettingsOpen]=useState(false);
   const [showPerformance,setShowPerformance]=useState(false);
   const [antiAliasing,setAntiAliasing]=useState<'standard'|'smooth'|'high'>('smooth');
@@ -42,7 +43,7 @@ export default function SwordEditor({sword}:{sword:SwordAsset}) {
 
   return <main>
     <AppLink className="gallery-back" href="/">← Gallery</AppLink>
-    <SwordViewer antiAliasing={antiAliasing} showPerformance={showPerformance} model={tensaActive?'tensa-zangetsu':sword.model} floorColor={floorColor} backgroundColor={backgroundColor} effect={tensaActive?'off':effect} effectSpeed={effectSpeed} effectIntensity={effectIntensity/100} cameraHeight={cameraHeight} showSheath={showSheath} swordRotation={swordRotation} rotating={rotating} resetVersion={resetVersion} draw={draw} reflections={reflections} lightAngle={lightAngle} lighting={lighting} dropVersion={dropVersion} onStatus={setStatus} />
+    <SwordViewer dragTarget={dragTarget} antiAliasing={antiAliasing} showPerformance={showPerformance} model={tensaActive?'tensa-zangetsu':sword.model} floorColor={floorColor} backgroundColor={backgroundColor} effect={tensaActive?'off':effect} effectSpeed={effectSpeed} effectIntensity={effectIntensity/100} cameraHeight={cameraHeight} showSheath={showSheath} swordRotation={swordRotation} rotating={rotating} resetVersion={resetVersion} draw={draw} reflections={reflections} lightAngle={lightAngle} lighting={lighting} dropVersion={dropVersion} onStatus={setStatus} />
     <button ref={settingsButton} className="settings-toggle" aria-label={settingsOpen?'Close settings':'Open settings'} aria-expanded={settingsOpen} aria-controls="sword-settings" onClick={()=>setSettingsOpen(open=>!open)}>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
         {settingsOpen?<path d="m6 6 12 12M18 6 6 18"/>:<><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="currentColor"/><circle cx="15" cy="17" r="3" fill="currentColor"/></>}
@@ -57,6 +58,11 @@ export default function SwordEditor({sword}:{sword:SwordAsset}) {
           <option value="standard">Standard</option><option value="smooth">Smooth</option><option value="high">High · extra resolution</option>
         </select>
         <p className="motion-status">High renders 56% more pixels. Smooth may soften fine detail.</p>
+      </div>
+      <div className="lighting-controls effects-controls">
+        <label className="range-label" htmlFor="drag-target">Left-drag controls</label>
+        <select id="drag-target" value={dragTarget} onChange={event=>setDragTarget(event.target.value as typeof dragTarget)}><option value="sword">Sword</option><option value="camera">Camera</option></select>
+        <p className="motion-status">Sword rotation is available when drawn and on display. Right-drag pans the camera; scroll zooms.</p>
       </div>
       <div className="motion-panel">
         {hasSheath&&<label className="reflection-toggle"><input type="checkbox" checked={showSheath} disabled={bankaiCinematic} onChange={event=>setShowSheath(event.target.checked)}/>{clothWrapped?'Show blade wrapping':'Show sheath'}</label>}
@@ -111,7 +117,7 @@ export default function SwordEditor({sword}:{sword:SwordAsset}) {
       <div className="actions"><button id="spin" aria-pressed={rotating} onClick={() => setRotating(value => !value)}>{rotating ? 'Pause rotation' : 'Resume rotation'}</button><button id="reset" onClick={() => {setCameraHeight(0);if(bankaiCinematic)setEffect('off');setResetVersion(value => value + 1)}}>Reset view</button></div>
       <details className="sword-info"><summary>About this sword &amp; controls</summary>
         <h3>{sword.name}</h3><p>{sword.description}</p>
-        <p>Drag to rotate · Arrow keys to move · Right-drag or two-finger drag to pan · Pinch or scroll to zoom</p>
+        <p>Left-drag follows your selected mode · Arrow keys to move · Right-drag or two-finger drag to pan · Pinch or scroll to zoom</p>
         <p className="study-credit">AETHER / FORGE · SWORD STUDY 001</p>
       </details>
     </aside>}
