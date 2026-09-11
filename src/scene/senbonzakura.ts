@@ -5,7 +5,7 @@ export const KATANA_RADIUS=38;
 const LENGTH=5.02;
 function bend(x:number,y:number,z:number){const a=y/KATANA_RADIUS;return new THREE.Vector3(KATANA_RADIUS*(1-Math.cos(a))+x*Math.cos(a),KATANA_RADIUS*Math.sin(a)-x*Math.sin(a),z);}
 const cross=[[-.105,-.022],[-.12,0],[-.105,.022],[-.018,.040],[.135,0],[-.018,-.040]];
-export function createKatanaBladeGeometry(){
+export function createKatanaBladeGeometry(options:{straight?:boolean}={}){
  const positions:number[]=[],uv:number[]=[],indices:number[]=[],rows=100;
  const geometry=new THREE.BufferGeometry();
  for(let face=0;face<cross.length;face++){
@@ -14,7 +14,8 @@ export function createKatanaBladeGeometry(){
    const y=-.08+(LENGTH+.08)*row/rows,taper=1.-.22*Math.max(0,y)/LENGTH;
    const tip=THREE.MathUtils.clamp((y-4.60)/(LENGTH-4.60),0,1);
    for(const [x,z] of [cross[face],cross[(face+1)%cross.length]]){
-    const p=bend((x*(1-tip)+.135*tip)*taper,y,z*taper*(1-tip));positions.push(p.x,p.y,p.z);uv.push((x+.12)/.255,y/LENGTH);
+    const bladeX=(x*(1-tip)+.135*tip)*taper,bladeZ=z*taper*(1-tip);
+    const p=options.straight?new THREE.Vector3(bladeX,y,bladeZ):bend(bladeX,y,bladeZ);positions.push(p.x,p.y,p.z);uv.push((x+.12)/.255,y/LENGTH);
    }
   }
   for(let row=0;row<rows;row++){const a=base+row*2;indices.push(a,a+1,a+2,a+1,a+3,a+2);}

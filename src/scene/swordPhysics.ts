@@ -24,7 +24,7 @@ export function createSwordPhysics(sword: THREE.Group, onStatus: (status: Motion
   const bladeShape=RAPIER.ColliderDesc.convexHull(Float32Array.from(bladeGeometry.attributes.position.array,value=>value*scale));
   if(!bladeShape)throw new Error('Invalid blade collision geometry');
   world.createCollider(bladeShape.setMass(.95).setFriction(.65).setRestitution(.08),body);bladeGeometry.dispose();
-  if(options.unsheathed){collider(.13,.9,.105,-.95,.25);}else if(options.katana){collider(.34,.035,.255,0,.18);collider(.125,.84,.095,-.88,.25);}else{collider(.83,.05,.06,0,.22);collider(.12,.88,.10,-.96,.12);collider(.212,.212,.085,-2.035,.18);}
+  if(options.unsheathed){collider(.13,.9,.105,-.95,.25);if(options.katana)collider(.406,.032,.334,0,.18);}else if(options.katana){collider(.34,.035,.255,0,.18);collider(.125,.84,.095,-.88,.25);}else{collider(.83,.05,.06,0,.22);collider(.12,.88,.10,-.96,.12);collider(.212,.212,.085,-2.035,.18);}
   world.createCollider(RAPIER.ColliderDesc.cuboid(30*scale,.1,30*scale).setTranslation(0,FLOOR_Y*scale-.1,0).setFriction(.8).setRestitution(.08));
   if(!options.unsheathed){
   const sheath = world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setRotation(rotation));

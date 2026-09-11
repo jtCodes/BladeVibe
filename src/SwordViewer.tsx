@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { createSwordScene, type SwordScene, type ViewerSettings } from './scene/createSwordScene';
 import type { MotionStatus } from './scene/swordPhysics';
-interface Props extends ViewerSettings { model?:'longsword'|'senbonzakura'|'zangetsu'; resetVersion: number; dropVersion: number; onStatus: (status: MotionStatus) => void }
+interface Props extends ViewerSettings { model?:'longsword'|'senbonzakura'|'zangetsu'|'tensa-zangetsu'; resetVersion: number; dropVersion: number; onStatus: (status: MotionStatus) => void }
 export function SwordViewer({ model='longsword', floorColor='#141413', rotating, draw, reflections, lightAngle, cameraHeight,showSheath=true,swordRotation=0,effect,effectSpeed,effectIntensity, resetVersion, dropVersion, onStatus }: Props) {
  const container=useRef<HTMLDivElement>(null), scene=useRef<SwordScene|null>(null);
  const [error,setError]=useState<string|null>(null),[ready,setReady]=useState(false);
  const settings=useRef({rotating,draw,reflections,lightAngle,floorColor,cameraHeight,showSheath,swordRotation,effect,effectSpeed,effectIntensity});settings.current={rotating,draw,reflections,lightAngle,floorColor,cameraHeight,showSheath,swordRotation,effect,effectSpeed,effectIntensity};
  useEffect(()=>{
   if(!container.current)return;
-  const element=container.current;
+  const element=container.current;setReady(false);setError(null);
   // Safari can otherwise claim native pinch/scroll gestures over the canvas.
   // Keep this local so the controls and browser accessibility zoom stay usable.
   const preventNativeGesture=(event: Event)=>{if(event.cancelable)event.preventDefault()};
