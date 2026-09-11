@@ -6,7 +6,9 @@ import {FLOOR_Y} from './swordPhysics';
 export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scene){
  const formation=createBankaiFormation(scene,sword);
  const waterY=FLOOR_Y+.002;
- const plane=new THREE.Plane(new THREE.Vector3(0,1,0),-waterY);
+ // Retain one shader layout in both forms; only the plane's uniform moves.
+ const inactivePlaneDistance=1e6;
+ const plane=new THREE.Plane(new THREE.Vector3(0,1,0),inactivePlaneDistance);
  const saved=new Map<THREE.Material,{planes:THREE.Plane[]|null;shadows:boolean}>();
  sword.traverse(object=>{
   if(!(object instanceof THREE.Mesh))return;
@@ -14,6 +16,9 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
    if(material&&!saved.has(material))saved.set(material,{planes:material.clippingPlanes,shadows:material.clipShadows});
   }
  });
+ for(const [material,previous] of saved){
+  material.clippingPlanes=[...(previous.planes??[]),plane];material.clipShadows=true;material.needsUpdate=true;
+ }
  const uniforms={age:{value:-1},reveal:{value:0},power:{value:1},rippleCenter:{value:new THREE.Vector2()}};
  const originalGeometry=floor.geometry,originalMaterial=floor.material;
  const rippleMaterial=(floor.material as THREE.MeshStandardMaterial).clone();
@@ -79,12 +84,12 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
   fallDistance=pose.distance;fallDuration=pose.duration;contactTime=pose.contactTime;
   formation.start(endPosition.x,endPosition.z);
   uniforms.rippleCenter.value.set(endPosition.x,-endPosition.z);uniforms.age.value=-1;uniforms.reveal.value=0;
-  for(const [material,previous] of saved){material.clippingPlanes=[...(previous.planes??[]),plane];material.clipShadows=true;material.needsUpdate=true;}
+  plane.constant=-waterY;
  }
  function cancel(){
   if(!active)return;
   active=false;formation.hide();sword.visible=true;floor.geometry=originalGeometry;floor.material=originalMaterial;
-  for(const [material,previous] of saved){material.clippingPlanes=previous.planes;material.clipShadows=previous.shadows;material.needsUpdate=true;}
+  plane.constant=inactivePlaneDistance;
   sword.userData.shadowRevision=(sword.userData.shadowRevision??0)+1;
  }
  // All phase state derives from one clock, so scrubbing never needs to replay the drop.
@@ -115,8 +120,32 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
    }
    sword.visible=visible;furthestTime=Math.max(furthestTime,time);
  }
+ async function warmup(renderFrame:()=>Promise<void>){
+  if(active)return;
+  const pose={position:sword.position.clone(),rotation:sword.quaternion.clone(),visible:sword.visible};
+  const state={time,furthestTime,contactTime,fallDistance,fallDuration,manualTimeline,
+   startPosition:startPosition.clone(),startRotation:startRotation.clone(),endPosition:endPosition.clone(),center:center.clone(),temp:temp.clone(),
+   geometry:floor.geometry,material:floor.material,shadowRevision:sword.userData.shadowRevision,
+   hadShadowRevision:Object.hasOwn(sword.userData,'shadowRevision'),age:uniforms.age.value,reveal:uniforms.reveal.value,power:uniforms.power.value,rippleCenter:uniforms.rippleCenter.value.clone()};
+  try{
+   start();
+   // Warm clipped drop, overlapping lights, complete rows, and released particles.
+   for(const sample of [0,contactTime+2.7,contactTime+2.6+4.5,contactTime+2.6+formation.duration]){
+    const previous=time;time=sample;render(previous);await renderFrame();
+   }
+  }finally{
+   cancel();
+   sword.position.copy(pose.position);sword.quaternion.copy(pose.rotation);sword.visible=pose.visible;
+   floor.geometry=state.geometry;floor.material=state.material;
+   time=state.time;furthestTime=state.furthestTime;contactTime=state.contactTime;fallDistance=state.fallDistance;fallDuration=state.fallDuration;manualTimeline=state.manualTimeline;
+   startPosition.copy(state.startPosition);startRotation.copy(state.startRotation);endPosition.copy(state.endPosition);center.copy(state.center);temp.copy(state.temp);
+   uniforms.age.value=state.age;uniforms.reveal.value=state.reveal;uniforms.power.value=state.power;uniforms.rippleCenter.value.copy(state.rippleCenter);
+   formation.update(-1,intensity,petalGlow);formation.start(endPosition.x,endPosition.z);
+   if(state.hadShadowRevision)sword.userData.shadowRevision=state.shadowRevision;else delete sword.userData.shadowRevision;
+  }
+ }
  return {get active(){return active;},get glowing(){return formation.glowing;},get pinkGlow(){return formation.pinkGlow;},
-  get time(){return time;},get duration(){return active?Math.max(contactTime+2.6+formation.duration,furthestTime):releasePose(sword.position,sword.quaternion).contactTime+2.6+formation.duration;},start,cancel,
+  get time(){return time;},get duration(){return active?Math.max(contactTime+2.6+formation.duration,furthestTime):releasePose(sword.position,sword.quaternion).contactTime+2.6+formation.duration;},start,cancel,warmup,
   seek(seconds:number){
    if(!Number.isFinite(seconds))return;
    if(!active)start();
@@ -129,6 +158,10 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
    // An explicit inspection overrides reduced-motion skipping until the next release.
    if(reduced&&!manualTimeline&&dt>0)time=contactTime+10.5;
    render(previous);
-  },dispose(){cancel();formation.dispose();rippleGeometry.dispose();rippleMaterial.dispose();}
+  },dispose(){
+   cancel();
+   for(const [material,previous] of saved){material.clippingPlanes=previous.planes;material.clipShadows=previous.shadows;material.needsUpdate=true;}
+   formation.dispose();rippleGeometry.dispose();rippleMaterial.dispose();
+  }
  };
 }

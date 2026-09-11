@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type {SakuraParticleData} from './sakuraParticleData';
 
 // Each effect owns its geometry so its existing disposal and attributes stay independent.
 export function createSakuraPetalGeometry(segments:number){
@@ -19,11 +20,7 @@ export function createSakuraRandom(seed:number){
  return ()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
 }
 
-export interface SakuraParticleData {
- origins:Float32Array; velocities:Float32Array; spins:Float32Array;
- releases:Float32Array; sizes:Float32Array; phases:Float32Array;
-}
-export function createSakuraParticles(data:SakuraParticleData,clock:THREE.IUniform<number>,random:()=>number){
+export function createSakuraParticles(data:SakuraParticleData,clock:THREE.IUniform<number>){
  const {origins,velocities,spins,releases,sizes,phases}=data,COUNT=sizes.length;
  const petalGeometry=createSakuraPetalGeometry(4);
  for(const [name,array,size] of [['petalOrigin',origins,3],['petalVelocity',velocities,3],['petalSpin',spins,3],['petalRelease',releases,1],['petalSize',sizes,1],['petalPhase',phases,1]] as const){
@@ -59,15 +56,8 @@ export function createSakuraParticles(data:SakuraParticleData,clock:THREE.IUnifo
  };
  petalMaterial.customProgramCacheKey=()=> 'bankai-row-petals-early-spread-v2';
  const petals=new THREE.InstancedMesh(petalGeometry,petalMaterial,COUNT);petals.frustumCulled=false;petals.visible=false;
- const identity=new THREE.Matrix4();for(let i=0;i<COUNT;i++)petals.setMatrixAt(i,identity);petals.instanceMatrix.needsUpdate=true;
  // A separate fine layer gives depth between the larger, cupped petals.
- const DUST_COUNT=COUNT*2,dustPositions=new Float32Array(DUST_COUNT*3),dustVelocity=new Float32Array(DUST_COUNT*3),dustRelease=new Float32Array(DUST_COUNT),dustPhase=new Float32Array(DUST_COUNT);
- for(let i=0;i<DUST_COUNT;i++){
-  const source=i%COUNT;
-  dustPositions.set(origins.subarray(source*3,source*3+3),i*3);
-  dustVelocity.set([velocities[source*3]*.65+(random()-.5),.2+random()*.8,velocities[source*3+2]*.65+(random()-.5)],i*3);
-  dustRelease[i]=releases[source];dustPhase[i]=random()*Math.PI*2;
- }
+ const DUST_COUNT=COUNT*2,{dustPositions,dustVelocity,dustRelease,dustPhase}=data;
  const dustGeometry=new THREE.BufferGeometry();
  dustGeometry.setAttribute('position',new THREE.BufferAttribute(dustPositions,3));
  dustGeometry.setAttribute('drift',new THREE.BufferAttribute(dustVelocity,3));

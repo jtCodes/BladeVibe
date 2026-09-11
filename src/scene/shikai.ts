@@ -1,10 +1,11 @@
-import {createSakuraParticles,createSakuraSurfaceSampler,createSakuraRandom} from './sakuraPetals';
+import {getSakuraData} from './sakuraAssets';
+import {createSakuraParticles} from './sakuraPetals';
 import {addSakuraGlow,addSakuraSurfaceTransition,sakuraPinkBuild} from './sakuraGlow';
-import {petalBreakup,PETAL_BREAKUP_GLSL} from './petalBreakup';
+import {PETAL_BREAKUP_GLSL} from './petalBreakup';
 import * as THREE from 'three';
 import type {EffectMode} from './aura';
 
-const HEIGHT=5.02,DISSOLVE_AT=.85,DISSOLVE_DURATION=1.9;
+import {SHIKAI_HEIGHT as HEIGHT,SHIKAI_DISSOLVE_AT as DISSOLVE_AT,SHIKAI_DISSOLVE_DURATION as DISSOLVE_DURATION} from './sakuraLayout';
 export function createShikai(sword:THREE.Group){
  const blade=sword.getObjectByName('senbonzakura-blade') as THREE.Mesh;
  const clock={value:0},power={value:1};
@@ -34,20 +35,7 @@ export function createShikai(sword:THREE.Group){
   };material.customProgramCacheKey=()=>key+'-shikai-bankai-release-v3';material.needsUpdate=true;
  }
  const depth=new THREE.MeshDepthMaterial({depthPacking:THREE.RGBADepthPacking});depth.onBeforeCompile=inject;depth.customProgramCacheKey=()=> 'shikai-bankai-depth-v1';blade.customDepthMaterial=depth;
- const count=3000,random=createSakuraRandom(391),sampleSurface=createSakuraSurfaceSampler(blade.geometry,random);
- const origins=new Float32Array(count*3),velocities=new Float32Array(count*3),spins=new Float32Array(count*3);
- const releases=new Float32Array(count),sizes=new Float32Array(count),phases=new Float32Array(count);
- for(let i=0;i<count;i++){
-  let p=sampleSurface();while(p.y<=0)p=sampleSurface();
-  const threshold=THREE.MathUtils.clamp(1-p.y/HEIGHT+petalBreakup(p.x,p.y,0),.003,.997);
-  origins.set([p.x,p.y,p.z],i*3);
-  const angle=random()*Math.PI*2,launch=.7+random()*2;
-  velocities.set([Math.cos(angle)*launch,(random()-.5)*1.6,Math.sin(angle)*launch],i*3);
-  spins.set([(random()-.5)*3,(random()-.5)*4,(random()-.5)*3],i*3);
-  releases[i]=DISSOLVE_AT+DISSOLVE_DURATION*threshold;
-  sizes[i]=.055+Math.pow(random(),2)*.16;phases[i]=random()*Math.PI*2;
- }
- const particles=createSakuraParticles({origins,velocities,spins,releases,sizes,phases},clock,random);
+ const particles=createSakuraParticles(getSakuraData('shikai'),clock);
  sword.add(particles.petals,particles.dust);
  const light=new THREE.PointLight(0xff7ac4,0,0,2);light.position.set(0,2,.5);sword.add(light);
  let emission=4;

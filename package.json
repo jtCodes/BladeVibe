@@ -7,7 +7,9 @@
     "dev": "vite --host 127.0.0.1",
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview --host 127.0.0.1"
+    "preview": "vite preview --host 127.0.0.1",
+    "assets:bake": "node scripts/bake-surface-assets.mjs && node scripts/bake-sakura-assets.mjs",
+    "assets:check": "node scripts/bake-surface-assets.mjs --check && node scripts/bake-sakura-assets.mjs --check"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.17.3",

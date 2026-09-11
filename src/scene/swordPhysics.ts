@@ -5,7 +5,8 @@ import {createBladeGeometry} from './craft';
 
 export type MotionStatus = 'sheathed' | 'drawing' | 'drawn' | 'falling' | 'resting';
 export const METERS_PER_UNIT = 0.16;
-export const FLOOR_Y = -5.5;
+import {FLOOR_Y} from './sceneDimensions';
+export {FLOOR_Y} from './sceneDimensions';
 export const DRAW_DISTANCE = 5.15;
 let initialization: Promise<void> | undefined;
 export function initializePhysics() { return initialization ??= RAPIER.init(); }

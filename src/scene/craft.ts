@@ -1,12 +1,11 @@
 import * as THREE from 'three';
+import {getSurfacePixels,type SurfaceKind} from './surfaceAssets';
 
-// Reproducible surface maps: scratches affect roughness and relief, not baked lighting.
-function randomSource(seed: number){return ()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};}
 type SurfaceMaps={map:THREE.DataTexture;roughnessMap:THREE.DataTexture;bumpMap:THREE.DataTexture};
 const surfaceCache=new WeakMap<THREE.WebGLRenderer,Map<string,SurfaceMaps>>();
 // Scene cleanup owns texture disposal; drop references when its renderer retires.
 export function clearSurfaceMapCache(renderer:THREE.WebGLRenderer){surfaceCache.delete(renderer)}
-export function surfaceMaps(kind: 'steel' | 'gold' | 'leather',renderer: THREE.WebGLRenderer,repeat:[number,number]=[1,1]):SurfaceMaps{
+export function surfaceMaps(kind:SurfaceKind,renderer: THREE.WebGLRenderer,repeat:[number,number]=[1,1]):SurfaceMaps{
  let cache=surfaceCache.get(renderer);if(!cache){cache=new Map();surfaceCache.set(renderer,cache)}
  const key=`${kind}:${repeat[0]}:${repeat[1]}`,cached=cache.get(key);if(cached)return cached;
  // Tiling variants share pixel data and GPU source, but retain separate UV transforms.
@@ -17,21 +16,9 @@ export function surfaceMaps(kind: 'steel' | 'gold' | 'leather',renderer: THREE.W
   cache.set(key,result);return result;
  }
 
- const w=kind==='steel'?512:256,h=kind==='steel'?1024:512,random=randomSource(kind==='steel'?49:kind==='gold'?78:96);
- const heights=new Float32Array(w*h),values=new Float32Array(w*h),albedo=new Float32Array(w*h);
- const grain=Array.from({length:w},()=>random());
- for(let y=0;y<h;y++)for(let x=0;x<w;x++){
-  const i=y*w+x,n=random(),cloud=(Math.sin(x*.041+Math.sin(y*.017)*2)+Math.sin(y*.026+x*.013))/4+.5;
-  if(kind==='steel'){heights[i]=.48+grain[x]*.025+n*.012;values[i]=.30+grain[x]*.1+cloud*.065+n*.025;albedo[i]=.89+cloud*.06;}
-  else if(kind==='gold'){heights[i]=.46+cloud*.04+n*.035;values[i]=.38+cloud*.19+n*.05;albedo[i]=.77+cloud*.19;}
-  else {const cell=Math.sin(x*.59+Math.sin(y*.31))*Math.sin(y*.67+Math.sin(x*.28));heights[i]=.45+cell*.11+n*.1;values[i]=.76+cloud*.12+n*.07;albedo[i]=.58+cloud*.28+n*.12;}
- }
- if(kind!=='leather')for(let k=0;k<(kind==='steel'?440:160);k++){
-  const x0=random()*w,y0=random()*h,len=4+random()*70,dx=(random()-.5)*(kind==='steel'?.10:.8),depth=.015+random()*.04;
-  for(let j=0;j<len;j++){const x=Math.floor(x0+j*dx),y=Math.floor(y0+j);if(x<0||x>=w||y>=h)continue;const i=y*w+x;heights[i]-=depth;values[i]=Math.min(.82,values[i]+.13);}
- }
- function texture(values: Float32Array,color=false){const bytes=new Uint8Array(w*h*4);for(let i=0;i<values.length;i++){const v=Math.round(THREE.MathUtils.clamp(values[i],0,1)*255);bytes.set([v,v,v,255],i*4);}const t=new THREE.DataTexture(bytes,w,h);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.magFilter=THREE.LinearFilter;t.minFilter=THREE.LinearMipmapLinearFilter;t.generateMipmaps=true;t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());if(color)t.colorSpace=THREE.SRGBColorSpace;t.needsUpdate=true;return t;}
- const result={map:texture(albedo,true),roughnessMap:texture(values),bumpMap:texture(heights)};cache.set(key,result);return result;
+ const pixels=getSurfacePixels(kind),{width:w,height:h}=pixels;
+ function texture(bytes:Uint8Array<ArrayBuffer>,color=false){const t=new THREE.DataTexture(bytes,w,h);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.magFilter=THREE.LinearFilter;t.minFilter=THREE.LinearMipmapLinearFilter;t.generateMipmaps=true;t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());if(color)t.colorSpace=THREE.SRGBColorSpace;t.needsUpdate=true;return t;}
+ const result={map:texture(pixels.map,true),roughnessMap:texture(pixels.roughnessMap),bumpMap:texture(pixels.bumpMap)};cache.set(key,result);return result;
 }
 // The blade shoulder continues through the guard into a concealed tang.
 export const bladeStations=[[-.14,.12,1],[-.04,.20,1],[0,.27,1],[.55,.27,1],[.84,.263,.97],[3.84,.205,.72],[4.52,.13,.48],[5.02,.0005,.008]];

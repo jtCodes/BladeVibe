@@ -1,19 +1,11 @@
-import {createSakuraParticles,createSakuraSurfaceSampler,createSakuraRandom} from './sakuraPetals';
-import {petalBreakup,PETAL_BREAKUP_GLSL} from './petalBreakup';
+import {getSakuraData} from './sakuraAssets';
+import {createSakuraParticles} from './sakuraPetals';
+import {PETAL_BREAKUP_GLSL} from './petalBreakup';
 import {addSakuraGlow,addSakuraSurfaceTransition,sakuraPinkBuild} from './sakuraGlow';
 import * as THREE from 'three';
 import {FLOOR_Y} from './swordPhysics';
 
-const HEIGHT=12,PAIRS=24,BLADES=PAIRS*2;
-const RISE_STAGGER=.1,DISSOLVE_WINDOW=.65;
-const RISE_END=(PAIRS-1)*RISE_STAGGER+2.1;
-const DISSOLVE_AT=RISE_END+1.1,DISSOLVE_DURATION=1.9;
-const DISSOLVE_END=DISSOLVE_AT+DISSOLVE_WINDOW+DISSOLVE_DURATION;
-// Match the surface breakup field on the CPU so particles leave only removed steel.
-function breakupThreshold(p:THREE.Vector3,delay:number){
- const noise=petalBreakup(p.x,p.y,delay);
- return THREE.MathUtils.clamp(1-p.y/HEIGHT+noise,.003,.997);
-}
+import {BANKAI_HEIGHT as HEIGHT,BANKAI_BLADES as BLADES,BANKAI_RISE_END as RISE_END,BANKAI_DISSOLVE_AT as DISSOLVE_AT,BANKAI_DISSOLVE_DURATION as DISSOLVE_DURATION,BANKAI_DISSOLVE_END as DISSOLVE_END,createBankaiRows} from './sakuraLayout';
 
 export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
  const group=new THREE.Group();group.visible=false;scene.add(group);
@@ -25,15 +17,8 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
  geometry.scale(enlargement,enlargement,enlargement);
  const sourceMaterials=Array.isArray(source.material)?source.material:[source.material];
  const materials=sourceMaterials.map(sourceMaterial=>sourceMaterial.clone());
- const delays=new Float32Array(BLADES);
- for(let i=0;i<BLADES;i++)delays[i]=(PAIRS-1-Math.floor(i/2))*RISE_STAGGER;
+ const {delays,dissolveDelays,placement}=createBankaiRows();
  geometry.setAttribute('bladeDelay',new THREE.InstancedBufferAttribute(delays,1));
- // Compress the front rows together while preserving the back-to-front order.
- // Share these exact times with particle emission so petals stay attached until release.
- const dissolveDelays=Float32Array.from(delays,delay=>{
-  const depth=delay/((PAIRS-1)*RISE_STAGGER);
-  return DISSOLVE_WINDOW*(1-Math.pow(1-depth,2));
- });
  geometry.setAttribute('bladeDissolveDelay',new THREE.InstancedBufferAttribute(dissolveDelays,1));
  for(let index=0;index<materials.length;index++){
  const material=materials[index],original=sourceMaterials[index];
@@ -81,7 +66,6 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
  const blades=new THREE.InstancedMesh(geometry,materials,BLADES);blades.frustumCulled=false;
  blades.instanceMatrix.setUsage(THREE.DynamicDrawUsage);group.add(blades);
  const dummy=new THREE.Object3D();
- const placement=Array.from({length:BLADES},(_,i)=>({side:i%2===0?-1:1,z:2-Math.floor(i/2)*2.05,delay:delays[i]}));
  // Soft contact occlusion anchors the roots without another shadow-map render.
  const contactGeometry=new THREE.PlaneGeometry(2.2,1.2);
  contactGeometry.setAttribute('riseDelay',new THREE.InstancedBufferAttribute(delays,1));
@@ -110,25 +94,7 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
  }
  contacts.instanceMatrix.needsUpdate=true;group.add(contacts);
 
- const COUNT=12000;
- const origins=new Float32Array(COUNT*3),velocities=new Float32Array(COUNT*3),spins=new Float32Array(COUNT*3);
- const releases=new Float32Array(COUNT),sizes=new Float32Array(COUNT),phases=new Float32Array(COUNT);
- const random=createSakuraRandom(9721);
- const sampleSurface=createSakuraSurfaceSampler(geometry,random);
- for(let i=0;i<COUNT;i++){
-  // Interleave the rows so every blade emits at all intensity levels.
-  const row=placement[i%BLADES];let p=sampleSurface();
-  while(p.y<=0)p=sampleSurface();
-  const releaseThreshold=breakupThreshold(p,row.delay);
-  const y=p.y,mirror=-row.side;p.x*=mirror;p.z*=mirror;
-  origins.set([row.side*4.3+p.x,FLOOR_Y+y,row.z+p.z],i*3);
-  const angle=random()*Math.PI*2,launch=.7+random()*2;
-  velocities.set([Math.cos(angle)*launch-row.side*.65,(random()-.5)*1.6,Math.sin(angle)*launch],i*3);
-  spins.set([(random()-.5)*3,(random()-.5)*4,(random()-.5)*3],i*3);
-  releases[i]=DISSOLVE_AT+dissolveDelays[i%BLADES]+DISSOLVE_DURATION*releaseThreshold;
-  sizes[i]=.055+Math.pow(random(),2)*.16;phases[i]=random()*Math.PI*2;
- }
- const particles=createSakuraParticles({origins,velocities,spins,releases,sizes,phases},clock,random);
+ const particles=createSakuraParticles(getSakuraData('bankai'),clock);
  group.add(particles.petals,particles.dust);
  // Overlapping omnidirectional emitters approximate spill from each section of the rows.
  // No emitter plane or distance cutoff can stamp a straight boundary onto the floor.
