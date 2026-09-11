@@ -1,9 +1,10 @@
+import type {SwordModel} from './scene/swordModels';
 import type {EffectMode} from './scene/aura';
 
 export interface SwordAsset {
  readonly id:string;
  readonly name:string;
- readonly model:'longsword'|'senbonzakura'|'zangetsu';
+ readonly model:Exclude<SwordModel,'tensa-zangetsu'>;
  readonly description:string;
  readonly effect:EffectMode;
  readonly effectIntensity:number;

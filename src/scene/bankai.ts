@@ -61,16 +61,22 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
  // Align the straight handle axis vertically; the curved tip remains naturally offset.
  const downRotation=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1),Math.PI);
  const pivot=new THREE.Vector3(0,1.5,0),center=new THREE.Vector3(),temp=new THREE.Vector3();
- let active=false,time=0,contactTime=0,fallDistance=0,fallDuration=1;
+ let active=false,time=0,furthestTime=0,contactTime=0,fallDistance=0,fallDuration=1;
+ let intensity=1,petalGlow=4,manualTimeline=false;
  const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+ function releasePose(position:THREE.Vector3,rotation:THREE.Quaternion){
+  const releaseCenter=pivot.clone().applyQuaternion(rotation).add(position);
+  const releasePosition=releaseCenter.clone().sub(pivot.clone().applyQuaternion(downRotation));
+  const releaseTip=tip.clone().applyQuaternion(downRotation).add(releasePosition);
+  const distance=Math.max(.1,releaseTip.y-waterY),duration=Math.sqrt(2*distance/9.8);
+  return {center:releaseCenter,position:releasePosition,distance,duration,contactTime:.65+duration};
+ }
  function start(){
-  active=true;time=0;sword.visible=true;floor.geometry=rippleGeometry;floor.material=rippleMaterial;
+  active=true;time=0;furthestTime=0;manualTimeline=false;sword.visible=true;floor.geometry=rippleGeometry;floor.material=rippleMaterial;
   startPosition.copy(sword.position);startRotation.copy(sword.quaternion);
-  center.copy(pivot).applyQuaternion(startRotation).add(startPosition);
-  endPosition.copy(center).sub(temp.copy(pivot).applyQuaternion(downRotation));
-  temp.copy(tip).applyQuaternion(downRotation).add(endPosition);
-  fallDistance=Math.max(.1,temp.y-waterY);fallDuration=Math.sqrt(2*fallDistance/9.8);
-  contactTime=.65+fallDuration;
+  const pose=releasePose(startPosition,startRotation);
+  center.copy(pose.center);endPosition.copy(pose.position);
+  fallDistance=pose.distance;fallDuration=pose.duration;contactTime=pose.contactTime;
   formation.start(endPosition.x,endPosition.z);
   uniforms.rippleCenter.value.set(endPosition.x,-endPosition.z);uniforms.age.value=-1;uniforms.reveal.value=0;
   for(const [material,previous] of saved){material.clippingPlanes=[...(previous.planes??[]),plane];material.clipShadows=true;material.needsUpdate=true;}
@@ -81,10 +87,8 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
   for(const [material,previous] of saved){material.clippingPlanes=previous.planes;material.clipShadows=previous.shadows;material.needsUpdate=true;}
   sword.userData.shadowRevision=(sword.userData.shadowRevision??0)+1;
  }
- return {get active(){return active;},get glowing(){return formation.glowing;},get pinkGlow(){return formation.pinkGlow;},start,cancel,
-  update(dt:number,speed:number,intensity:number,petalGlow=4){
-   if(!active)return;
-   time+=dt*speed;if(reduced)time=contactTime+10.5;
+ // All phase state derives from one clock, so scrubbing never needs to replay the drop.
+ function render(previousTime:number){
    formation.update(time-contactTime-2.6,intensity,petalGlow);
    uniforms.power.value=Math.min(2,Math.max(0,intensity));
    uniforms.age.value=time-contactTime;
@@ -106,7 +110,25 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
     sword.position.y-=depth;
    }
    const visible=time<contactTime+2.9;
-   if(sword.visible!==visible){sword.visible=visible;sword.userData.shadowRevision=(sword.userData.shadowRevision??0)+1;}
+   if(sword.visible!==visible||(time!==previousTime&&Math.min(time,previousTime)<contactTime+5)){
+    sword.userData.shadowRevision=(sword.userData.shadowRevision??0)+1;
+   }
+   sword.visible=visible;furthestTime=Math.max(furthestTime,time);
+ }
+ return {get active(){return active;},get glowing(){return formation.glowing;},get pinkGlow(){return formation.pinkGlow;},
+  get time(){return time;},get duration(){return active?Math.max(contactTime+2.6+formation.duration,furthestTime):releasePose(sword.position,sword.quaternion).contactTime+2.6+formation.duration;},start,cancel,
+  seek(seconds:number){
+   if(!Number.isFinite(seconds))return;
+   if(!active)start();
+   const previous=time;time=Math.max(0,seconds);manualTimeline=true;render(previous);
+  },
+  update(dt:number,speed:number,nextIntensity:number,nextPetalGlow=4){
+   intensity=nextIntensity;petalGlow=nextPetalGlow;
+   if(!active)return;
+   const previous=time;time+=dt*speed;
+   // An explicit inspection overrides reduced-motion skipping until the next release.
+   if(reduced&&!manualTimeline&&dt>0)time=contactTime+10.5;
+   render(previous);
   },dispose(){cancel();formation.dispose();rippleGeometry.dispose();rippleMaterial.dispose();}
  };
 }

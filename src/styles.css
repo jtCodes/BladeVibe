@@ -79,3 +79,5 @@ aside.settings-panel{z-index:2;top:calc(76px + env(safe-area-inset-top));bottom:
 @media(prefers-reduced-motion:reduce){.live-sword-card>a{transition:none}}
 
 .floor-color-control{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px;font-size:14px;color:#dae2e8}.floor-color-control input[type=color]{width:52px;height:34px;padding:3px;border:1px solid #43535f;border-radius:4px;background:#17242c;cursor:pointer}
+
+.timeline-actions{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}.timeline-actions button{flex:1 0 auto;min-height:36px;padding:8px;color:#dce9ed;background:#17242c;border:1px solid #43535f;border-radius:4px;cursor:pointer}.timeline-actions button:disabled{cursor:default}

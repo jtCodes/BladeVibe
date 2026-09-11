@@ -1,5 +1,7 @@
+import {EffectTimelineControls} from './EffectTimelineControls';
+import type {SwordScene,EffectSeekRequest,TimelineEffect} from './scene/createSwordScene';
 import type { EffectMode } from './scene/aura';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type SetStateAction } from 'react';
 import { SwordViewer } from './SwordViewer';
 import type { MotionStatus } from './scene/swordPhysics';
 
@@ -7,6 +9,8 @@ import type { SwordAsset } from './swordLibrary';
 import { AppLink } from './navigation';
 
 export default function SwordEditor({sword}:{sword:SwordAsset}) {
+  const viewerScene=useRef<SwordScene|null>(null);
+  const [effectPaused,setEffectPaused]=useState(false);
   const [glowStrength,setGlowStrength]=useState(.42);
   const [glowSpread,setGlowSpread]=useState(.8);
   const [petalGlow,setPetalGlow]=useState(4);
@@ -21,7 +25,18 @@ export default function SwordEditor({sword}:{sword:SwordAsset}) {
     const close=(event:KeyboardEvent)=>{if(event.key==='Escape'){setSettingsOpen(false);settingsButton.current?.focus();}};
     window.addEventListener('keydown',close);return ()=>window.removeEventListener('keydown',close);
   },[settingsOpen]);
-  const [effect,setEffect]=useState<EffectMode>(sword.effect);
+  const [effect,setEffectState]=useState<EffectMode>(sword.effect);
+  const [timelineEffect,setTimelineEffect]=useState<TimelineEffect>('bankai');
+  const [effectSeek,setEffectSeek]=useState<EffectSeekRequest>();
+  function setEffect(value:SetStateAction<EffectMode>){
+    const next=typeof value==='function'?value(effect):value;
+    setEffectPaused(false);setEffectSeek(undefined);setEffectState(next);
+    if(next==='bankai'||next==='shikai')setTimelineEffect(next);
+  }
+  function inspectEffect(time:number,paused:boolean){
+    setDraw(100);setRotating(false);setEffectPaused(paused);setEffectState(timelineEffect);
+    setEffectSeek({effect:timelineEffect,time,paused});
+  }
   const [effectIntensity,setEffectIntensity]=useState(sword.effectIntensity);
   const [effectSpeed,setEffectSpeed]=useState(sword.effectSpeed);
   const [reflections,setReflections]=useState(sword.reflections);
@@ -47,7 +62,7 @@ export default function SwordEditor({sword}:{sword:SwordAsset}) {
 
   return <main>
     <AppLink className="gallery-back" href="/">← Gallery</AppLink>
-    <SwordViewer glowStrength={glowStrength} glowSpread={glowSpread} petalGlow={petalGlow} upscaling={upscaling} dragTarget={dragTarget} antiAliasing={antiAliasing} showPerformance={showPerformance} model={tensaActive?'tensa-zangetsu':sword.model} floorColor={floorColor} backgroundColor={backgroundColor} effect={tensaActive?'off':effect} effectSpeed={effectSpeed} effectIntensity={effectIntensity/100} cameraHeight={cameraHeight} showSheath={showSheath} swordRotation={swordRotation} rotating={rotating} resetVersion={resetVersion} draw={draw} reflections={reflections} lightAngle={lightAngle} lighting={lighting} dropVersion={dropVersion} onStatus={setStatus} />
+    <SwordViewer sceneRef={viewerScene} effectSeek={effectSeek} effectPaused={effectPaused} glowStrength={glowStrength} glowSpread={glowSpread} petalGlow={petalGlow} upscaling={upscaling} dragTarget={dragTarget} antiAliasing={antiAliasing} showPerformance={showPerformance} model={tensaActive?'tensa-zangetsu':sword.model} floorColor={floorColor} backgroundColor={backgroundColor} effect={tensaActive?'off':effect} effectSpeed={effectSpeed} effectIntensity={effectIntensity/100} cameraHeight={cameraHeight} showSheath={showSheath} swordRotation={swordRotation} rotating={rotating} resetVersion={resetVersion} draw={draw} reflections={reflections} lightAngle={lightAngle} lighting={lighting} dropVersion={dropVersion} onStatus={setStatus} />
     <button ref={settingsButton} className="settings-toggle" aria-label={settingsOpen?'Close settings':'Open settings'} aria-expanded={settingsOpen} aria-controls="sword-settings" onClick={()=>setSettingsOpen(open=>!open)}>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
         {settingsOpen?<path d="m6 6 12 12M18 6 6 18"/>:<><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="currentColor"/><circle cx="15" cy="17" r="3" fill="currentColor"/></>}
@@ -96,17 +111,18 @@ export default function SwordEditor({sword}:{sword:SwordAsset}) {
           <option value="off">Off</option><option value="glow">Glow & sparks</option><option value="flame">Flame</option><option value="ice">Ice</option><option value="electric">Electric</option>
         </select></>}
         <label className="range-label" htmlFor="effect-intensity">Effect intensity <output>{effectIntensity}%</output></label>
-        <input id="effect-intensity" type="range" min={0} max={200} step={5} value={effectIntensity} disabled={effect==='off'} onChange={event=>setEffectIntensity(Number(event.target.value))}/>
+        <input id="effect-intensity" type="range" min={0} max={200} step={5} value={effectIntensity} onChange={event=>setEffectIntensity(Number(event.target.value))}/>
         {sword.model==='senbonzakura'&&<>
-          <label className="range-label" htmlFor="glow-strength">Bankai glow strength <output>{Math.round(glowStrength*100)}%</output></label>
+          <label className="range-label" htmlFor="glow-strength">Release glow strength <output>{Math.round(glowStrength*100)}%</output></label>
           <input id="glow-strength" type="range" min={0} max={1.5} step={.01} value={glowStrength} onChange={event=>setGlowStrength(Number(event.target.value))}/>
           <label className="range-label" htmlFor="glow-spread">Glow spread <output>{Math.round(glowSpread*100)}%</output></label>
           <input id="glow-spread" type="range" min={0} max={1} step={.01} value={glowSpread} onChange={event=>setGlowSpread(Number(event.target.value))}/>
           <label className="range-label" htmlFor="petal-glow">Petal glow <output>{petalGlow.toFixed(1)}×</output></label>
           <input id="petal-glow" type="range" min={0} max={8} step={.1} value={petalGlow} onChange={event=>setPetalGlow(Number(event.target.value))}/>
         </>}
+        {sword.model==='senbonzakura'&&<EffectTimelineControls key={timelineEffect} sceneRef={viewerScene} effect={timelineEffect} active={effect===timelineEffect} paused={effectPaused} speed={effectSpeed} onEffectChange={value=>{setTimelineEffect(value);setEffectPaused(true);}} onPositionChange={inspectEffect} onPauseChange={setEffectPaused} onSpeedChange={setEffectSpeed}/>}
         <label className="range-label" htmlFor="effect-speed">Effect speed <output>{effectSpeed===0?'Paused':`${effectSpeed.toFixed(1)}×`}</output></label>
-        <input id="effect-speed" type="range" min={0} max={3} step={.1} value={effectSpeed} disabled={effect==='off'} onChange={event=>setEffectSpeed(Number(event.target.value))}/>
+        <input id="effect-speed" type="range" min={0} max={3} step={.1} value={effectSpeed} onChange={event=>setEffectSpeed(Number(event.target.value))}/>
       </div>}
       <div className="lighting-controls">
         <label className="floor-color-control" htmlFor="background-color">Background color <input id="background-color" type="color" value={backgroundColor} onChange={event=>setBackgroundColor(event.target.value)}/></label>
