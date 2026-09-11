@@ -27,10 +27,11 @@ export function createShikai(sword:THREE.Group){
    addSakuraSurfaceTransition(shader,'shikaiTint',`float shikaiTint=sakuraTint(shikaiDistance,shikaiDissolve);`);
    shader.fragmentShader=shader.fragmentShader.replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
     float shikaiShift=smoothstep(0.,.9,shikaiTime);
-    float shikaiRise=smoothstep(0.,.35,shikaiTime);
+    // Let white light gather throughout the lead-in to breakup.
+    float shikaiRise=smoothstep(0.,${DISSOLVE_AT},shikaiTime);
     totalEmissiveRadiance+=sakuraBladeEmission(shikaiWidth,shikaiShift,shikaiRise,shikaiDistance,shikaiDissolve,shikaiTint)*shikaiPower;
    `);
-  };material.customProgramCacheKey=()=>key+'-shikai-bankai-release-v2';material.needsUpdate=true;
+  };material.customProgramCacheKey=()=>key+'-shikai-bankai-release-v3';material.needsUpdate=true;
  }
  const depth=new THREE.MeshDepthMaterial({depthPacking:THREE.RGBADepthPacking});depth.onBeforeCompile=inject;depth.customProgramCacheKey=()=> 'shikai-bankai-depth-v1';blade.customDepthMaterial=depth;
  const count=3000,random=createSakuraRandom(391),sampleSurface=createSakuraSurfaceSampler(blade.geometry,random);

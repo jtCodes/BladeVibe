@@ -61,7 +61,8 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
    if(dissolve>=threshold)discard;
    float glowDistance=(threshold-dissolve)*5.02;
    float pink=sakuraTint(glowDistance,dissolve);
-   float riseLight=smoothstep(rowDelay,rowDelay+.35,formationTime);
+   // Build white emission as this blade extends, rather than flashing at first contact.
+   float riseLight=smoothstep(rowDelay,rowDelay+2.1,formationTime);
    float colorShift=smoothstep(${DISSOLVE_AT} + dissolveDelay-.85,${DISSOLVE_AT} + dissolveDelay+.05,formationTime);
   `);
   addSakuraSurfaceTransition(shader,'pink','','diffuseColor.rgb*=mix(.48,1.,smoothstep(0.,.85,breakupPoint.y));');
@@ -75,7 +76,7 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
    totalEmissiveRadiance+=sakuraBladeEmission(bladeWidth,colorShift,riseLight,glowDistance,dissolve,pink)*formationPower;
   `);
  };
- material.customProgramCacheKey=()=>baseKey+'-bankai-progress-pink-v14';
+ material.customProgramCacheKey=()=>baseKey+'-bankai-progress-glow-v15';
  }
  const blades=new THREE.InstancedMesh(geometry,materials,BLADES);blades.frustumCulled=false;
  blades.instanceMatrix.setUsage(THREE.DynamicDrawUsage);group.add(blades);
