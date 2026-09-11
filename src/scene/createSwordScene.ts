@@ -1,3 +1,4 @@
+import {RenderPass} from 'three/addons/postprocessing/RenderPass.js';
 import {ShaderPass} from 'three/addons/postprocessing/ShaderPass.js';
 import {FXAAShader} from 'three/addons/shaders/FXAAShader.js';
 import {createPerformanceMeter} from './performanceMeter';
@@ -123,6 +124,11 @@ for(const root of [sword,scabbard])root.traverse(object=>{
   }
  }
 });
+// Authored parts move with the sword root; cloth animates vertex buffers, not transforms.
+// Bake local matrices once while retaining parent/world transform updates.
+for(const root of [sword,scabbard])root.traverse(object=>{
+ if(object instanceof THREE.Mesh){object.updateMatrix();object.matrixAutoUpdate=false;}
+});
 const physics=createSwordPhysics(sword,onStatus,isTensa?{bladeGeometry:createTensaZangetsuBladeGeometry,unsheathed:true,katana:true}:isZangetsu?{bladeGeometry:createZangetsuBladeGeometry,unsheathed:true}:isKatana?{bladeGeometry:createKatanaBladeGeometry,scabbardGeometry:createSayaGeometry,curveRadius:KATANA_RADIUS,katana:true}:undefined);cleanups.push(()=>physics.dispose());
 const shikai=isKatana?createShikai(sword):null;
 if(shikai)cleanups.push(()=>shikai.dispose());
@@ -152,7 +158,19 @@ sword.traverse(object=>{if(object instanceof THREE.Mesh){const materials=Array.i
 const reflections=new SSRPass({renderer,scene,camera,width:1,height:1,selects:reflectiveMeshes,groundReflector:null});
 reflections.resolutionScale=.5;reflections.opacity=.38;reflections.maxDistance=9;reflections.thickness=.035;reflections.blur=true;
 reflections.beautyRenderTarget.samples=samples;
-composer.addPass(reflections);
+const directRender=new RenderPass(scene,camera);directRender.enabled=false;
+composer.addPass(directRender);composer.addPass(reflections);
+let reflectionsRequested=true;
+function updateReflectionPath(){
+ // SSRPass computes normals, masks, ray marching, and blur even in Beauty mode.
+ // Skip it entirely when disabled or no selected reflective object is visible.
+ const visibleReflector=reflectionsRequested&&reflectiveMeshes.some(mesh=>{
+  let object:THREE.Object3D|null=mesh;
+  while(object){if(!object.visible)return false;object=object.parent;}
+  return true;
+ });
+ reflections.enabled=visibleReflector;directRender.enabled=!visibleReflector;
+}
 // This Three.js version expects SMAA in linear color space, before OutputPass.
 composer.addPass(new SMAAPass());
 const bloom=new UnrealBloomPass(new THREE.Vector2(1,1),.14,0,3.);composer.addPass(bloom);
@@ -196,7 +214,7 @@ function update(settings: ViewerSettings){
  bloom.enabled=(settings.effect==='shikai'||settings.effect==='flame'||settings.effect==='electric')&&settings.effectIntensity>0;
  bloom.threshold=isKatana?1.1:3.;
  bloom.strength=isKatana?.24:.14;
- reflections.output=settings.reflections?SSRPass.OUTPUT.Default:SSRPass.OUTPUT.Beauty;
+ reflectionsRequested=settings.reflections;reflections.output=SSRPass.OUTPUT.Default;updateReflectionPath();
  scene.environmentRotation.y=THREE.MathUtils.degToRad(settings.lightAngle);
  controls.autoRotate=settings.rotating&&settings.effect!=='bankai';
 }
@@ -204,7 +222,7 @@ function reset(){clearArrows();bankai?.cancel();if(options.preview){camera.posit
 function resize(){const w=Math.max(1,container.clientWidth),h=Math.max(1,container.clientHeight);const pixelRatio=Math.min(window.devicePixelRatio,2)*(aaMode==='high'?1.25:1);renderer.setPixelRatio(pixelRatio);composer.setPixelRatio(pixelRatio);renderer.setSize(w,h);camera.aspect=w/h;camera.fov=options.preview?34:w<700?44:34;camera.updateProjectionMatrix();composer.setSize(w,h);edgeAA.uniforms.resolution.value.set(1/Math.max(1,Math.floor(w*pixelRatio)),1/Math.max(1,Math.floor(h*pixelRatio)))}
 const observer=new ResizeObserver(resize);observer.observe(container);cleanups.push(()=>observer.disconnect());resize();reset();
 const clock=new THREE.Clock();let frame=0,stopped=false;
-function animate(){if(stopped)return;frame=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.1);if(document.hidden)return;meter.begin();if(bankai?.active){bankai.update(dt,effectSpeed,effectIntensity);}else{physics.step(dt);aura.update(dt,physics.draw);}if(shikai){bloom.enabled=shikai.visible||!!bankai?.glowing;bloom.strength=.24;bloom.radius=0;}if(isZangetsu)scabbard.userData.updateCloth(dt);updateShadowCache();moveCamera(dt);controls.update(dt);composer.render();meter.end();}
+function animate(){if(stopped)return;frame=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.1);if(document.hidden)return;meter.begin();if(bankai?.active){bankai.update(dt,effectSpeed,effectIntensity);}else{physics.step(dt);aura.update(dt,physics.draw);}if(shikai){bloom.enabled=shikai.visible||!!bankai?.glowing;bloom.strength=.24;bloom.radius=0;}if(isZangetsu)scabbard.userData.updateCloth(dt);updateShadowCache();moveCamera(dt);controls.update(dt);updateReflectionPath();composer.render();meter.end();}
 cleanups.push(()=>{stopped=true;cancelAnimationFrame(frame)});animate();
 function handleContextLost(event: Event){event.preventDefault();stopped=true;cancelAnimationFrame(frame);onError('The 3D renderer was interrupted. Reload this page to restore the sword.');}
 renderer.domElement.addEventListener('webglcontextlost',handleContextLost);
