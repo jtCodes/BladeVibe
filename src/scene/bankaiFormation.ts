@@ -61,9 +61,9 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
    float glowDistance=(threshold-dissolve)*5.02;
    float pink=sakuraTint(glowDistance,dissolve);
    float riseLight=smoothstep(rowDelay,rowDelay+.35,formationTime);
-   float colorShift=smoothstep(${DISSOLVE_AT} + dissolveDelay-.55,${DISSOLVE_AT} + dissolveDelay+.3,formationTime);
+   float colorShift=smoothstep(${DISSOLVE_AT} + dissolveDelay-.85,${DISSOLVE_AT} + dissolveDelay+.05,formationTime);
    float luminousEdge=max(1.-smoothstep(.015,.09,bladeWidth),smoothstep(.78,.98,bladeWidth));
-   vec3 bladeGlow=mix(vec3(2.8,3.,3.25),vec3(3.2,.65,1.5),colorShift);
+   vec3 bladeGlow=mix(vec3(2.8,3.,3.25),vec3(6.4,.55,2.6),colorShift);
   `);
   shader.fragmentShader=shader.fragmentShader.replace('#include <metalnessmap_fragment>',`#include <metalnessmap_fragment>
    diffuseColor.rgb=mix(diffuseColor.rgb,SAKURA_PINK,pink*.9);
@@ -77,10 +77,10 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
   `);
   shader.fragmentShader=shader.fragmentShader.replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
    // Bright edges surround a shaded steel center, rather than bleaching the full face.
-   totalEmissiveRadiance+=(bladeGlow*luminousEdge*riseLight+sakuraEmission(glowDistance,dissolve,pink))*formationPower;
+   totalEmissiveRadiance+=(bladeGlow*mix(luminousEdge,max(luminousEdge,.32),colorShift)*riseLight+sakuraEmission(glowDistance,dissolve,pink)*1.5)*formationPower;
   `);
  };
- material.customProgramCacheKey=()=>baseKey+'-bankai-white-to-pink-v10';
+ material.customProgramCacheKey=()=>baseKey+'-bankai-intense-pink-v11';
  }
  const blades=new THREE.InstancedMesh(geometry,materials,BLADES);blades.frustumCulled=false;
  blades.instanceMatrix.setUsage(THREE.DynamicDrawUsage);group.add(blades);
@@ -221,7 +221,14 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
     #include <colorspace_fragment>
    }`});
  const dust=new THREE.Points(dustGeometry,dustMaterial);dust.frustumCulled=false;dust.visible=false;group.add(dust);
- const glowLights=[0,-12,-26].map(z=>{const light=new THREE.PointLight(0xff7ac4,0,16,2);light.position.set(0,2,z);group.add(light);return light;});
+ // Broad emitters approximate light spilling off the blade faces along both rows.
+ // Area-light falloff gives a soft floor wash without visible spotlight circles.
+ const spillPink=new THREE.Color(0xff7ac4);
+ const glowLights=[3,11,19].flatMap(row=>[-1,1].map(side=>{
+  const z=2-row*2.05,light=new THREE.RectAreaLight(0xffffff,0,16.4,7);
+  light.position.set(side*4.05,FLOOR_Y+3.7,z);light.lookAt(0,FLOOR_Y+3.7,z);group.add(light);
+  return {light,delay:delays[row*2],release:DISSOLVE_AT+dissolveDelays[row*2]};
+ }));
  let lastTime=-1;
  return {
   get glowing(){return group.visible&&clock.value>0;},
@@ -241,10 +248,12 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
    blades.visible=time<DISSOLVE_END;
    petals.visible=time>DISSOLVE_AT&&intensity>0;petals.count=Math.round(COUNT*Math.min(1,Math.max(0,intensity)/2));
    dust.visible=petals.visible;dustGeometry.setDrawRange(0,Math.round(DUST_COUNT*Math.min(1,Math.max(0,intensity)/2)));
-   const glow=THREE.MathUtils.smoothstep(time,0,.7)*(1-THREE.MathUtils.smoothstep(time,DISSOLVE_END,DISSOLVE_END+3));
-   for(const light of glowLights){
-    light.color.setRGB(1,1,1).lerp(new THREE.Color(0xff7ac4),THREE.MathUtils.smoothstep(time,DISSOLVE_AT-.55,DISSOLVE_AT+.3));
-    light.intensity=glow*formationPower.value*2.2;
+   for(const {light,delay,release} of glowLights){
+    const emergence=THREE.MathUtils.smoothstep(time,delay+.15,delay+2.1);
+    const pink=THREE.MathUtils.smoothstep(time,release-.85,release+.05);
+    const dispersal=1-THREE.MathUtils.smoothstep(time,release+DISSOLVE_DURATION*.55,release+DISSOLVE_DURATION+2.5);
+    light.color.setRGB(1,1,1).lerp(spillPink,pink);
+    light.intensity=emergence*dispersal*formationPower.value*THREE.MathUtils.lerp(.85,2.6,pink);
    }
    lastTime=time;
   },
