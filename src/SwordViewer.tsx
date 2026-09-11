@@ -1,26 +1,31 @@
+import {createSceneActivity} from './scene/sceneActivity';
 import type {SwordModel} from './scene/swordModels';
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { createSwordScene, type SwordScene, type ViewerSettings } from './scene/createSwordScene';
 import type { MotionStatus } from './scene/swordPhysics';
-interface Props extends ViewerSettings { sceneRef?:RefObject<SwordScene|null>; model?:SwordModel; resetVersion: number; dropVersion: number; onStatus: (status: MotionStatus) => void }
-export function SwordViewer({ sceneRef, effectSeek, effectPaused=false, model='longsword', glowStrength=.42, glowSpread=.8, petalGlow=4, upscaling='native', dragTarget='sword', antiAliasing='smooth', showPerformance=false, floorColor='#141413', backgroundColor='#141413', lighting, rotating, draw, reflections, lightAngle, cameraHeight,showSheath=true,swordRotation=0,effect,effectSpeed,effectIntensity, resetVersion, dropVersion, onStatus }: Props) {
+interface Props extends ViewerSettings { active?:boolean; sceneRef?:RefObject<SwordScene|null>; model?:SwordModel; resetVersion: number; dropVersion: number; onStatus: (status: MotionStatus) => void }
+export function SwordViewer({ active=true, sceneRef, effectSeek, effectPaused=false, model='longsword', glowStrength=.42, glowSpread=.8, petalGlow=4, upscaling='native', dragTarget='sword', antiAliasing='smooth', showPerformance=false, floorColor='#141413', backgroundColor='#141413', lighting, rotating, draw, reflections, lightAngle, cameraHeight,showSheath=true,swordRotation=0,effect,effectSpeed,effectIntensity, resetVersion, dropVersion, onStatus }: Props) {
  const container=useRef<HTMLDivElement>(null), scene=useRef<SwordScene|null>(null);
+ const activeRef=useRef(active);activeRef.current=active;
+ const [activity]=useState(()=>createSceneActivity(active));
+ const [started,setStarted]=useState(active);
+ useLayoutEffect(()=>{activity.setActive(active);if(active)setStarted(true);scene.current?.setActive(active);},[active,activity]);
  const [error,setError]=useState<string|null>(null),[ready,setReady]=useState(false);
  const settings=useRef({effectSeek,effectPaused,glowStrength,glowSpread,petalGlow,upscaling,dragTarget,antiAliasing,showPerformance,lighting,rotating,draw,reflections,lightAngle,floorColor,backgroundColor,cameraHeight,showSheath,swordRotation,effect,effectSpeed,effectIntensity});settings.current={effectSeek,effectPaused,glowStrength,glowSpread,petalGlow,upscaling,dragTarget,antiAliasing,showPerformance,lighting,rotating,draw,reflections,lightAngle,floorColor,backgroundColor,cameraHeight,showSheath,swordRotation,effect,effectSpeed,effectIntensity};
  useEffect(()=>{
-  if(!container.current)return;
+  if(!started||!container.current)return;
   const element=container.current;setReady(false);setError(null);
   // Safari can otherwise claim native pinch/scroll gestures over the canvas.
   // Keep this local so the controls and browser accessibility zoom stay usable.
-  const preventNativeGesture=(event: Event)=>{if(event.cancelable)event.preventDefault()};
+  const preventNativeGesture=(event: Event)=>{if(activeRef.current&&event.cancelable)event.preventDefault()};
   const gestureEvents=['touchmove','gesturestart','gesturechange'] as const;
   for(const event of gestureEvents)element.addEventListener(event,preventNativeGesture,{passive:false});
   const controller=new AbortController();let owned: SwordScene|undefined;
-  void createSwordScene(container.current,setError,onStatus,controller.signal,{model}).then(viewer=>{
-   if(controller.signal.aborted){viewer.dispose();return}owned=viewer;scene.current=viewer;if(sceneRef)sceneRef.current=viewer;viewer.update(settings.current);setReady(true);
+  void createSwordScene(container.current,setError,onStatus,controller.signal,{model,get active(){return activeRef.current;},waitUntilActive:()=>activity.waitUntilActive(controller.signal)}).then(viewer=>{
+   if(controller.signal.aborted){viewer.dispose();return}owned=viewer;scene.current=viewer;if(sceneRef)sceneRef.current=viewer;viewer.setActive(activeRef.current);viewer.update(settings.current);setReady(true);
   }).catch(error=>{if(!controller.signal.aborted){console.error(error);setError('The 3D viewer could not start. Reload in a browser with WebGL and WebAssembly enabled.')}});
   return ()=>{for(const event of gestureEvents)element.removeEventListener(event,preventNativeGesture);controller.abort();owned?.dispose();if(scene.current===owned)scene.current=null;if(sceneRef&&sceneRef.current===owned)sceneRef.current=null};
- },[onStatus,model,sceneRef]);
+ },[onStatus,model,sceneRef,started,activity]);
  useEffect(()=>{scene.current?.update({effectSeek,effectPaused,glowStrength,glowSpread,petalGlow,upscaling,dragTarget,antiAliasing,showPerformance,lighting,rotating,draw,reflections,lightAngle,floorColor,backgroundColor,cameraHeight,showSheath,swordRotation,effect,effectSpeed,effectIntensity})},[effectSeek,effectPaused,glowStrength,glowSpread,petalGlow,upscaling,dragTarget,antiAliasing,showPerformance,lighting,rotating,draw,reflections,lightAngle,floorColor,backgroundColor,cameraHeight,showSheath,swordRotation,effect,effectSpeed,effectIntensity]);
  useEffect(()=>{scene.current?.reset()},[resetVersion]);
  useEffect(()=>{if(dropVersion>0)scene.current?.release()},[dropVersion]);

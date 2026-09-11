@@ -2,6 +2,7 @@ import {useEffect,useState,type RefObject} from 'react';
 import type {EffectTimeline,SwordScene,TimelineEffect} from './scene/createSwordScene';
 
 interface Props {
+ visible?:boolean;
  sceneRef:RefObject<SwordScene|null>;
  effect:TimelineEffect;
  active:boolean;
@@ -12,16 +13,17 @@ interface Props {
  onPauseChange:(paused:boolean)=>void;
  onSpeedChange:(speed:number)=>void;
 }
-export function EffectTimelineControls({sceneRef,effect,active,paused,speed,onEffectChange,onPositionChange,onPauseChange,onSpeedChange}:Props){
+export function EffectTimelineControls({visible=true,sceneRef,effect,active,paused,speed,onEffectChange,onPositionChange,onPauseChange,onSpeedChange}:Props){
  const [timeline,setTimeline]=useState<EffectTimeline|null>(null);
  useEffect(()=>{
+  if(!visible)return;
   const refresh=()=>{
    const next=sceneRef.current?.getEffectTimeline(effect)??null;
    setTimeline(previous=>previous?.time===next?.time&&previous?.duration===next?.duration?previous:next);
   };
   refresh();const timer=window.setInterval(refresh,100);
   return ()=>window.clearInterval(timer);
- },[sceneRef,effect]);
+ },[visible,sceneRef,effect]);
  function seek(time:number){
   if(!timeline)return;
   const next=Math.min(timeline.duration,Math.max(0,time));

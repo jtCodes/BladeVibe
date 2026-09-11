@@ -63,3 +63,19 @@ Shader compilation, GPU uploads, render targets, studio environment filtering an
 physics initialization still happen for a new viewer. GPU shader warmup remains
 in place to reduce first-use Bankai stalls. Asset baking does not persist a WebGL
 context or make every refresh instantaneous.
+
+## Live navigation session
+
+The gallery keeps previews after their first visit, and the app retains the most
+recent sword editor when returning home. Reopening that sword reuses its WebGL
+renderer, camera, settings, physics and effect timeline. Opening a different sword
+replaces the retained editor so detailed scenes do not accumulate indefinitely.
+
+Hidden screens and offscreen cards suspend animation, simulation, input handling
+and resizing. Unfinished GPU preparation waits until its view becomes active;
+unmounting still cancels and cleans it up. Returning at the same size reuses the
+render targets. Gallery scroll position and editor settings stay in place.
+
+This cache retains GPU resources in memory for the current page lifetime. A full
+refresh starts a new session; the lossless asset files use the separate HTTP cache.
+First visits and newly selected swords still need renderer initialization.

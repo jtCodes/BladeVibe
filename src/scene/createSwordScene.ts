@@ -26,13 +26,16 @@ export type TimelineEffect='bankai'|'shikai';
 export interface EffectSeekRequest { effect:TimelineEffect; time:number; paused:boolean }
 export interface ViewerSettings { effectSeek?:EffectSeekRequest; effectPaused?:boolean; glowStrength?:number; glowSpread?:number; petalGlow?:number; upscaling?:'native'|'ultra'|'quality'; dragTarget?:'sword'|'camera'; antiAliasing?:'standard'|'smooth'|'high'; showPerformance?:boolean; lighting?: LightingSettings; rotating: boolean; draw: number; reflections: boolean; lightAngle: number; floorColor?: string; backgroundColor?: string; cameraHeight: number; showSheath?: boolean; swordRotation?: number; effect: EffectMode; effectSpeed: number; effectIntensity: number }
 export interface EffectTimeline { time:number; duration:number }
-export interface SwordScene { getEffectTimeline(effect?:TimelineEffect):EffectTimeline|null; seekEffect(time:number,paused?:boolean):void; update(settings: ViewerSettings): void; reset(): void; release(): boolean; dispose(): void }
-export async function createSwordScene(container: HTMLDivElement, onError: (message: string) => void, onStatus: (status: MotionStatus) => void, signal: AbortSignal, options:{preview?:boolean;model?:SwordModel}={}): Promise<SwordScene> {
+export interface SwordScene { setActive(active:boolean):void; getEffectTimeline(effect?:TimelineEffect):EffectTimeline|null; seekEffect(time:number,paused?:boolean):void; update(settings: ViewerSettings): void; reset(): void; release(): boolean; dispose(): void }
+export async function createSwordScene(container: HTMLDivElement, onError: (message: string) => void, onStatus: (status: MotionStatus) => void, signal: AbortSignal, options:{preview?:boolean;model?:SwordModel;active?:boolean;waitUntilActive?:()=>Promise<void>}={}): Promise<SwordScene> {
 signal.throwIfAborted();
 const modelId=options.model??'longsword';
 await Promise.all([initializePhysics(),prepareSurfaceAssets(modelId==='senbonzakura'||modelId==='zangetsu'?['steel']:['steel','leather']),modelId==='senbonzakura'?prepareSakuraAssets():Promise.resolve()]);
 signal.throwIfAborted();
+await options.waitUntilActive?.();
+signal.throwIfAborted();
 const cleanups: Array<() => void> = [];
+let active=options.active??true;
 try {
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x141413);scene.fog=new THREE.FogExp2(0x141413,.032);
 const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.85;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.localClippingEnabled=true;RectAreaLightUniformsLib.init();container.appendChild(renderer.domElement);cleanups.push(()=>{clearSurfaceMapCache(renderer);renderer.dispose();renderer.domElement.remove()});
@@ -54,13 +57,13 @@ const cameraStep=new THREE.Vector3(),cameraRight=new THREE.Vector3(),cameraUp=ne
 const ownsKeys=(target:EventTarget|null)=>target instanceof Element&&!!target.closest('input,textarea,select,button,a,[contenteditable]:not([contenteditable="false"]),[role="slider"],[role="textbox"]');
 function clearArrows(){heldArrows.clear()}
 function keyDown(event:KeyboardEvent){
- if(!arrowKeys.has(event.key))return;
+ if(!active||!arrowKeys.has(event.key)||container.clientWidth<=0||container.clientHeight<=0)return;
  if(ownsKeys(event.target)||event.altKey||event.ctrlKey||event.metaKey){clearArrows();return;}
  event.preventDefault();heldArrows.add(event.key);
 }
 function keyUp(event:KeyboardEvent){heldArrows.delete(event.key)}
 function focusChanged(event:FocusEvent){if(ownsKeys(event.target))clearArrows()}
-function focusCanvas(){renderer.domElement.focus({preventScroll:true})}
+function focusCanvas(){if(active)renderer.domElement.focus({preventScroll:true})}
 if(!options.preview){
 renderer.domElement.tabIndex=0;
 renderer.domElement.setAttribute('aria-label','Sword camera. Arrow keys move the camera; drag to orbit.');
@@ -80,7 +83,23 @@ function moveCamera(dt:number){
  cameraStep.copy(cameraRight).multiplyScalar(x).addScaledVector(cameraUp,y).normalize().multiplyScalar(camera.position.distanceTo(controls.target)*.35*dt);
  camera.position.add(cameraStep);controls.target.add(cameraStep);
 }
-if(options.preview)controls.enabled=false;
+controls.enabled=active&&!options.preview;
+// OrbitControls owns pointer capture during a camera gesture. End that gesture
+// through its normal cancel handler before hiding the retained canvas.
+const controlPointers=new Set<number>();
+function trackControlPointer(event:PointerEvent){if(active&&controls.enabled)controlPointers.add(event.pointerId)}
+function forgetControlPointer(event:PointerEvent){controlPointers.delete(event.pointerId)}
+function stopControlDrag(){
+ for(const pointerId of [...controlPointers])renderer.domElement.dispatchEvent(new PointerEvent('pointercancel',{pointerId}));
+ controlPointers.clear();
+}
+renderer.domElement.addEventListener('pointerdown',trackControlPointer);
+renderer.domElement.addEventListener('pointerup',forgetControlPointer);
+renderer.domElement.addEventListener('pointercancel',forgetControlPointer);
+cleanups.push(()=>{
+ stopControlDrag();renderer.domElement.removeEventListener('pointerdown',trackControlPointer);
+ renderer.domElement.removeEventListener('pointerup',forgetControlPointer);renderer.domElement.removeEventListener('pointercancel',forgetControlPointer);
+});
 const environment=createStudioEnvironment(renderer);scene.environment=environment.texture;scene.environmentRotation.set(0,.35,0);cleanups.push(()=>environment.dispose());scene.environmentIntensity=.8;
 const ambientLight=new THREE.HemisphereLight(0xb9d8ed,0x1b1312,.12);scene.add(ambientLight);
 function area(color: number,power: number,x: number,y: number,z: number,w: number,h: number){const l=new THREE.RectAreaLight(color,power,w,h);l.position.set(x,y,z);l.lookAt(0,1.5,0);scene.add(l);return l}
@@ -117,20 +136,20 @@ let dragTarget:'sword'|'camera'='sword',spinRequested=false,dragPointer:number|n
 const dragRight=new THREE.Vector3(),dragUp=new THREE.Vector3(),dragTurn=new THREE.Quaternion(),dragPitch=new THREE.Quaternion(),spinAxis=new THREE.Vector3(0,1,0);
 function stopSwordDrag(){if(dragPointer!==null&&renderer.domElement.hasPointerCapture(dragPointer))renderer.domElement.releasePointerCapture(dragPointer);dragPointer=null;}
 function swordPointerDown(event:PointerEvent){
- if(dragTarget!=='sword'||event.button!==0||event.pointerType==='touch')return;
+ if(!active||dragTarget!=='sword'||event.button!==0||event.pointerType==='touch')return;
  event.preventDefault();event.stopImmediatePropagation();renderer.domElement.focus({preventScroll:true});
  if(bankai?.active||physics.released||physics.draw<.999)return;
  dragPointer=event.pointerId;dragX=event.clientX;dragY=event.clientY;renderer.domElement.setPointerCapture(event.pointerId);
 }
 function swordPointerMove(event:PointerEvent){
- if(event.pointerId!==dragPointer)return;event.preventDefault();event.stopImmediatePropagation();
+ if(!active||event.pointerId!==dragPointer)return;event.preventDefault();event.stopImmediatePropagation();
  if(bankai?.active||physics.released){stopSwordDrag();return;}
  camera.updateMatrixWorld();dragRight.setFromMatrixColumn(camera.matrixWorld,0);dragUp.setFromMatrixColumn(camera.matrixWorld,1);
  const sensitivity=Math.PI/Math.max(250,container.clientHeight);
  dragTurn.setFromAxisAngle(dragUp,(event.clientX-dragX)*sensitivity);dragPitch.setFromAxisAngle(dragRight,(event.clientY-dragY)*sensitivity);
  physics.rotateBy(dragTurn.premultiply(dragPitch));dragX=event.clientX;dragY=event.clientY;
 }
-function swordPointerUp(event:PointerEvent){if(event.pointerId===dragPointer){event.stopImmediatePropagation();stopSwordDrag();}}
+function swordPointerUp(event:PointerEvent){if(active&&event.pointerId===dragPointer){event.stopImmediatePropagation();stopSwordDrag();}}
 if(!options.preview){
  renderer.domElement.addEventListener('pointerdown',swordPointerDown,true);renderer.domElement.addEventListener('pointermove',swordPointerMove,true);
  renderer.domElement.addEventListener('pointerup',swordPointerUp,true);renderer.domElement.addEventListener('pointercancel',swordPointerUp,true);
@@ -182,11 +201,12 @@ const edgeAA=new ShaderPass(FXAAShader);composer.addPass(edgeAA);
 const upscale=createSpatialUpscale();composer.addPass(upscale);
 let renderScale=1;
 let aaMode:'standard'|'smooth'|'high'='standard';
+let lastWidth=0,lastHeight=0,lastPixelRatio=0,lastRenderScale=0;
 cleanups.push(()=>{for(const pass of composer.passes)pass.dispose();composer.dispose()});
 let cameraHeight=0,effectSpeed=1,effectIntensity=1,effectPaused=false;
 let effectMode:EffectMode='off';
 let lastSeek:EffectSeekRequest|undefined;
-let glowStrength=.42,glowSpread=.8,petalGlow=4;
+let glowStrength=.42,glowSpread=.8,petalGlow=4,performanceRequested=false;
 function update(settings: ViewerSettings){
  const seekRequest=settings.effectSeek!==lastSeek&&settings.effectSeek?.effect===settings.effect?settings.effectSeek:undefined;
  lastSeek=settings.effectSeek;
@@ -196,7 +216,7 @@ function update(settings: ViewerSettings){
  if(nextAA!==aaMode||nextScale!==renderScale){aaMode=nextAA;renderScale=nextScale;resize();}
  upscale.enabled=renderScale<1;
  edgeAA.enabled=aaMode!=='standard';
- meter.setEnabled(!options.preview&&!!settings.showPerformance);
+ performanceRequested=!options.preview&&!!settings.showPerformance;meter.setEnabled(active&&performanceRequested);
  const lighting=settings.lighting??{brightness:1,key:1,fill:1,rim:1,ambient:1};
  renderer.toneMappingExposure=.85*lighting.brightness;
  key.intensity=1.8*lighting.key;mainLight.intensity=5*lighting.key;
@@ -248,22 +268,45 @@ function seekEffect(time:number,paused=true){
  const controller=timelineController();if(!controller||!Number.isFinite(time))return;
  effectPaused=paused;controller.seek(THREE.MathUtils.clamp(time,0,controller.duration));
 }
-function reset(){stopSwordDrag();physics.resetOrientation();clearArrows();bankai?.cancel();if(options.preview){camera.position.set(1.3,isZangetsu?3:4.7,isZangetsu?23:15);controls.target.set(.4,isZangetsu?3:3.65,0);controls.update();physics.setDraw(1);physics.restore();return;}const mobile=container.clientWidth<700;camera.position.set(2.1,isZangetsu?4.3:2.6,isZangetsu?30:mobile?23:24);camera.position.y+=cameraHeight;controls.target.set(0,(isZangetsu?3.4:mobile?1.1:.8)+cameraHeight,0);controls.update();physics.restore()}
-function resize(){const w=Math.max(1,container.clientWidth),h=Math.max(1,container.clientHeight);const pixelRatio=Math.min(window.devicePixelRatio,2)*(aaMode==='high'?1.25:1);renderer.setPixelRatio(pixelRatio);composer.setPixelRatio(pixelRatio*renderScale);renderer.setSize(w,h);camera.aspect=w/h;camera.fov=options.preview?34:w<700?44:34;camera.updateProjectionMatrix();composer.setSize(w,h);const renderWidth=Math.max(1,Math.floor(composer.renderTarget1.width)),renderHeight=Math.max(1,Math.floor(composer.renderTarget1.height));edgeAA.uniforms.resolution.value.set(1/renderWidth,1/renderHeight);upscale.uniforms.inputSize.value.set(renderWidth,renderHeight);meter.setRenderSize(renderWidth,renderHeight)}
-if(bankai&&shikai&&!options.preview){
+function reset(){stopSwordDrag();physics.resetOrientation();clearArrows();bankai?.cancel();if(options.preview){camera.position.set(1.3,isZangetsu?3:4.7,isZangetsu?23:15);controls.target.set(.4,isZangetsu?3:3.65,0);controls.update();physics.setDraw(1);physics.restore();return;}const mobile=(container.clientWidth||window.innerWidth)<700;camera.position.set(2.1,isZangetsu?4.3:2.6,isZangetsu?30:mobile?23:24);camera.position.y+=cameraHeight;controls.target.set(0,(isZangetsu?3.4:mobile?1.1:.8)+cameraHeight,0);controls.update();physics.restore()}
+function resize(){
+ // A retained view can be display:none before its activation effect runs.
+ // Preserve its buffers and projection until it has real dimensions again.
+ if(!active)return;const w=container.clientWidth,h=container.clientHeight;if(w<=0||h<=0)return;
+ const pixelRatio=Math.min(window.devicePixelRatio,2)*(aaMode==='high'?1.25:1);
+ if(w===lastWidth&&h===lastHeight&&pixelRatio===lastPixelRatio&&renderScale===lastRenderScale)return;
+ lastWidth=w;lastHeight=h;lastPixelRatio=pixelRatio;lastRenderScale=renderScale;
+ renderer.setPixelRatio(pixelRatio);composer.setPixelRatio(pixelRatio*renderScale);renderer.setSize(w,h);camera.aspect=w/h;camera.fov=options.preview?34:w<700?44:34;camera.updateProjectionMatrix();composer.setSize(w,h);const renderWidth=Math.max(1,Math.floor(composer.renderTarget1.width)),renderHeight=Math.max(1,Math.floor(composer.renderTarget1.height));edgeAA.uniforms.resolution.value.set(1/renderWidth,1/renderHeight);upscale.uniforms.inputSize.value.set(renderWidth,renderHeight);meter.setRenderSize(renderWidth,renderHeight)}
+function assertContextAvailable(){if(renderer.getContext().isContextLost())throw new Error('The 3D renderer was interrupted. Reload this page to restore the sword.');}
+if(active&&bankai&&shikai&&!options.preview){
  reset();
- await warmupSwordEffects(scene,composer,bankai,shikai,()=>{updateShadowCache();updateReflectionPath();},signal);
+ await warmupSwordEffects(scene,composer,bankai,shikai,()=>{assertContextAvailable();updateShadowCache();updateReflectionPath();},signal,options.waitUntilActive);
  renderer.shadowMap.needsUpdate=true;
 }
+await options.waitUntilActive?.();
 signal.throwIfAborted();
-const observer=new ResizeObserver(resize);observer.observe(container);cleanups.push(()=>observer.disconnect());resize();reset();
-const clock=new THREE.Clock();let frame=0,stopped=false;
-function animate(){if(stopped)return;frame=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.1);if(document.hidden)return;meter.begin();if(bankai?.active){bankai.update(effectPaused?0:dt,effectSpeed,effectIntensity,petalGlow);}else{if(!options.preview&&dragTarget==='sword'&&spinRequested&&dragPointer===null)physics.rotateBy(dragTurn.setFromAxisAngle(spinAxis,dt*.07));physics.step(dt);shikai?.setPetalGlow(petalGlow);aura.update(effectPaused&&shikai?0:dt,physics.draw);}if(shikai){const bankaiGlow=!!bankai?.glowing;bloom.enabled=shikai.visible||bankaiGlow;const pink=bankaiGlow?(bankai?.pinkGlow??0):shikai.pinkGlow;bloom.strength=glowStrength*THREE.MathUtils.lerp(.6,1,pink);bloom.radius=glowSpread*THREE.MathUtils.lerp(.7,1,pink);}if(isZangetsu)scabbard.userData.updateCloth(dt);updateShadowCache();moveCamera(dt);controls.update(dt);updateReflectionPath();composer.render();meter.end();}
-cleanups.push(()=>{stopped=true;cancelAnimationFrame(frame)});animate();
-function handleContextLost(event: Event){event.preventDefault();stopped=true;cancelAnimationFrame(frame);onError('The 3D renderer was interrupted. Reload this page to restore the sword.');}
+assertContextAvailable();
+active=options.active??true;controls.enabled=active&&!options.preview;
+const observer=new ResizeObserver(resize);cleanups.push(()=>observer.disconnect());
+if(active){observer.observe(container);resize();}reset();
+let frame:number|null=null,lastFrameTime:number|null=null,stopped=false;
+function animate(now:number){frame=null;if(stopped||!active)return;frame=requestAnimationFrame(animate);const dt=lastFrameTime===null?0:Math.min((now-lastFrameTime)/1000,.1);lastFrameTime=now;if(document.hidden)return;meter.begin();if(bankai?.active){bankai.update(effectPaused?0:dt,effectSpeed,effectIntensity,petalGlow);}else{if(!options.preview&&dragTarget==='sword'&&spinRequested&&dragPointer===null)physics.rotateBy(dragTurn.setFromAxisAngle(spinAxis,dt*.07));physics.step(dt);shikai?.setPetalGlow(petalGlow);aura.update(effectPaused&&shikai?0:dt,physics.draw);}if(shikai){const bankaiGlow=!!bankai?.glowing;bloom.enabled=shikai.visible||bankaiGlow;const pink=bankaiGlow?(bankai?.pinkGlow??0):shikai.pinkGlow;bloom.strength=glowStrength*THREE.MathUtils.lerp(.6,1,pink);bloom.radius=glowSpread*THREE.MathUtils.lerp(.7,1,pink);}if(isZangetsu)scabbard.userData.updateCloth(dt);updateShadowCache();moveCamera(dt);controls.update(dt);updateReflectionPath();composer.render(dt);meter.end();}
+function stopFrame(){if(frame!==null)cancelAnimationFrame(frame);frame=null;lastFrameTime=null;}
+function setActive(value:boolean){
+ if(stopped||active===value)return;
+ active=value;clearArrows();stopSwordDrag();stopControlDrag();
+ controls.enabled=active&&!options.preview;meter.setEnabled(active&&performanceRequested);
+ if(active){observer.observe(container);resize();lastFrameTime=null;frame=requestAnimationFrame(animate);}
+ else{stopFrame();observer.disconnect();}
+}
+cleanups.push(()=>{stopped=true;stopFrame()});
+// Defer the first frame so callers can apply the latest active state after an
+// asynchronous initialization finishes while its view is already hidden.
+if(active)frame=requestAnimationFrame(animate);
+function handleContextLost(event: Event){event.preventDefault();setActive(false);stopped=true;stopFrame();onError('The 3D renderer was interrupted. Reload this page to restore the sword.');}
 renderer.domElement.addEventListener('webglcontextlost',handleContextLost);
 cleanups.push(()=>renderer.domElement.removeEventListener('webglcontextlost',handleContextLost));
 let disposed=false;
-return {update,reset,getEffectTimeline,seekEffect,release:()=>bankai?.active?false:physics.release(),dispose(){if(disposed)return;disposed=true;for(const cleanup of cleanups.reverse())cleanup();}};
+return {setActive,update,reset,getEffectTimeline,seekEffect,release:()=>bankai?.active?false:physics.release(),dispose(){if(disposed)return;disposed=true;setActive(false);for(const cleanup of cleanups.reverse())cleanup();}};
 }catch(error){for(const cleanup of cleanups.reverse())cleanup();throw error;}
 }

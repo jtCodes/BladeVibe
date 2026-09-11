@@ -9,7 +9,7 @@ import type {createShikai} from './shikai';
 export async function warmupSwordEffects(
  scene:THREE.Scene,composer:EffectComposer,
  bankai:ReturnType<typeof createBankai>,shikai:ReturnType<typeof createShikai>,
- beforeRender:()=>void,signal:AbortSignal,
+ beforeRender:()=>void,signal:AbortSignal,waitUntilActive?:()=>Promise<void>,
 ){
  const toScreen=composer.renderToScreen;
  const passStates=composer.passes.map(pass=>[pass,pass.enabled] as const);
@@ -22,6 +22,8 @@ export async function warmupSwordEffects(
  async function renderFrame(){
   signal.throwIfAborted();
   await new Promise<void>(resolve=>setTimeout(resolve,0));
+  signal.throwIfAborted();
+  await waitUntilActive?.();
   signal.throwIfAborted();beforeRender();composer.render(0);
  }
  try {
