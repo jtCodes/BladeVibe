@@ -1,3 +1,5 @@
+import {useBankaiVoice} from './useBankaiVoice';
+import {BankaiTitle} from './BankaiTitle';
 import {SwordReplayControls} from './SwordReplayControls';
 import {readSwordShare,swordSharePath,normalizeSwordState,type SwordShareState} from './swordShare';
 import type {SwordViewRequest} from './scene/swordViewState';
@@ -18,6 +20,7 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
   const [invalidShare,setInvalidShare]=useState(initialShare.invalid);
   const [shareUrl,setShareUrl]=useState(''),[shareMessage,setShareMessage]=useState('');
   const viewerScene=useRef<SwordScene|null>(null);
+  const [voiceEnabled,setVoiceEnabled]=useState(true);
   const [effectPaused,setEffectPaused]=useState(initial.paused);
   const [glowStrength,setGlowStrength]=useState(initial.glowStrength);
   const [glowSpread,setGlowSpread]=useState(initial.glowSpread);
@@ -38,6 +41,7 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
   const [effectSeek,setEffectSeek]=useState<EffectSeekRequest|undefined>(()=>sword.model==='senbonzakura'&&(initial.effect==='shikai'||initial.effect==='bankai')?{effect:initial.effect,time:initial.time,paused:initial.paused}:undefined);
   function setEffect(value:SetStateAction<EffectMode>){
     const next=typeof value==='function'?value(effect):value;
+    if(sword.model==='senbonzakura'&&next==='bankai'&&effect!=='bankai')armBankaiVoice();
     if(sword.model==='zangetsu'&&(next==='bankai')!==(effect==='bankai'))setViewState(viewerScene.current?.getViewState());
     setEffectPaused(false);setEffectSeek(undefined);setEffectState(next);
     if(next==='bankai'||next==='shikai')setTimelineEffect(next);
@@ -67,6 +71,7 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
   const tensaActive=clothWrapped&&bankaiActive;
   const bankaiCinematic=bankaiActive&&!clothWrapped;
   const hasSheath=!tensaActive;
+  const armBankaiVoice=useBankaiVoice(viewerScene,{active:active&&sword.model==='senbonzakura'&&bankaiActive,paused:effectPaused,speed:effectSpeed,enabled:voiceEnabled,seekRequest:effectSeek});
 
 
   const importedHash=useRef(shareHash);
@@ -101,12 +106,14 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
     catch{setShareMessage('Copy the link below.');}
   }
   function play(mode:TimelineEffect=timelineEffect){
+    if(sword.model==='senbonzakura'&&mode==='bankai')armBankaiVoice();
     if(sword.model==='zangetsu'&&effect!==mode)setViewState(viewerScene.current?.getViewState());
     setDraw(100);setRotating(false);setEffectPaused(false);if(effectSpeed===0)setEffectSpeed(1);if(effectIntensity===0)setEffectIntensity(100);
     setTimelineEffect(mode);setEffectState(mode);
     setEffectSeek(sword.model==='senbonzakura'?{effect:mode,time:0,paused:false}:undefined);
   }
   function togglePlayback(){
+    if(sword.model==='senbonzakura'&&effect==='bankai'&&(effectPaused||effectSpeed===0))armBankaiVoice();
     if(sword.model==='senbonzakura'&&effect!==timelineEffect){play();return;}
     if(effect==='off'){setEffect(sword.effect==='off'?'glow':sword.effect);setEffectPaused(false);}
     else setEffectPaused(!effectPaused&&effectSpeed!==0);
@@ -117,7 +124,7 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
   return <main className={`sword-experience ${editing?'is-editor':'is-replay'}`}>
     <header className="experience-header">
       <AppLink className="wordmark" href="/" aria-label="Aetherblade — collection">Aetherblade</AppLink>
-      <nav aria-label="Study navigation"><button onClick={openMode}>{editing?'View study':'Edit'}</button><button onClick={share} disabled={dropped} title={dropped?'Return the sword to display to share this study':undefined}>Share</button></nav>
+      <nav aria-label="Study navigation">{sword.model==='senbonzakura'&&<button aria-pressed={voiceEnabled} aria-label={voiceEnabled?'Mute Bankai voice':'Enable Bankai voice'} onClick={()=>setVoiceEnabled(value=>!value)}>{voiceEnabled?'Voice on':'Voice off'}</button>}<button onClick={openMode}>{editing?'View study':'Edit'}</button><button onClick={share} disabled={dropped} title={dropped?'Return the sword to display to share this study':undefined}>Share</button></nav>
     </header>
     <div className="experience-body">
       {!editing&&<section className="study-info">
@@ -127,6 +134,7 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
       </section>}
       <section className="sword-canvas" aria-label={`${sword.name} interactive view`}>
     <SwordViewer viewState={viewState} active={active} sceneRef={viewerScene} effectSeek={effectSeek} effectPaused={effectPaused} glowStrength={glowStrength} glowSpread={glowSpread} petalGlow={petalGlow} upscaling={upscaling} dragTarget={dragTarget} antiAliasing={antiAliasing} showPerformance={editing&&showPerformance} model={tensaActive?'tensa-zangetsu':sword.model} floorColor={floorColor} backgroundColor={backgroundColor} effect={tensaActive?'off':effect} effectSpeed={effectSpeed} effectIntensity={effectIntensity/100} cameraHeight={cameraHeight} showSheath={showSheath} swordRotation={swordRotation} rotating={rotating} resetVersion={resetVersion} draw={draw} reflections={reflections} lightAngle={lightAngle} lighting={lighting} dropVersion={dropVersion} onStatus={setStatus} />
+        <BankaiTitle active={active&&sword.model==='senbonzakura'&&bankaiActive} sceneRef={viewerScene} seekRequest={effectSeek}/>
       </section>
     </div>
     {shareUrl&&<section className="share-popover" aria-label="Share this study"><div><p role="status">{shareMessage}</p><button aria-label="Close share link" onClick={()=>setShareUrl('')}>×</button></div><input readOnly aria-label="Shareable study link" value={shareUrl} onFocus={event=>event.target.select()}/></section>}
