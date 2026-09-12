@@ -6,30 +6,21 @@ import {createSatinMetal} from './metalMaterials';
 import {KATANA_RADIUS,bend,createKatanaBladeGeometry,createSayaGeometry} from './katanaGeometry';
 export {KATANA_RADIUS,createKatanaBladeGeometry,createSayaGeometry} from './katanaGeometry';
 
-// Four times longer than wide: thread scale follows the tape's physical dimensions.
-function fabricMaps(renderer:THREE.WebGLRenderer){
- const width=512,height=128,cell=8;
- const color=new Uint8Array(width*height*4),bump=new Uint8Array(color.length),roughness=new Uint8Array(color.length);
+// Lengthwise grain distinguishes the exposed stained-wood grip from the woven wrap.
+function gripWoodMaps(renderer:THREE.WebGLRenderer){
+ const width=256,height=512,color=new Uint8Array(width*height*4),bump=new Uint8Array(color.length),roughness=new Uint8Array(color.length);
  const tau=Math.PI*2;
- // Short rubbed threads, distributed within the repeating weave; no stain color.
- const rubs=[[83,23,25],[218,88,19],[355,49,32],[451,112,14]];
  for(let y=0;y<height;y++)for(let x=0;x<width;x++){
-  const ix=Math.floor(x/cell),iy=Math.floor(y/cell);
-  const warp=Math.pow(.5+.5*Math.cos(tau*(y+.5)/cell),2);
-  const weft=Math.pow(.5+.5*Math.cos(tau*(x+.5)/cell),2);
-  const top=(ix+iy)%2===0?warp:weft,under=(ix+iy)%2===0?weft:warp;
-  const yarn=.18+.58*top+.16*under;
-  const fiber=.5+.5*Math.sin(tau*x/2+Math.sin(tau*y/height)*.5);
-  const variation=Math.sin(tau*ix/64+Math.sin(tau*iy/16)*2.)*.015;
-  let rub=0;
-  for(const [cx,cy,length] of rubs){
-   const dx=(x-cx)/length,dy=y-cy-Math.sin(dx*2.)*.5;
-   rub=Math.max(rub,Math.exp(-dy*dy*1.7)*Math.max(0,1-dx*dx));
-  }
-  const c=Math.round(255*THREE.MathUtils.clamp(.86+yarn*.115+fiber*.018+variation+rub*.07,0,1));
-  const h=Math.round(255*THREE.MathUtils.clamp(yarn+fiber*.025-rub*.13,0,1));
-  const r=Math.round(255*THREE.MathUtils.clamp(.97-top*.09+rub*.025,0,1));
-  const i=(y*width+x)*4;color.set([c,c,c,255],i);bump.set([h,h,h,255],i);roughness.set([r,r,r,255],i);
+  const u=x/width,v=y/height;
+  const bend=.22*Math.sin(tau*v)+.08*Math.sin(tau*(v*3+u*2));
+  const broad=.5+.5*Math.sin(tau*u*12+bend);
+  const grain=Math.pow(.5+.5*Math.sin(tau*u*43+bend*3+.35*Math.sin(tau*u*7)),12);
+  const fiber=Math.pow(.5+.5*Math.sin(tau*u*97+bend*4),18);
+  const shade=.94-broad*.04-grain*.10-fiber*.035;
+  const i=(y*width+x)*4,c=Math.round(shade*255);
+  color.set([c,Math.round(c*.99),Math.round(c*.97),255],i);
+  const h=Math.round(145-grain*65-fiber*22),r=Math.round(255*(.86+grain*.07+broad*.025));
+  bump.set([h,h,h,255],i);roughness.set([r,r,r,255],i);
  }
  function texture(data:Uint8Array<ArrayBuffer>,isColor=false){
   const map=new THREE.DataTexture(data,width,height);map.wrapS=map.wrapT=THREE.RepeatWrapping;
@@ -60,8 +51,9 @@ export function createSenbonzakura(renderer:THREE.WebGLRenderer,sword:THREE.Grou
  const spine=new THREE.MeshStandardMaterial({color:0x89949f,metalness:1,roughness:.21});
  const bronze=createSatinMetal(renderer,{color:0x777c65});
  const guardMetal=createSatinMetal(renderer,{color:0x686f60,roughnessScale:1});
- const cloth=new THREE.MeshStandardMaterial({color:0x858b9f,roughness:1,...fabricMaps(renderer),bumpScale:.0015});
- const gripMetal=createSatinMetal(renderer,{color:0x828574,roughnessScale:1});
+ // Fabric reads through soft grazing-angle fiber sheen, without tiled color or bump patterns.
+ const cloth=new THREE.MeshPhysicalMaterial({color:0x858b9f,metalness:0,roughness:1,specularIntensity:.15,sheen:.4,sheenColor:0x858b9f,sheenRoughness:1});
+ const gripWood=new THREE.MeshPhysicalMaterial({color:0x828574,metalness:0,roughness:1,specularIntensity:.18,...gripWoodMaps(renderer),bumpScale:.0004});
  const lacquer=new THREE.MeshPhysicalMaterial({color:0xd3d2c9,roughness:.34,metalness:.04,clearcoat:.55,clearcoatRoughness:.24});
  const add=(geometry:THREE.BufferGeometry,material:THREE.Material|THREE.Material[],parent:THREE.Group=sword)=>{const mesh=new THREE.Mesh(geometry,material);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh;};
  add(createKatanaBladeGeometry(),[metal,spine]).name='senbonzakura-blade';
@@ -96,7 +88,7 @@ export function createSenbonzakura(renderer:THREE.WebGLRenderer,sword:THREE.Grou
  const collarProfile=[[0,-.108],[.124,-.108],[.131,-.104],[.134,-.097],[.134,-.05],[.131,-.04],[0,-.04]];
  const collarGeometry=new THREE.LatheGeometry(collarProfile.map(([r,y])=>new THREE.Vector2(r,y)),96);collarGeometry.scale(1,1,.72);
  add(collarGeometry,bronze).name='senbonzakura-handle-collar';
- const handle=collar((SENBONZAKURA_GRIP_TOP_Y+SENBONZAKURA_GRIP_BOTTOM_Y)/2,SENBONZAKURA_GRIP_TOP_Y-SENBONZAKURA_GRIP_BOTTOM_Y,.116,gripMetal);
+ const handle=collar((SENBONZAKURA_GRIP_TOP_Y+SENBONZAKURA_GRIP_BOTTOM_Y)/2,SENBONZAKURA_GRIP_TOP_Y-SENBONZAKURA_GRIP_BOTTOM_Y,.116,gripWood);
  handle.scale.x=1.04;
  const capCenter=SENBONZAKURA_POMMEL_CENTER_Y,gripStart=-.12,gripEnd=capCenter+.07;
  const wrapStart=-.07,wrapEnd=capCenter+.025;
