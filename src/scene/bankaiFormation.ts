@@ -1,3 +1,4 @@
+import {createSakuraAtmosphere} from './sakuraAtmosphere';
 import {getSakuraData} from './sakuraAssets';
 import {createSakuraParticles} from './sakuraPetals';
 import {PETAL_BREAKUP_GLSL} from './petalBreakup';
@@ -100,6 +101,7 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
 
  const particles=createSakuraParticles(getSakuraData('bankai'),clock);
  group.add(particles.petals,particles.dust);
+ const atmosphere=createSakuraAtmosphere(clock,formationPower,dissolveDelays);group.add(atmosphere.mesh);
  // Overlapping omnidirectional emitters approximate spill from each section of the rows.
  // No emitter plane or distance cutoff can stamp a straight boundary onto the floor.
  const spillPink=new THREE.Color(0xff94d6);
@@ -134,6 +136,7 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
    }
    blades.visible=time<DISSOLVE_END;
    particles.update(intensity,petalGlow,time>DISSOLVE_AT);
+   atmosphere.update(petalGlow);
    for(const {light,delay,release} of glowLights){
     const emergence=THREE.MathUtils.smoothstep(time,delay+.15,delay+2.1);
     const pink=THREE.MathUtils.smoothstep(time,release-.85,release+.05);
@@ -144,6 +147,6 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
    }
    lastRiseTime=riseTime;
   },
-  dispose(){group.removeFromParent();contacts.dispose();contactGeometry.dispose();contactMaterial.dispose();blades.dispose();particles.dispose();geometry.dispose();for(const material of materials)material.dispose();}
+  dispose(){atmosphere.dispose();group.removeFromParent();contacts.dispose();contactGeometry.dispose();contactMaterial.dispose();blades.dispose();particles.dispose();geometry.dispose();for(const material of materials)material.dispose();}
  };
 }

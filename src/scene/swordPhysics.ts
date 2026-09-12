@@ -11,10 +11,11 @@ export const DRAW_DISTANCE = 5.15;
 let initialization: Promise<void> | undefined;
 export function initializePhysics() { return initialization ??= RAPIER.init(); }
 
-export function createSwordPhysics(sword: THREE.Group, onStatus: (status: MotionStatus) => void, options:{bladeGeometry?:()=>THREE.BufferGeometry;scabbardGeometry?:()=>THREE.BufferGeometry;curveRadius?:number;katana?:boolean;unsheathed?:boolean}={}) {
+export function createSwordPhysics(sword: THREE.Group, onStatus: (status: MotionStatus) => void, options:{bladeGeometry?:()=>THREE.BufferGeometry;scabbardGeometry?:()=>THREE.BufferGeometry;curveRadius?:number;katana?:boolean;unsheathed?:boolean;pommelY?:number}={}) {
   const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
   world.timestep = 1 / 120;
   const scale = METERS_PER_UNIT;
+  const pommelY=options.pommelY??-1.79;
   const rotation = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, Math.PI - 0.16));
   const origin = new THREE.Vector3(0, 0, 0);
   const axis = new THREE.Vector3(0, -1, 0).applyQuaternion(rotation);
@@ -25,7 +26,7 @@ export function createSwordPhysics(sword: THREE.Group, onStatus: (status: Motion
   const bladeShape=RAPIER.ColliderDesc.convexHull(Float32Array.from(bladeGeometry.attributes.position.array,value=>value*scale));
   if(!bladeShape)throw new Error('Invalid blade collision geometry');
   world.createCollider(bladeShape.setMass(.95).setFriction(.65).setRestitution(.08),body);bladeGeometry.dispose();
-  if(options.unsheathed){collider(.13,.9,.105,-.95,.25);if(options.katana)collider(.406,.032,.334,0,.18);}else if(options.katana){collider(.34,.035,.255,0,.18);collider(.125,.84,.095,-.88,.25);}else{collider(.83,.05,.06,0,.22);collider(.12,.88,.10,-.96,.12);collider(.212,.212,.085,-2.035,.18);}
+  if(options.unsheathed){collider(.13,.9,.105,-.95,.25);if(options.katana)collider(.406,.032,.334,0,.18);}else if(options.katana){collider(.34,.035,.255,0,.18);collider(.125,(-.04-(options.pommelY??-1.72))/2,.095,(-.04+(options.pommelY??-1.72))/2,.25);}else{collider(.83,.05,.06,0,.22);collider(.12,.88,.10,-.96,.12);collider(.212,.212,.085,-2.035,.18);}
   world.createCollider(RAPIER.ColliderDesc.cuboid(30*scale,.1,30*scale).setTranslation(0,FLOOR_Y*scale-.1,0).setFriction(.8).setRestitution(.08));
   if(!options.unsheathed){
   const sheath = world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setRotation(rotation));
@@ -35,8 +36,8 @@ export function createSwordPhysics(sword: THREE.Group, onStatus: (status: Motion
   let draw=options.unsheathed?1:0,target=draw,accumulator=0,released=false,status: MotionStatus='sheathed';
   function notify(next: MotionStatus){if(next!==status){status=next;onStatus(next)}}
   let displayAngle=0,groundedUpright=false;
-  // Senbonzakura cap extends to -1.79 in its authored local coordinates.
-  const pommel=new THREE.Vector3(0,-1.79,0);
+  // Keep the displayed pommel seated at the floor as the grip dimensions change.
+  const pommel=new THREE.Vector3(0,pommelY,0);
   const dragRotation=new THREE.Quaternion(),identityRotation=new THREE.Quaternion();
   const displayRotation=new THREE.Quaternion(),posedRotation=new THREE.Quaternion();
   const centerBefore=new THREE.Vector3(),centerAfter=new THREE.Vector3();
