@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {SENBONZAKURA_POMMEL_CENTER_Y,SENBONZAKURA_GRIP_TOP_Y,SENBONZAKURA_GRIP_BOTTOM_Y} from './senbonzakuraDimensions';
 import {surfaceMaps} from './craft';
 import {createSatinMetal} from './metalMaterials';
+import {createClothMaterial} from './clothMaterials';
 
 import {KATANA_RADIUS,bend,createKatanaBladeGeometry,createSayaGeometry} from './katanaGeometry';
 export {KATANA_RADIUS,createKatanaBladeGeometry,createSayaGeometry} from './katanaGeometry';
@@ -30,27 +31,6 @@ function gripWoodMaps(renderer:THREE.WebGLRenderer){
  }
  return {map:texture(color,true),bumpMap:texture(bump),roughnessMap:texture(roughness)};
 }
-// Fine longitudinal yarns follow each folded cloth section, without a checkerboard weave.
-function clothFiberMaps(renderer:THREE.WebGLRenderer){
- const width=1024,height=128,color=new Uint8Array(width*height*4),bump=new Uint8Array(color.length),tau=Math.PI*2;
- for(let y=0;y<height;y++)for(let x=0;x<width;x++){
-  const u=x/width,v=y/height;
-  const drift=.22*Math.sin(tau*u*3+Math.sin(tau*v*5))+.12*Math.sin(tau*(u*11+v*7));
-  const fine=Math.pow(.5+.5*Math.cos(tau*(y/4+drift)),2);
-  const fuzz=.5+.5*Math.sin(tau*(u*173+v*47)+Math.sin(tau*u*19));
-  const yarn=fine*(.8+.2*Math.sin(tau*(u*7+v*3)));
-  const c=Math.round(255*(.94+yarn*.035+fuzz*.008));
-  const h=Math.round(255*(.43+yarn*.15+fuzz*.018));
-  const i=(y*width+x)*4;color.set([c,c,c,255],i);bump.set([h,h,h,255],i);
- }
- function texture(data:Uint8Array<ArrayBuffer>,isColor=false){
-  const map=new THREE.DataTexture(data,width,height);map.wrapS=map.wrapT=THREE.RepeatWrapping;
-  map.minFilter=THREE.LinearMipmapLinearFilter;map.magFilter=THREE.LinearFilter;map.generateMipmaps=true;
-  map.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
-  if(isColor)map.colorSpace=THREE.SRGBColorSpace;map.needsUpdate=true;return map;
- }
- return {map:texture(color,true),bumpMap:texture(bump)};
-}
 export function createSenbonzakura(renderer:THREE.WebGLRenderer,sword:THREE.Group){
  const metal=new THREE.MeshPhysicalMaterial({color:0xbfc5cd,metalness:1,roughness:.24,...surfaceMaps('steel',renderer),bumpScale:.00008});
  metal.onBeforeCompile=shader=>{
@@ -73,7 +53,7 @@ export function createSenbonzakura(renderer:THREE.WebGLRenderer,sword:THREE.Grou
  const bronze=createSatinMetal(renderer,{color:0x777c65});
  const guardMetal=createSatinMetal(renderer,{color:0x686f60,roughnessScale:1});
  // Soft fiber sheen and fine lengthwise yarn relief match the wrapping reference.
- const cloth=new THREE.MeshPhysicalMaterial({color:0x858b9f,metalness:0,roughness:1,specularIntensity:.15,sheen:.4,sheenColor:0x858b9f,sheenRoughness:1,...clothFiberMaps(renderer),bumpScale:.00055});
+ const cloth=createClothMaterial(renderer,{color:0x858b9f});
  const gripWood=new THREE.MeshPhysicalMaterial({color:0x828574,metalness:0,roughness:1,specularIntensity:.18,...gripWoodMaps(renderer),bumpScale:.0004});
  const lacquer=new THREE.MeshPhysicalMaterial({color:0xd3d2c9,roughness:.34,metalness:.04,clearcoat:.55,clearcoatRoughness:.24});
  const add=(geometry:THREE.BufferGeometry,material:THREE.Material|THREE.Material[],parent:THREE.Group=sword)=>{const mesh=new THREE.Mesh(geometry,material);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh;};
@@ -126,7 +106,7 @@ export function createSenbonzakura(renderer:THREE.WebGLRenderer,sword:THREE.Grou
  const normalMatrix=new THREE.Matrix3().getNormalMatrix(contactSurface.matrixWorld);
  const capCenter=SENBONZAKURA_POMMEL_CENTER_Y,wrapStart=-.07,wrapEnd=capCenter+.025;
  const diamonds=12,pitch=(wrapStart-wrapEnd)/diamonds,diamondHalfWidth=.070,diamondHalfHeight=.043;
- const around=256,across=4,section:{point:THREE.Vector3;normal:THREE.Vector3;opening:number}[]=[];
+ const around=192,across=6,section:{point:THREE.Vector3;normal:THREE.Vector3;opening:number}[]=[];
  for(let j=0;j<=around;j++){
   if(j===around){section.push(section[0]);continue;}
   const angle=j/around*Math.PI*2;
@@ -137,17 +117,21 @@ export function createSenbonzakura(renderer:THREE.WebGLRenderer,sword:THREE.Grou
   section.push({point:hit.point.clone(),normal:hit.face!.normal.clone().applyNormalMatrix(normalMatrix),opening:diamondHalfHeight*Math.max(0,1-Math.abs(hit.point.x)/diamondHalfWidth)});
  }
  const wrapPositions:number[]=[],wrapUvs:number[]=[],wrapIndices:number[]=[];
- for(let band=0;band<=diamonds;band++){
+ for(let band=0;band<=diamonds;band++)for(let layer=0;layer<2;layer++){
   const base=wrapPositions.length/3;
   for(let j=0;j<=around;j++){
    const {point,normal,opening}=section[j];
    const top=band===0?wrapStart:wrapStart-(band-.5)*pitch-opening;
    const bottom=band===diamonds?wrapEnd:wrapStart-(band+.5)*pitch+opening;
+   // Two overlapping pieces form a real diagonal fold; its direction alternates.
+   const fold=.5+(band%2===0?1:-1)*.18*(point.x/.112)*Math.sign(point.z);
+   const from=layer===0?0:fold-.025,to=layer===0?fold+.025:1;
    for(let k=0;k<=across;k++){
-    const v=k/across,y=THREE.MathUtils.lerp(top,bottom,v);
-    // Compressed cloth with a small folded lip around the true diamond cutouts.
-    const lip=Math.exp(-Math.min(v,1-v)*18)*.00025;
-    const thickness=.0006+lip+Math.sin(v*Math.PI)*.00015;
+    const t=k/across,v=THREE.MathUtils.lerp(from,to,t),y=THREE.MathUtils.lerp(top,bottom,v);
+    const endFade=THREE.MathUtils.smoothstep(y,wrapEnd,wrapEnd+.055)*(1-THREE.MathUtils.smoothstep(y,wrapStart-.055,wrapStart));
+    const crown=Math.sin(t*Math.PI)*(layer===0?.00085:.0011);
+    const rolledEdge=layer===1?Math.exp(-t*9)*.0022:Math.exp(-Math.min(t,1-t)*12)*.00025;
+    const thickness=.00065+(crown+rolledEdge)*endFade;
     wrapPositions.push(point.x+normal.x*thickness,y,point.z+normal.z*thickness);
     wrapUvs.push(j/around+band*.381966,v+band*.173205);
    }

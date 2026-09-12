@@ -22,6 +22,7 @@ import {UnrealBloomPass} from 'three/addons/postprocessing/UnrealBloomPass.js';
 import {SMAAPass} from 'three/addons/postprocessing/SMAAPass.js';
 import {RectAreaLightUniformsLib} from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import {clearSurfaceMapCache} from './craft';
+import {clearClothMaterialCache} from './clothMaterials';
 import { initializePhysics, createSwordPhysics, FLOOR_Y, type MotionStatus } from './swordPhysics';
 import { createBladeAura, type EffectMode } from './aura';
 export interface LightingSettings { brightness:number; key:number; fill:number; rim:number; ambient:number }
@@ -41,7 +42,7 @@ const cleanups: Array<() => void> = [];
 let active=options.active??true;
 try {
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x141413);scene.fog=new THREE.FogExp2(0x141413,.032);
-const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.85;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.localClippingEnabled=true;RectAreaLightUniformsLib.init();container.appendChild(renderer.domElement);cleanups.push(()=>{clearSurfaceMapCache(renderer);renderer.dispose();renderer.domElement.remove()});
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.85;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.localClippingEnabled=true;RectAreaLightUniformsLib.init();container.appendChild(renderer.domElement);cleanups.push(()=>{clearSurfaceMapCache(renderer);clearClothMaterialCache(renderer);renderer.dispose();renderer.domElement.remove()});
 cleanups.push(()=>{
  const geometries=new Set<THREE.BufferGeometry>(), materials=new Set<THREE.Material>(), textures=new Set<THREE.Texture>();
  scene.traverse(object=>{
