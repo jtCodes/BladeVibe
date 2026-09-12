@@ -298,7 +298,11 @@ function seekEffect(time:number,paused=true){
  const controller=timelineController();if(!controller||!Number.isFinite(time))return;
  effectPaused=paused;controller.seek(THREE.MathUtils.clamp(time,0,Math.max(120,controller.duration)));
 }
-function reset(){stopSwordDrag();physics.resetOrientation();clearArrows();bankai?.cancel();if(options.preview){camera.position.set(1.3,isZangetsu?3:4.7,isZangetsu?23:15);controls.target.set(.4,isZangetsu?3:3.65,0);controls.update();physics.setDraw(1);physics.restore();return;}const mobile=(container.clientWidth||window.innerWidth)<700;camera.position.set(2.1,isZangetsu?4.3:2.6,isZangetsu?30:mobile?23:24);camera.position.y+=cameraHeight;controls.target.set(0,(isZangetsu?3.4:mobile?1.1:.8)+cameraHeight,0);controls.update();physics.restore()}
+function reset(){stopSwordDrag();physics.resetOrientation();clearArrows();bankai?.cancel();if(options.preview){
+ physics.setDraw(1);physics.restore();
+ camera.position.set(1.3,isZangetsu?1.5:4.7,isZangetsu?19.5:15);
+ controls.target.set(.4,isZangetsu?1.5:3.65,0);controls.update();return;
+}const mobile=(container.clientWidth||window.innerWidth)<700;camera.position.set(2.1,isZangetsu?4.3:2.6,isZangetsu?30:mobile?23:24);camera.position.y+=cameraHeight;controls.target.set(0,(isZangetsu?3.4:mobile?1.1:.8)+cameraHeight,0);controls.update();physics.restore()}
 function resize(){
  // A retained view can be display:none before its activation effect runs.
  // Preserve its buffers and projection until it has real dimensions again.
