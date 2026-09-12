@@ -38,14 +38,6 @@ function fabricMaps(renderer:THREE.WebGLRenderer){
  }
  return {map:texture(color,true),bumpMap:texture(bump),roughnessMap:texture(roughness)};
 }
-function raySkinMap(){
- const size=128,data=new Uint8Array(size*size*4);
- for(let y=0;y<size;y++)for(let x=0;x<size;x++){
-  const row=Math.floor(y/8),dx=((x+(row%2)*4)%8)-4,dy=y%8-4;
-  const v=Math.round(75+170*Math.pow(Math.max(0,1-(dx*dx+dy*dy)/15),.45));data.set([v,v,v,255],(y*size+x)*4);
- }
- const map=new THREE.DataTexture(data,size,size);map.wrapS=map.wrapT=THREE.RepeatWrapping;map.repeat.set(2,7);map.needsUpdate=true;return map;
-}
 export function createSenbonzakura(renderer:THREE.WebGLRenderer,sword:THREE.Group){
  const metal=new THREE.MeshPhysicalMaterial({color:0xbfc5cd,metalness:1,roughness:.24,...surfaceMaps('steel',renderer),bumpScale:.00008});
  metal.onBeforeCompile=shader=>{
@@ -65,17 +57,20 @@ export function createSenbonzakura(renderer:THREE.WebGLRenderer,sword:THREE.Grou
  };
  metal.customProgramCacheKey=()=> 'senbonzakura-hamon-v2';
  const spine=new THREE.MeshStandardMaterial({color:0x89949f,metalness:1,roughness:.21});
- const bronze=new THREE.MeshStandardMaterial({color:0x777c65,metalness:.65,roughness:.52});
- const guardMetal=new THREE.MeshStandardMaterial({color:0x686f60,metalness:.58,roughness:.58});
+ // The baked metal roughness is centered near .3: retain satin reflections and fine wear.
+ const fittingSurface=surfaceMaps('steel',renderer);
+ const fittingMaps={roughnessMap:fittingSurface.roughnessMap,bumpMap:fittingSurface.bumpMap,bumpScale:.00012};
+ const bronze=new THREE.MeshStandardMaterial({color:0x777c65,metalness:1,roughness:.95,envMapIntensity:1.8,...fittingMaps});
+ const guardMetal=new THREE.MeshStandardMaterial({color:0x686f60,metalness:1,roughness:1,envMapIntensity:1.8,...fittingMaps});
  const cloth=new THREE.MeshStandardMaterial({color:0x858b9f,roughness:1,...fabricMaps(renderer),bumpScale:.0015});
- const skin=new THREE.MeshStandardMaterial({color:0x828574,metalness:.22,roughness:.72,bumpMap:raySkinMap(),bumpScale:.0018});
+ const gripMetal=new THREE.MeshStandardMaterial({color:0x828574,metalness:1,roughness:1,envMapIntensity:1.8,...fittingMaps});
  const lacquer=new THREE.MeshPhysicalMaterial({color:0xd3d2c9,roughness:.34,metalness:.04,clearcoat:.55,clearcoatRoughness:.24});
  const add=(geometry:THREE.BufferGeometry,material:THREE.Material|THREE.Material[],parent:THREE.Group=sword)=>{const mesh=new THREE.Mesh(geometry,material);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh;};
  add(createKatanaBladeGeometry(),[metal,spine]).name='senbonzakura-blade';
  function collar(y:number,height:number,radius:number,mat:THREE.Material,parent=sword){const m=add(new THREE.CylinderGeometry(radius,radius,height,48),mat,parent);m.scale.z=.72;m.position.y=y;return m;}
  // Habaki and seppa seat the blade directly against the tsuba.
  // The longer sleeve has broad satin-metal facets, with the blade ridge carried through it.
- const habakiMetal=new THREE.MeshStandardMaterial({color:0x777d70,metalness:.62,roughness:.55});
+ const habakiMetal=new THREE.MeshStandardMaterial({color:0x777d70,metalness:1,roughness:.9,envMapIntensity:1.8,...fittingMaps});
  const habakiSection=new THREE.Shape();
  const sleeveCross=[[-.128,-.037],[-.128,.037],[-.018,.052],[.142,.042],[.142,-.042],[-.018,-.052]];
  sleeveCross.forEach(([x,z],i)=>i?habakiSection.lineTo(x,-z):habakiSection.moveTo(x,-z));habakiSection.closePath();
@@ -103,7 +98,7 @@ export function createSenbonzakura(renderer:THREE.WebGLRenderer,sword:THREE.Grou
  const collarProfile=[[0,-.108],[.124,-.108],[.131,-.104],[.134,-.097],[.134,-.05],[.131,-.04],[0,-.04]];
  const collarGeometry=new THREE.LatheGeometry(collarProfile.map(([r,y])=>new THREE.Vector2(r,y)),96);collarGeometry.scale(1,1,.72);
  add(collarGeometry,bronze).name='senbonzakura-handle-collar';
- const handle=collar((SENBONZAKURA_GRIP_TOP_Y+SENBONZAKURA_GRIP_BOTTOM_Y)/2,SENBONZAKURA_GRIP_TOP_Y-SENBONZAKURA_GRIP_BOTTOM_Y,.116,skin);
+ const handle=collar((SENBONZAKURA_GRIP_TOP_Y+SENBONZAKURA_GRIP_BOTTOM_Y)/2,SENBONZAKURA_GRIP_TOP_Y-SENBONZAKURA_GRIP_BOTTOM_Y,.116,gripMetal);
  handle.scale.x=1.04;
  const capCenter=SENBONZAKURA_POMMEL_CENTER_Y,gripStart=-.12,gripEnd=capCenter+.07;
  const wrapStart=-.07,wrapEnd=capCenter+.025;
