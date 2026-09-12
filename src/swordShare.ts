@@ -1,3 +1,4 @@
+import type {BankaiPetalMotion} from './scene/bankaiPetalMotion';
 import type {SwordAsset} from './swordLibrary';
 import {swordUrl,swordFormEffect,type SwordForm} from './swordLibrary';
 import type {EffectMode} from './scene/aura';
@@ -6,6 +7,7 @@ import {swordEnvironmentPreset} from './scene/sceneEnvironmentPresets';
 import type {SwordViewState} from './scene/swordViewState';
 
 export interface SwordShareState {
+ bankaiPetalMotion:BankaiPetalMotion;
  version:1; sword:string; effect:EffectMode; effectIntensity:number; effectSpeed:number;
  time:number; paused:boolean; draw:number; showSheath:boolean; swordRotation:number; rotating:boolean;
  cameraHeight:number; lightAngle:number; lighting:LightingSettings; backgroundColor:string; floorColor:string;
@@ -13,7 +15,7 @@ export interface SwordShareState {
 }
 export function defaultSwordState(sword:SwordAsset):SwordShareState{
  const environment=swordEnvironmentPreset(sword.model);
- return {version:1,sword:sword.id,effect:sword.effect,effectIntensity:sword.effectIntensity/100,effectSpeed:sword.effectSpeed,
+ return {bankaiPetalMotion:'drift',version:1,sword:sword.id,effect:sword.effect,effectIntensity:sword.effectIntensity/100,effectSpeed:sword.effectSpeed,
   time:0,paused:false,draw:100,showSheath:true,swordRotation:0,rotating:false,cameraHeight:0,lightAngle:sword.lightAngle,
   lighting:{brightness:1,key:1,fill:1,rim:1,ambient:1},
   backgroundColor:environment.background,floorColor:environment.floor!,
@@ -34,7 +36,7 @@ export function normalizeSwordState(sword:SwordAsset,input:unknown):SwordShareSt
  const magnitude=rotation?Math.hypot(...rotation):0;
  const view=camera&&target&&rotation&&magnitude>.001&&Math.hypot(...camera.map((n,i)=>n-target[i]))>.1?
   {camera:camera as SwordViewState['camera'],target:target as SwordViewState['target'],rotation:rotation.map(n=>n/magnitude) as SwordViewState['rotation']}:undefined;
- return {...base,effect,effectIntensity:number(raw.effectIntensity,base.effectIntensity,0,2),effectSpeed:number(raw.effectSpeed,base.effectSpeed,0,3),
+ return {...base,bankaiPetalMotion:raw.bankaiPetalMotion==='storm'?raw.bankaiPetalMotion:'drift',effect,effectIntensity:number(raw.effectIntensity,base.effectIntensity,0,2),effectSpeed:number(raw.effectSpeed,base.effectSpeed,0,3),
   time:sword.model==='senbonzakura'&&(effect==='shikai'||effect==='bankai')?number(raw.time,0,0,120):0,paused:boolean(raw.paused,false),
   draw:sword.model==='senbonzakura'&&(effect==='shikai'||effect==='bankai')?100:number(raw.draw,100,0,100),showSheath:boolean(raw.showSheath,true),swordRotation:number(raw.swordRotation,0,-180,180),rotating:boolean(raw.rotating,false),
   cameraHeight:number(raw.cameraHeight,0,-8,8),lightAngle:number(raw.lightAngle,base.lightAngle,0,360),

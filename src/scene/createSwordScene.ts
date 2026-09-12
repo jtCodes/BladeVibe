@@ -1,3 +1,4 @@
+import type {BankaiPetalMotion} from './bankaiPetalMotion';
 import {createSceneEnvironment,type LightingSettings} from './sceneEnvironment';
 export type {LightingSettings} from './sceneEnvironment';
 import {swordEnvironmentPreset,SENBONZAKURA_BANKAI_FOG} from './sceneEnvironmentPresets';
@@ -29,7 +30,7 @@ import { initializePhysics, createSwordPhysics, FLOOR_Y, type MotionStatus } fro
 import { createBladeAura, type EffectMode } from './aura';
 export type TimelineEffect='bankai'|'shikai';
 export interface EffectSeekRequest { effect:TimelineEffect; time:number; paused:boolean }
-export interface ViewerSettings { viewState?:SwordViewRequest; effectSeek?:EffectSeekRequest; effectPaused?:boolean; glowStrength?:number; glowSpread?:number; petalGlow?:number; upscaling?:'native'|'ultra'|'quality'; dragTarget?:'sword'|'camera'; antiAliasing?:'standard'|'smooth'|'high'; showPerformance?:boolean; lighting?: LightingSettings; rotating: boolean; draw: number; reflections: boolean; lightAngle: number; floorColor?: string; backgroundColor?: string; cameraHeight: number; showSheath?: boolean; swordRotation?: number; effect: EffectMode; effectSpeed: number; effectIntensity: number }
+export interface ViewerSettings { bankaiPetalMotion?:BankaiPetalMotion; viewState?:SwordViewRequest; effectSeek?:EffectSeekRequest; effectPaused?:boolean; glowStrength?:number; glowSpread?:number; petalGlow?:number; upscaling?:'native'|'ultra'|'quality'; dragTarget?:'sword'|'camera'; antiAliasing?:'standard'|'smooth'|'high'; showPerformance?:boolean; lighting?: LightingSettings; rotating: boolean; draw: number; reflections: boolean; lightAngle: number; floorColor?: string; backgroundColor?: string; cameraHeight: number; showSheath?: boolean; swordRotation?: number; effect: EffectMode; effectSpeed: number; effectIntensity: number }
 export interface EffectTimeline { time:number; duration:number; cycleDuration:number }
 export interface SwordScene { getViewState():SwordViewState; setActive(active:boolean):void; getEffectTimeline(effect?:TimelineEffect):EffectTimeline|null; seekEffect(time:number,paused?:boolean):void; update(settings: ViewerSettings): void; reset(): void; release(): boolean; dispose(): void }
 export async function createSwordScene(container: HTMLDivElement, onError: (message: string) => void, onStatus: (status: MotionStatus) => void, signal: AbortSignal, options:{preview?:boolean;model?:SwordModel;active?:boolean;waitUntilActive?:()=>Promise<void>}={}): Promise<SwordScene> {
@@ -244,6 +245,7 @@ function update(settings: ViewerSettings){
  edgeAA.enabled=aaMode!=='standard';
  performanceRequested=!options.preview&&!!settings.showPerformance;meter.setEnabled(active&&performanceRequested);
  displayBrightness.value=environment.update({lighting:settings.lighting,backgroundColor:settings.backgroundColor,floorColor:settings.floorColor,floor:floorMaterial,lightAngle:settings.lightAngle,fogDensity:isKatana&&settings.effect==='bankai'?SENBONZAKURA_BANKAI_FOG:environmentPreset.fogDensity});
+ bankai?.setPetalMotion(settings.bankaiPetalMotion??'drift');
  effectSpeed=settings.effectSpeed;effectIntensity=settings.effectIntensity;effectPaused=settings.effectPaused??false;effectMode=settings.effect;
  glowStrength=THREE.MathUtils.clamp(settings.glowStrength??.42,0,1.5);glowSpread=THREE.MathUtils.clamp(settings.glowSpread??.8,0,1);petalGlow=THREE.MathUtils.clamp(settings.petalGlow??4,0,8);
  if(bankai?.active&&settings.effect!=='bankai'){bankai.cancel();physics.setDraw(settings.draw/100);physics.restore();}

@@ -25,6 +25,7 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
   const [glowStrength,setGlowStrength]=useState(initial.glowStrength);
   const [glowSpread,setGlowSpread]=useState(initial.glowSpread);
   const [petalGlow,setPetalGlow]=useState(initial.petalGlow);
+  const [bankaiPetalMotion,setBankaiPetalMotion]=useState(initial.bankaiPetalMotion);
   const [upscaling,setUpscaling]=useState<'native'|'ultra'|'quality'>('ultra');
   const [dragTarget,setDragTarget]=useState<'sword'|'camera'>('sword');
   const [settingsOpen,setSettingsOpen]=useState(false);
@@ -109,7 +110,7 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
     setEffectIntensity(state.effectIntensity*100);setEffectSpeed(state.effectSpeed);setDraw(state.draw);setShowSheath(state.showSheath);
     setSwordRotation(state.swordRotation);setRotating(state.rotating);setCameraHeight(state.cameraHeight);setLightAngle(state.lightAngle);
     setLighting(state.lighting);setFloorColor(state.floorColor);setBackgroundColor(state.backgroundColor);setReflections(state.reflections);
-    setGlowStrength(state.glowStrength);setGlowSpread(state.glowSpread);setPetalGlow(state.petalGlow);
+    setGlowStrength(state.glowStrength);setGlowSpread(state.glowSpread);setPetalGlow(state.petalGlow);setBankaiPetalMotion(state.bankaiPetalMotion);
     if(state.effect==='shikai'||state.effect==='bankai')setTimelineEffect(state.effect);
     setEffectSeek(sword.model==='senbonzakura'&&(state.effect==='shikai'||state.effect==='bankai')?{effect:state.effect,time:state.time,paused:state.paused}:undefined);
   },[shareHash,routeForm,sword]);
@@ -117,7 +118,7 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
     const time=sword.model==='senbonzakura'&&(effect==='shikai'||effect==='bankai')?viewerScene.current?.getEffectTimeline(effect)?.time??effectSeek?.time??0:0;
     return normalizeSwordState(sword,{version:1,sword:sword.id,effect,effectIntensity:effectIntensity/100,effectSpeed,time,
       paused:sword.model==='senbonzakura'?freeze||effectPaused:false,draw,showSheath,swordRotation,rotating:freeze?false:rotating,cameraHeight,lightAngle,lighting,
-      backgroundColor,floorColor,reflections,glowStrength,glowSpread,petalGlow,view:viewerScene.current?.getViewState()??viewState});
+      backgroundColor,floorColor,reflections,glowStrength,glowSpread,petalGlow,bankaiPetalMotion,view:viewerScene.current?.getViewState()??viewState});
   }
   function openMode(){
     const path=swordSharePath(sword,snapshot(),!editing);
@@ -164,7 +165,7 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
         {invalidShare&&<p className="share-notice" role="status">This link could not be read. Showing the original sword.</p>}
       </SceneOverlay>}
       <section className="sword-canvas" aria-label={`${sword.name} interactive view`}>
-    <SwordViewer viewState={viewState} active={active} sceneRef={viewerScene} effectSeek={effectSeek} effectPaused={effectPaused} glowStrength={glowStrength} glowSpread={glowSpread} petalGlow={petalGlow} upscaling={upscaling} dragTarget={dragTarget} antiAliasing={antiAliasing} showPerformance={editing&&showPerformance} model={tensaActive?'tensa-zangetsu':sword.model} floorColor={floorColor} backgroundColor={backgroundColor} effect={tensaActive?'off':effect} effectSpeed={effectSpeed} effectIntensity={effectIntensity/100} cameraHeight={cameraHeight} showSheath={showSheath} swordRotation={swordRotation} rotating={rotating} resetVersion={resetVersion} draw={draw} reflections={reflections} lightAngle={lightAngle} lighting={lighting} dropVersion={dropVersion} onStatus={setStatus} />
+    <SwordViewer viewState={viewState} active={active} sceneRef={viewerScene} effectSeek={effectSeek} effectPaused={effectPaused} glowStrength={glowStrength} glowSpread={glowSpread} petalGlow={petalGlow} bankaiPetalMotion={bankaiPetalMotion} upscaling={upscaling} dragTarget={dragTarget} antiAliasing={antiAliasing} showPerformance={editing&&showPerformance} model={tensaActive?'tensa-zangetsu':sword.model} floorColor={floorColor} backgroundColor={backgroundColor} effect={tensaActive?'off':effect} effectSpeed={effectSpeed} effectIntensity={effectIntensity/100} cameraHeight={cameraHeight} showSheath={showSheath} swordRotation={swordRotation} rotating={rotating} resetVersion={resetVersion} draw={draw} reflections={reflections} lightAngle={lightAngle} lighting={lighting} dropVersion={dropVersion} onStatus={setStatus} />
         <BankaiTitle active={active&&sword.model==='senbonzakura'&&bankaiActive} sceneRef={viewerScene} seekRequest={effectSeek}/>
       </section>
     </div>
@@ -224,6 +225,10 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
           <input id="glow-strength" type="range" min={0} max={1.5} step={.01} value={glowStrength} onChange={event=>setGlowStrength(Number(event.target.value))}/>
           <label className="range-label" htmlFor="glow-spread">Glow spread <output>{Math.round(glowSpread*100)}%</output></label>
           <input id="glow-spread" type="range" min={0} max={1} step={.01} value={glowSpread} onChange={event=>setGlowSpread(Number(event.target.value))}/>
+          <label className="range-label" htmlFor="bankai-petal-motion">Bankai petal motion</label>
+          <select id="bankai-petal-motion" value={bankaiPetalMotion} onChange={event=>setBankaiPetalMotion(event.target.value==='storm'?'storm':'drift')}>
+            <option value="drift">Original drift</option><option value="storm">Camera storm</option>
+          </select>
           <label className="range-label" htmlFor="petal-glow">Petal glow <output>{petalGlow.toFixed(1)}×</output></label>
           <input id="petal-glow" type="range" min={0} max={8} step={.1} value={petalGlow} onChange={event=>setPetalGlow(Number(event.target.value))}/>
         </>}

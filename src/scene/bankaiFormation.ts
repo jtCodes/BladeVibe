@@ -1,3 +1,4 @@
+import type {BankaiPetalMotion} from './bankaiPetalMotion';
 import {createSakuraAtmosphere} from './sakuraAtmosphere';
 import {getSakuraData} from './sakuraAssets';
 import {createSakuraParticles} from './sakuraPetals';
@@ -121,6 +122,7 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
    for(const delay of dissolveDelays)glow+=sakuraPinkBuild((clock.value-DISSOLVE_AT-delay)/DISSOLVE_DURATION);
    return glow/BLADES;
   },
+  setPetalMotion(variant:BankaiPetalMotion){particles.setMotion(variant);},
   start(x:number,z:number){group.position.set(x,0,z);group.visible=false;lastRiseTime=-1;clock.value=-1;},
   hide(){group.visible=false;},
   update(time:number,intensity:number,petalGlow=4){
