@@ -210,7 +210,14 @@ function updateReflectionPath(){
 // This Three.js version expects SMAA in linear color space, before OutputPass.
 composer.addPass(new SMAAPass());
 const bloom=new UnrealBloomPass(new THREE.Vector2(1,1),.14,0,3.);composer.addPass(bloom);
-composer.addPass(new OutputPass());
+// Apply display brightness after the fixed filmic curve, preserving tone ratios.
+const output=new OutputPass();
+const displayBrightness={value:1};
+Object.assign(output.uniforms,{displayBrightness});
+output.material.fragmentShader=output.material.fragmentShader
+ .replace('uniform sampler2D tDiffuse;', 'uniform sampler2D tDiffuse;\nuniform float displayBrightness;')
+ .replace(/}\s*$/, 'gl_FragColor.rgb *= displayBrightness;\n}');
+composer.addPass(output);
 // Smooth the final display-space edges, including postprocessing and shader cutouts.
 const edgeAA=new ShaderPass(FXAAShader);composer.addPass(edgeAA);
 const upscale=createSpatialUpscale();composer.addPass(upscale);
@@ -242,7 +249,8 @@ function update(settings: ViewerSettings){
  edgeAA.enabled=aaMode!=='standard';
  performanceRequested=!options.preview&&!!settings.showPerformance;meter.setEnabled(active&&performanceRequested);
  const lighting=settings.lighting??{brightness:1,key:1,fill:1,rim:1,ambient:1};
- renderer.toneMappingExposure=.85*lighting.brightness;
+ renderer.toneMappingExposure=.85;
+ displayBrightness.value=THREE.MathUtils.clamp(lighting.brightness,.25,2.5);
  overheadLight.intensity=2.5*lighting.key;
  key.intensity=(isKatana?1.2:1.8)*lighting.key;mainLight.intensity=(isKatana?4:5.5)*lighting.key;
  fillLight.intensity=(isKatana?1.6:3.3)*lighting.fill;rimLight.intensity=(isKatana?4.5:4)*lighting.rim;

@@ -43,15 +43,15 @@ export function createSenbonzakura(renderer:THREE.WebGLRenderer,sword:THREE.Grou
    float edgeAA=max(fwidth(katanaUv.x)*1.2,.003);
    float cuttingSteel=1.-smoothstep(boundary-edgeAA,boundary+edgeAA,katanaUv.x);
    float line=1.-smoothstep(.003,.003+edgeAA,abs(katanaUv.x-boundary));
-   diffuseColor.rgb*=mix(.26,1.,cuttingSteel);
-   diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.72,.75,.79),line*.45);
+   diffuseColor.rgb*=mix(.20,1.10,cuttingSteel);
+   diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.80),line*.45);
   `);
   shader.fragmentShader=shader.fragmentShader.replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
    roughnessFactor=mix(.30,.17,cuttingSteel)+roughnessFactor*.12;
    roughnessFactor+=line*.045;`);
  };
- metal.customProgramCacheKey=()=> 'senbonzakura-short-edge-hamon-v4';
- const spine=new THREE.MeshStandardMaterial({color:0x454d58,metalness:1,roughness:.30});
+ metal.customProgramCacheKey=()=> 'senbonzakura-short-edge-hamon-v5';
+ const spine=new THREE.MeshStandardMaterial({color:0x3d4044,metalness:1,roughness:.30});
  const bronze=createSatinMetal(renderer,{color:0x777c65});
  const guardMetal=createSatinMetal(renderer,{color:0x686f60,roughnessScale:1});
  // Soft fiber sheen and fine lengthwise yarn relief match the wrapping reference.
