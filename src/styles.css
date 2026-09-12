@@ -5,6 +5,8 @@
   color-scheme: dark;
   font-synthesis: none;
   --surface: #101010;
+  --gallery-background: #181818;
+  --sword-background: #101010;
   --panel: #181818;
   --text: #e4e2dc;
   --muted: #a29f99;
@@ -37,12 +39,12 @@ canvas { display: block; touch-action: none; }
 .text-link:hover { color: var(--text); }
 
 /* Quiet collection plates, with only the sword names. */
-.gallery-page { overflow-y: auto; padding: 0 clamp(18px,3vw,48px) 28px; touch-action: pan-y; overscroll-behavior: contain; background: var(--surface); }
+.gallery-page { overflow-y: auto; padding: 0 clamp(18px,3vw,48px) 28px; touch-action: pan-y; overscroll-behavior: contain; background: var(--gallery-background); }
 .collection-header { display: flex; align-items: center; min-height: 68px; }
 .live-sword-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: clamp(16px,2vw,32px); }
 .live-sword-card { min-width: 0; }
 .live-sword-card > a { display: block; }
-.live-sword-art { position: relative; height: clamp(370px,74dvh,900px); overflow: hidden; background: #141413; pointer-events: none; }
+.live-sword-art { position: relative; height: clamp(370px,74dvh,900px); overflow: hidden; background: var(--sword-background); pointer-events: none; }
 .live-sword-stage { position: absolute; inset: 0; pointer-events: none; }
 .live-sword-stage canvas { width: 100%; height: 100%; touch-action: pan-y; pointer-events: none; }
 .preview-status { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 24px; text-align: center; color: var(--muted); font-size: .8125rem; }
@@ -57,7 +59,7 @@ canvas { display: block; touch-action: none; }
 .experience-header nav button { padding: 0; font-size: .8125rem; color: var(--muted); }
 .experience-header nav button:hover { color: var(--text); }
 .experience-body { height: calc(100% - 56px - env(safe-area-inset-top)); display: grid; grid-template-columns: minmax(0,1fr); grid-template-rows: minmax(0,1fr) auto; }
-.sword-canvas { position: relative; grid-column: 1; grid-row: 1; min-width: 0; min-height: 0; overflow: hidden; background: #141413; }
+.sword-canvas { position: relative; grid-column: 1; grid-row: 1; min-width: 0; min-height: 0; overflow: hidden; background: var(--sword-background); }
 #stage { position: absolute; inset: 0; }
 #stage, #stage canvas { touch-action: none; overscroll-behavior: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .study-info { grid-column: 1; grid-row: 2; display: grid; grid-template-columns: minmax(160px,1fr) minmax(0,3fr); align-items: center; gap: 12px 32px; padding: 12px 24px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); }

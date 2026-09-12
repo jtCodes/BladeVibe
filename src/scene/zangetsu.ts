@@ -1,3 +1,4 @@
+import {createMetalMaterial} from './metalMaterials';
 import {createClothPhysics} from './clothPhysics';
 import * as THREE from 'three';
 import {surfaceMaps} from './craft';
@@ -25,9 +26,8 @@ export function createZangetsuBladeGeometry(){
 }
 
 export function createZangetsu(renderer:THREE.WebGLRenderer,sword:THREE.Group){
- const steelMaps=surfaceMaps('steel',renderer);
- const dark=new THREE.MeshStandardMaterial({color:0x161c22,metalness:.8,roughness:.36,bumpMap:steelMaps.bumpMap,bumpScale:.0004});
- const edge=new THREE.MeshPhysicalMaterial({color:0xe4e9ee,metalness:1,roughness:.23,anisotropy:.35,anisotropyRotation:Math.PI/2,bumpMap:steelMaps.bumpMap,bumpScale:.0002});
+ const dark=createMetalMaterial(renderer,{color:0x161c22,finish:'blade'});
+ const edge=createMetalMaterial(renderer,{color:0xe4e9ee,finish:'edge'});
  function add(g:THREE.BufferGeometry,m:THREE.Material|THREE.Material[]){const mesh=new THREE.Mesh(g,m);mesh.castShadow=true;mesh.receiveShadow=true;sword.add(mesh);return mesh;}
  add(createZangetsuBladeGeometry(),[dark,edge]).name='zangetsu-blade';
  // Wear changes the weave relief and roughness, never the cloth's white albedo.

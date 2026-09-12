@@ -1,9 +1,8 @@
 import * as THREE from 'three';
-import {surfaceMaps} from './craft';
+import {createMetalMaterial} from './metalMaterials';
 
 function steel(renderer:THREE.WebGLRenderer) {
- const maps=surfaceMaps('steel',renderer,[2,.2]);
- return new THREE.MeshStandardMaterial({color:0xb6b9b6,metalness:1,roughness:.3,...maps,bumpScale:.00009});
+ return createMetalMaterial(renderer,{color:0xb6b9b6,finish:'fittings'});
 }
 function add(group:THREE.Group,geometry:THREE.BufferGeometry,material:THREE.Material) {
  const mesh=new THREE.Mesh(geometry,material);mesh.castShadow=true;mesh.receiveShadow=true;group.add(mesh);return mesh;
@@ -66,7 +65,7 @@ export function createCrossguard(renderer:THREE.WebGLRenderer) {
 
 export function createPommel(renderer:THREE.WebGLRenderer) {
  const group=new THREE.Group(),metal=steel(renderer);
- const shadow=new THREE.MeshStandardMaterial({color:0x545854,metalness:1,roughness:.56});
+ const shadow=createMetalMaterial(renderer,{color:0x545854,finish:'recessed'});
  const profile=[[0,-.055],[.145,-.055],[.195,-.04],[.212,-.018],[.212,.018],[.195,.04],[.145,.055],[0,.055]].map(([r,y])=>new THREE.Vector2(r,y));
  const wheel=add(group,new THREE.LatheGeometry(profile,64),metal);wheel.rotation.x=Math.PI/2;
  for(const face of [-1,1]) {

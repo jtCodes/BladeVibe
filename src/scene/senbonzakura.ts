@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {SENBONZAKURA_BLADE_LENGTH,SENBONZAKURA_SAYA_LENGTH,SENBONZAKURA_POMMEL_CENTER_Y,SENBONZAKURA_GRIP_TOP_Y,SENBONZAKURA_GRIP_BOTTOM_Y} from './senbonzakuraDimensions';
 import {surfaceMaps} from './craft';
-import {createSatinMetal} from './metalMaterials';
+import {createMetalMaterial,METAL_FINISHES} from './metalMaterials';
 import {createClothMaterial} from './clothMaterials';
 
 import {KATANA_RADIUS,bend,createKatanaBladeGeometry,createSayaGeometry} from './katanaGeometry';
@@ -32,7 +32,7 @@ function gripWoodMaps(renderer:THREE.WebGLRenderer){
  return {map:texture(color,true),bumpMap:texture(bump),roughnessMap:texture(roughness)};
 }
 export function createSenbonzakura(renderer:THREE.WebGLRenderer,sword:THREE.Group){
- const metal=new THREE.MeshPhysicalMaterial({color:0xbfc5cd,metalness:1,roughness:.24,...surfaceMaps('steel',renderer),bumpScale:.00008});
+ const metal=createMetalMaterial(renderer,{color:0xd3d3d3,finish:'blade'});
  metal.onBeforeCompile=shader=>{
   shader.vertexShader='varying vec2 katanaUv;\n'+shader.vertexShader;
   shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nkatanaUv=uv;');
@@ -47,15 +47,15 @@ export function createSenbonzakura(renderer:THREE.WebGLRenderer,sword:THREE.Grou
    diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.80),line*.45);
   `);
   shader.fragmentShader=shader.fragmentShader.replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
-   roughnessFactor=mix(.30,.17,cuttingSteel)+roughnessFactor*.12;
+   roughnessFactor=mix(roughnessFactor,${METAL_FINISHES.edge.roughness},cuttingSteel);
    roughnessFactor+=line*.045;`);
  };
- metal.customProgramCacheKey=()=> 'senbonzakura-short-edge-hamon-v5';
- const spine=new THREE.MeshStandardMaterial({color:0x3d4044,metalness:1,roughness:.30});
- const bronze=createSatinMetal(renderer,{color:0x777c65});
- const guardMetal=createSatinMetal(renderer,{color:0x686f60,roughnessScale:1});
+ metal.customProgramCacheKey=()=> 'senbonzakura-shared-steel-hamon-v7';
+ const spine=createMetalMaterial(renderer,{color:0x3d4044,finish:'blade'});
+ const bronze=createMetalMaterial(renderer,{color:0x777c65,finish:'fittings'});
+ const guardMetal=createMetalMaterial(renderer,{color:0x686f60,finish:'fittings'});
  // Soft fiber sheen and fine lengthwise yarn relief match the wrapping reference.
- const cloth=createClothMaterial(renderer,{color:0x858b9f});
+ const cloth=createClothMaterial(renderer,{color:0x747b94,sheen:.25});
  const gripWood=new THREE.MeshPhysicalMaterial({color:0x828574,metalness:0,roughness:1,specularIntensity:.18,...gripWoodMaps(renderer),bumpScale:.0004});
  const lacquer=new THREE.MeshPhysicalMaterial({color:0xd3d2c9,roughness:.34,metalness:.04,clearcoat:.55,clearcoatRoughness:.24});
  const add=(geometry:THREE.BufferGeometry,material:THREE.Material|THREE.Material[],parent:THREE.Group=sword)=>{const mesh=new THREE.Mesh(geometry,material);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh;};
@@ -63,7 +63,7 @@ export function createSenbonzakura(renderer:THREE.WebGLRenderer,sword:THREE.Grou
  function collar(y:number,height:number,radius:number,mat:THREE.Material,parent=sword){const m=add(new THREE.CylinderGeometry(radius,radius,height,48),mat,parent);m.scale.z=.72;m.position.y=y;return m;}
  // Habaki and seppa seat the blade directly against the tsuba.
  // The longer sleeve has broad satin-metal facets, with the blade ridge carried through it.
- const habakiMetal=createSatinMetal(renderer,{color:0x777d70,roughnessScale:.9});
+ const habakiMetal=createMetalMaterial(renderer,{color:0x777d70,finish:'fittings'});
  const habakiSection=new THREE.Shape();
  const sleeveCross=[[-.128,-.037],[-.128,.037],[-.018,.052],[.142,.042],[.142,-.042],[-.018,-.052]];
  sleeveCross.forEach(([x,z],i)=>i?habakiSection.lineTo(x,-z):habakiSection.moveTo(x,-z));habakiSection.closePath();

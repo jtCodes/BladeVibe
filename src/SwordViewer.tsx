@@ -5,7 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 're
 import { createSwordScene, type SwordScene, type ViewerSettings } from './scene/createSwordScene';
 import type { MotionStatus } from './scene/swordPhysics';
 interface Props extends ViewerSettings { active?:boolean; sceneRef?:RefObject<SwordScene|null>; model?:SwordModel; resetVersion: number; dropVersion: number; onStatus: (status: MotionStatus) => void }
-export function SwordViewer({ viewState, active=true, sceneRef, effectSeek, effectPaused=false, model='longsword', glowStrength=.42, glowSpread=.8, petalGlow=4, upscaling='native', dragTarget='sword', antiAliasing='smooth', showPerformance=false, floorColor='#141413', backgroundColor='#141413', lighting, rotating, draw, reflections, lightAngle, cameraHeight,showSheath=true,swordRotation=0,effect,effectSpeed,effectIntensity, resetVersion, dropVersion, onStatus }: Props) {
+export function SwordViewer({ viewState, active=true, sceneRef, effectSeek, effectPaused=false, model='longsword', glowStrength=.42, glowSpread=.8, petalGlow=4, upscaling='native', dragTarget='sword', antiAliasing='smooth', showPerformance=false, floorColor, backgroundColor, lighting, rotating, draw, reflections, lightAngle, cameraHeight,showSheath=true,swordRotation=0,effect,effectSpeed,effectIntensity, resetVersion, dropVersion, onStatus }: Props) {
  const container=useRef<HTMLDivElement>(null), scene=useRef<SwordScene|null>(null);
  const activeRef=useRef(active);activeRef.current=active;
  const [activity]=useState(()=>createSceneActivity(active));
