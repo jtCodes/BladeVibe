@@ -227,3 +227,12 @@ button, summary, .text-link { letter-spacing:.08em; }
 .replay-progress input[type=range]:hover::-webkit-slider-thumb,.replay-progress input[type=range]:focus-visible::-webkit-slider-thumb { transform:scaleY(1.25); }
 .replay-progress input[type=range]:hover::-moz-range-thumb,.replay-progress input[type=range]:focus-visible::-moz-range-thumb { transform:scaleY(1.25); }
 .replay-progress input[type=range]:disabled { cursor:default; opacity:.3; }
+
+/* Touch scrubbing: a full-width control with a large invisible thumb target. */
+@media (pointer:coarse) {
+ .replay-progress input[type=range] { height:48px; min-height:48px; touch-action:pan-y; }
+ .replay-progress input[type=range]::-webkit-slider-thumb { width:44px; height:44px; margin-top:-21.25px; background:linear-gradient(#dedbd4,#dedbd4) center / 1.5px 12px no-repeat; transform:none; }
+ .replay-progress input[type=range]::-moz-range-thumb { width:44px; height:44px; background:linear-gradient(#dedbd4,#dedbd4) center / 1.5px 12px no-repeat; transform:none; }
+ .replay-progress input[type=range]:hover::-webkit-slider-thumb,.replay-progress input[type=range]:focus-visible::-webkit-slider-thumb { transform:none; }
+ .replay-progress input[type=range]:hover::-moz-range-thumb,.replay-progress input[type=range]:focus-visible::-moz-range-thumb { transform:none; }
+}

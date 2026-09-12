@@ -245,6 +245,8 @@ function update(settings: ViewerSettings){
  floorMaterial.color.set(settings.floorColor??(isKatana?'#090b14':'#141413'));
  if(scene.background instanceof THREE.Color)scene.background.set(settings.backgroundColor??(isKatana?'#03050d':'#141413'));
  if(scene.fog)scene.fog.color.set(settings.backgroundColor??(isKatana?'#03050d':'#141413'));
+ // Let the lit aisle disappear into the background before the visible horizon.
+ if(isKatana&&scene.fog instanceof THREE.FogExp2)scene.fog.density=settings.effect==='bankai'?.055:.022;
  effectSpeed=settings.effectSpeed;effectIntensity=settings.effectIntensity;effectPaused=settings.effectPaused??false;effectMode=settings.effect;
  glowStrength=THREE.MathUtils.clamp(settings.glowStrength??.42,0,1.5);glowSpread=THREE.MathUtils.clamp(settings.glowSpread??.8,0,1);petalGlow=THREE.MathUtils.clamp(settings.petalGlow??4,0,8);
  if(bankai?.active&&settings.effect!=='bankai'){bankai.cancel();physics.setDraw(settings.draw/100);physics.restore();}

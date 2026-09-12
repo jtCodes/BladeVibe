@@ -15,7 +15,7 @@ export function defaultSwordState(sword:SwordAsset):SwordShareState{
   time:0,paused:false,draw:100,showSheath:true,swordRotation:0,rotating:false,cameraHeight:0,lightAngle:sword.lightAngle,
   lighting:{brightness:1,key:1,fill:1,rim:1,ambient:1},
   backgroundColor:sword.model==='senbonzakura'?'#03050d':'#141413',floorColor:sword.model==='senbonzakura'?'#090b14':'#141413',
-  glowStrength:.42,glowSpread:.8,petalGlow:4,reflections:sword.reflections};
+  glowStrength:.42,glowSpread:.8,petalGlow:6,reflections:sword.reflections};
 }
 function record(value:unknown):Record<string,unknown>{return value!==null&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};}
 function number(value:unknown,fallback:number,min:number,max:number){return typeof value==='number'&&Number.isFinite(value)?Math.max(min,Math.min(max,value)):fallback;}
@@ -38,7 +38,7 @@ export function normalizeSwordState(sword:SwordAsset,input:unknown):SwordShareSt
   cameraHeight:number(raw.cameraHeight,0,-8,8),lightAngle:number(raw.lightAngle,base.lightAngle,0,360),
   lighting:{brightness:number(light.brightness,1,.25,2.5),key:number(light.key,1,0,4),fill:number(light.fill,1,0,5),rim:number(light.rim,1,0,4),ambient:number(light.ambient,1,0,4)},
   backgroundColor:color(raw.backgroundColor,base.backgroundColor),floorColor:color(raw.floorColor,base.floorColor),
-  glowStrength:number(raw.glowStrength,.42,0,1.5),glowSpread:number(raw.glowSpread,.8,0,1),petalGlow:number(raw.petalGlow,4,0,8),reflections:boolean(raw.reflections,base.reflections),view};
+  glowStrength:number(raw.glowStrength,.42,0,1.5),glowSpread:number(raw.glowSpread,.8,0,1),petalGlow:number(raw.petalGlow,base.petalGlow,0,8),reflections:boolean(raw.reflections,base.reflections),view};
 }
 export function readSwordShare(sword:SwordAsset,hash:string):{state:SwordShareState;invalid:boolean}{
  const token=new URLSearchParams(hash.replace(/^#/, '')).get('state');

@@ -34,11 +34,12 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
   // Preserve the source steel and hamon shader. Its Shikai dissolve is reset before Bankai.
   inherit(shader,renderer);addSakuraGlow(shader);
   shader.uniforms.formationTime=clock;shader.uniforms.formationPower=formationPower;
-  shader.vertexShader='varying float bladeWidth;attribute float bladeDelay;attribute float bladeDissolveDelay;varying float dissolveDelay;varying float bladeHeight;varying float rowDelay;varying vec3 breakupPoint;\n'+shader.vertexShader;
+  shader.vertexShader='varying float groundHeight;varying float bladeWidth;attribute float bladeDelay;attribute float bladeDissolveDelay;varying float dissolveDelay;varying float bladeHeight;varying float rowDelay;varying vec3 breakupPoint;\n'+shader.vertexShader;
   shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
+   groundHeight=(modelMatrix*instanceMatrix*vec4(position,1.)).y-(${FLOOR_Y});
    bladeWidth=uv.x;bladeHeight=position.y/${HEIGHT.toFixed(1)};rowDelay=bladeDelay;dissolveDelay=bladeDissolveDelay;breakupPoint=position;
   `);
-  shader.fragmentShader=(shader.fragmentShader.includes('float petalPermute(')?'':PETAL_BREAKUP_GLSL)+'uniform float formationPower;varying float bladeWidth;uniform float formationTime;varying float dissolveDelay;varying float bladeHeight;varying float rowDelay;varying vec3 breakupPoint;\n'+shader.fragmentShader;
+  shader.fragmentShader=(shader.fragmentShader.includes('float petalPermute(')?'':PETAL_BREAKUP_GLSL)+'varying float groundHeight;uniform float formationPower;varying float bladeWidth;uniform float formationTime;varying float dissolveDelay;varying float bladeHeight;varying float rowDelay;varying vec3 breakupPoint;\n'+shader.fragmentShader;
   shader.fragmentShader=shader.fragmentShader.replace('#include <clipping_planes_fragment>',`#include <clipping_planes_fragment>
    float dissolve=clamp((formationTime-${DISSOLVE_AT}-dissolveDelay)/${DISSOLVE_DURATION},0.,1.);
    float breakupNoise=petalBreakup(breakupPoint.xy,rowDelay);
@@ -46,6 +47,9 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
    if(dissolve>=threshold)discard;
    float glowDistance=(threshold-dissolve)*5.02;
    float pink=sakuraTint(glowDistance,dissolve);
+   // Fade illumination by height above the actual floor, including during emergence.
+   float rootVariation=.08*sin(breakupPoint.x*9.+rowDelay*17.)+.04*sin(breakupPoint.z*13.+rowDelay*7.);
+   float rootBlend=smoothstep(0.,.75+rootVariation,max(0.,groundHeight));
    // Build white emission as this blade extends, rather than flashing at first contact.
    float riseLight=smoothstep(rowDelay,rowDelay+2.1,formationTime);
    float colorShift=smoothstep(${DISSOLVE_AT} + dissolveDelay-.85,${DISSOLVE_AT} + dissolveDelay+.05,formationTime);
@@ -58,10 +62,10 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
   `);
   shader.fragmentShader=shader.fragmentShader.replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
    // Bright edges surround a shaded steel center, rather than bleaching the full face.
-   totalEmissiveRadiance+=sakuraBladeEmission(bladeWidth,colorShift,riseLight,glowDistance,dissolve,pink)*formationPower;
+   totalEmissiveRadiance+=sakuraBladeEmission(bladeWidth,colorShift,riseLight,glowDistance,dissolve,pink)*formationPower*rootBlend;
   `);
  };
- material.customProgramCacheKey=()=>baseKey+'-bankai-progress-glow-v15';
+ material.customProgramCacheKey=()=>baseKey+'-bankai-progress-glow-v16';
  }
  const blades=new THREE.InstancedMesh(geometry,materials,BLADES);blades.frustumCulled=false;
  blades.instanceMatrix.setUsage(THREE.DynamicDrawUsage);group.add(blades);
@@ -85,7 +89,7 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
     float core=exp(-dot(p*vec2(2.,3.),p*vec2(2.,3.))*4.);
     float rise=smoothstep(contactRise,contactRise+.45,formationTime);
     float gone=smoothstep(${DISSOLVE_AT}+contactRelease+${DISSOLVE_DURATION*.85},${DISSOLVE_AT}+contactRelease+${DISSOLVE_DURATION},formationTime);
-    gl_FragColor=vec4(0.,0.,0.,min(.78,soft*.55+core*.28)*rise*(1.-gone));
+    gl_FragColor=vec4(0.,0.,0.,min(.42,soft*.3+core*.12)*rise*(1.-gone));
    }`});
  const contacts=new THREE.InstancedMesh(contactGeometry,contactMaterial,BLADES);contacts.frustumCulled=false;
  for(let i=0;i<BLADES;i++){
