@@ -1,4 +1,4 @@
-import {StudyIcon} from './StudyIcon';
+import {PlaybackActions} from './SceneControls';
 import {useEffect,useState,type CSSProperties,type RefObject} from 'react';
 import type {SwordAsset} from './swordLibrary';
 import type {SwordScene,EffectTimeline,TimelineEffect} from './scene/createSwordScene';
@@ -12,7 +12,6 @@ export function SwordReplayControls({sword,sceneRef,visible,effect,selected,paus
  const [timeline,setTimeline]=useState<EffectTimeline|null>(null);
  const timed=sword.model==='senbonzakura',playing=effect===selected;
  const stopped=paused||speed===0||effect==='off'||(timed&&!playing);
- const playLabel=stopped?'Play effect':'Pause effect';
  useEffect(()=>{
   if(!visible||!timed)return;
   const refresh=()=>{const next=sceneRef.current?.getEffectTimeline(selected)??null;setTimeline(previous=>previous?.time===next?.time&&previous?.duration===next?.duration?previous:next);};
@@ -21,10 +20,10 @@ export function SwordReplayControls({sword,sceneRef,visible,effect,selected,paus
  if(sword.model==='zangetsu')return <div className="replay-controls simple-controls">
   <div className="form-selector"><button aria-pressed={effect!=='bankai'} onClick={onOriginal}>Shikai</button><button aria-pressed={effect==='bankai'} onClick={()=>onSelect('bankai')}>Bankai</button></div>
  </div>;
- if(!timed)return <div className="replay-controls simple-controls"><button className="study-icon-button" aria-label={playLabel} title={playLabel} onClick={onPause}><StudyIcon name={stopped?'play':'pause'}/></button><button className="text-link" onClick={onOriginal}>Bare steel</button></div>;
+ if(!timed)return <div className="replay-controls simple-controls"><PlaybackActions paused={stopped} onToggle={onPause} playLabel="Play effect" pauseLabel="Pause effect"/><button className="text-link" onClick={onOriginal}>Bare steel</button></div>;
  return <div className="replay-controls">
   <div className="form-selector" aria-label="Transformation"><button aria-pressed={effect==='off'} onClick={onOriginal}>Original</button><button aria-pressed={effect==='shikai'} onClick={()=>onSelect('shikai')}>Shikai</button><button aria-pressed={effect==='bankai'} onClick={()=>onSelect('bankai')}>Bankai</button></div>
-  <div className="replay-actions"><button className="study-icon-button" aria-label={playLabel} title={playLabel} onClick={!playing?onReplay:onPause}><StudyIcon name={stopped?'play':'pause'}/></button><button className="study-icon-button" aria-label="Replay from start" title="Replay from start" onClick={onReplay}><StudyIcon name="replay"/></button></div>
+  <PlaybackActions paused={stopped} onToggle={!playing?onReplay:onPause} onReplay={onReplay} playLabel="Play effect" pauseLabel="Pause effect"/>
   <label className="replay-progress"><span className="sr-only">Replay position</span><input type="range" style={{'--progress':`${Math.min(100,Math.max(0,(playing?timeline?.time??0:0)/(timeline?.duration||1)*100))}%`} as CSSProperties} aria-valuetext={`${(playing?timeline?.time??0:0).toFixed(1)} seconds`} min={0} max={timeline?.duration??1} step={.01} value={playing?timeline?.time??0:0} disabled={!timeline} onChange={event=>onSeek(Number(event.target.value))}/></label>
   {intensity===0&&<p className="replay-caption">Play restores the effect’s intensity.</p>}
  </div>;

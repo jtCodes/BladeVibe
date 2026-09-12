@@ -187,20 +187,11 @@ input[type=color] { width: 40px; height: 30px; padding: 0; border: 1px solid var
 .sharingan-study { position:relative; width:100%; height:100dvh; overflow:hidden; background:#050507; }
 .sharingan-stage { position:absolute; inset:0; }
 .sharingan-stage canvas { display:block; width:100%; height:100%; touch-action:none; }
-.sharingan-study .experience-header { position:absolute; inset:0 0 auto; z-index:2; background:linear-gradient(#050507aa,transparent); }
-.sharingan-caption { position:absolute; left:clamp(24px,5vw,80px); bottom:clamp(24px,5vh,64px); z-index:2; pointer-events:none; }
-.sharingan-caption h1 { margin:8px 0; font-family:var(--study-font); font-size:clamp(38px,5vw,76px); font-weight:400; letter-spacing:-.045em; }
-.sharingan-subtitle { color:#8f898c; font-size:12px; letter-spacing:.16em; }
-.sharingan-actions { display:flex; align-items:center; gap:20px; margin-top:22px; }
-.sharingan-actions button { pointer-events:auto; }
-.sharingan-actions span { color:#79777b; font-size:11px; }
-@media(max-width:600px){.sharingan-actions { gap:12px; }.sharingan-actions span { font-size:10px; }}
 
 /* Carry the FORM STUDY typography through every interface. */
 body { letter-spacing:.035em; }
-h1, h2, h3, .wordmark, .study-title, .live-sword-caption h2, .missing-sword h1, .sharingan-caption h1 { letter-spacing:.12em; }
+h1, h2, h3, .wordmark, .study-title, .live-sword-caption h2, .missing-sword h1 { letter-spacing:.12em; }
 button, summary, .text-link { letter-spacing:.08em; }
-.sharingan-caption h1 { font-size:clamp(28px,4vw,58px); }
 
 /* View controls live beside the title, leaving the scene unobstructed. */
 .is-replay .study-info { left:clamp(24px,5vw,80px); right:auto; bottom:calc(clamp(24px,5vh,64px) + env(safe-area-inset-bottom)); width:min(440px,calc(100% - 48px)); padding:0; display:flex; flex-direction:column; align-items:flex-start; gap:10px; background:none; }
@@ -243,3 +234,6 @@ button, summary, .text-link { letter-spacing:.08em; }
 .scene-loading-spinner svg { display:block; will-change:transform; animation:scene-loading-spin 1.2s linear infinite; }
 @keyframes scene-loading-spin { to { transform:rotate(360deg); } }
 @media (prefers-reduced-motion:reduce) { .scene-loading-spinner svg { animation:none; } }
+
+.scene-subtitle { color:var(--muted); font-size:.75rem; letter-spacing:.16em; }
+.scene-control-hint { color:var(--muted); font-size:.6875rem; line-height:1.5; }

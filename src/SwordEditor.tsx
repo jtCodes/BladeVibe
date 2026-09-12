@@ -1,4 +1,4 @@
-import {StudyIcon} from './StudyIcon';
+import {IconButton,SceneHeader,SceneOverlay} from './SceneControls';
 import {useBankaiVoice} from './useBankaiVoice';
 import {BankaiTitle} from './BankaiTitle';
 import {SwordReplayControls} from './SwordReplayControls';
@@ -12,7 +12,7 @@ import { SwordViewer } from './SwordViewer';
 import type { MotionStatus } from './scene/swordPhysics';
 
 import {swordUrl,swordFormEffect,type SwordForm,type SwordAsset} from './swordLibrary';
-import { AppLink,navigate } from './navigation';
+import { navigate } from './navigation';
 
 export default function SwordEditor({sword,active=true,editing=true,shareHash='',routeForm}:{sword:SwordAsset;active?:boolean;editing?:boolean;shareHash?:string;routeForm?:SwordForm}) {
   const [initialShare]=useState(()=>readSwordPageState(sword,shareHash,routeForm));
@@ -154,16 +154,15 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
   function originalForm(){setEffect('off');setDraw(100);navigateForm(sword.model==='zangetsu'?'shikai':undefined);}
 
   return <main className={`sword-experience ${editing?'is-editor':'is-replay'}`}>
-    <header className="experience-header">
-      <AppLink className="wordmark" href="/" aria-label="BladeX — collection">BladeX</AppLink>
-      <nav aria-label="Sword navigation"><button className="study-icon-button" onClick={openMode} aria-label={editing?'View sword':'Edit sword'} title={editing?'View sword':'Edit sword'}><StudyIcon name={editing?'view':'edit'}/></button><button className="study-icon-button" onClick={share} disabled={dropped} aria-label="Share sword" title={dropped?'Return the sword to display to share this sword':'Share sword'}><StudyIcon name="share"/></button></nav>
-    </header>
+    <SceneHeader label="Sword navigation">
+      <IconButton icon={editing?'view':'edit'} label={editing?'View sword':'Edit sword'} onClick={openMode}/>
+      <IconButton icon="share" label="Share sword" title={dropped?'Return the sword to display to share this sword':'Share sword'} onClick={share} disabled={dropped}/>
+    </SceneHeader>
     <div className="experience-body">
-      {!editing&&<section className="study-info">
-        <h1 className="study-title">{sword.name}</h1>
+      {!editing&&<SceneOverlay title={sword.name}>
         <SwordReplayControls sword={sword} sceneRef={viewerScene} visible={active} effect={effect} selected={timelineEffect} paused={effectPaused} speed={effectSpeed} intensity={effectIntensity} onSelect={play} onReplay={()=>play()} onPause={togglePlayback} onSeek={time=>inspectEffect(time,true)} onOriginal={originalForm}/>
         {invalidShare&&<p className="share-notice" role="status">This link could not be read. Showing the original sword.</p>}
-      </section>}
+      </SceneOverlay>}
       <section className="sword-canvas" aria-label={`${sword.name} interactive view`}>
     <SwordViewer viewState={viewState} active={active} sceneRef={viewerScene} effectSeek={effectSeek} effectPaused={effectPaused} glowStrength={glowStrength} glowSpread={glowSpread} petalGlow={petalGlow} upscaling={upscaling} dragTarget={dragTarget} antiAliasing={antiAliasing} showPerformance={editing&&showPerformance} model={tensaActive?'tensa-zangetsu':sword.model} floorColor={floorColor} backgroundColor={backgroundColor} effect={tensaActive?'off':effect} effectSpeed={effectSpeed} effectIntensity={effectIntensity/100} cameraHeight={cameraHeight} showSheath={showSheath} swordRotation={swordRotation} rotating={rotating} resetVersion={resetVersion} draw={draw} reflections={reflections} lightAngle={lightAngle} lighting={lighting} dropVersion={dropVersion} onStatus={setStatus} />
         <BankaiTitle active={active&&sword.model==='senbonzakura'&&bankaiActive} sceneRef={viewerScene} seekRequest={effectSeek}/>
