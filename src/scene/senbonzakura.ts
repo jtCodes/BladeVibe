@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {SENBONZAKURA_POMMEL_CENTER_Y,SENBONZAKURA_GRIP_TOP_Y,SENBONZAKURA_GRIP_BOTTOM_Y} from './senbonzakuraDimensions';
 import {surfaceMaps} from './craft';
+import {createSatinMetal} from './metalMaterials';
 
 import {KATANA_RADIUS,bend,createKatanaBladeGeometry,createSayaGeometry} from './katanaGeometry';
 export {KATANA_RADIUS,createKatanaBladeGeometry,createSayaGeometry} from './katanaGeometry';
@@ -57,20 +58,17 @@ export function createSenbonzakura(renderer:THREE.WebGLRenderer,sword:THREE.Grou
  };
  metal.customProgramCacheKey=()=> 'senbonzakura-hamon-v2';
  const spine=new THREE.MeshStandardMaterial({color:0x89949f,metalness:1,roughness:.21});
- // The baked metal roughness is centered near .3: retain satin reflections and fine wear.
- const fittingSurface=surfaceMaps('steel',renderer);
- const fittingMaps={roughnessMap:fittingSurface.roughnessMap,bumpMap:fittingSurface.bumpMap,bumpScale:.00012};
- const bronze=new THREE.MeshStandardMaterial({color:0x777c65,metalness:1,roughness:.95,envMapIntensity:1.8,...fittingMaps});
- const guardMetal=new THREE.MeshStandardMaterial({color:0x686f60,metalness:1,roughness:1,envMapIntensity:1.8,...fittingMaps});
+ const bronze=createSatinMetal(renderer,{color:0x777c65});
+ const guardMetal=createSatinMetal(renderer,{color:0x686f60,roughnessScale:1});
  const cloth=new THREE.MeshStandardMaterial({color:0x858b9f,roughness:1,...fabricMaps(renderer),bumpScale:.0015});
- const gripMetal=new THREE.MeshStandardMaterial({color:0x828574,metalness:1,roughness:1,envMapIntensity:1.8,...fittingMaps});
+ const gripMetal=createSatinMetal(renderer,{color:0x828574,roughnessScale:1});
  const lacquer=new THREE.MeshPhysicalMaterial({color:0xd3d2c9,roughness:.34,metalness:.04,clearcoat:.55,clearcoatRoughness:.24});
  const add=(geometry:THREE.BufferGeometry,material:THREE.Material|THREE.Material[],parent:THREE.Group=sword)=>{const mesh=new THREE.Mesh(geometry,material);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh;};
  add(createKatanaBladeGeometry(),[metal,spine]).name='senbonzakura-blade';
  function collar(y:number,height:number,radius:number,mat:THREE.Material,parent=sword){const m=add(new THREE.CylinderGeometry(radius,radius,height,48),mat,parent);m.scale.z=.72;m.position.y=y;return m;}
  // Habaki and seppa seat the blade directly against the tsuba.
  // The longer sleeve has broad satin-metal facets, with the blade ridge carried through it.
- const habakiMetal=new THREE.MeshStandardMaterial({color:0x777d70,metalness:1,roughness:.9,envMapIntensity:1.8,...fittingMaps});
+ const habakiMetal=createSatinMetal(renderer,{color:0x777d70,roughnessScale:.9});
  const habakiSection=new THREE.Shape();
  const sleeveCross=[[-.128,-.037],[-.128,.037],[-.018,.052],[.142,.042],[.142,-.042],[-.018,-.052]];
  sleeveCross.forEach(([x,z],i)=>i?habakiSection.lineTo(x,-z):habakiSection.moveTo(x,-z));habakiSection.closePath();
