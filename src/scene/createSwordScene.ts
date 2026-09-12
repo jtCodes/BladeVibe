@@ -1,3 +1,6 @@
+import {createSceneEnvironment,type LightingSettings} from './sceneEnvironment';
+export type {LightingSettings} from './sceneEnvironment';
+import {swordEnvironmentPreset,SENBONZAKURA_BANKAI_FOG} from './sceneEnvironmentPresets';
 import {yieldScenePreparation} from './yieldScenePreparation';
 import {SENBONZAKURA_POMMEL_TIP_Y,SENBONZAKURA_BLADE_LENGTH} from './senbonzakuraDimensions';
 import {getBankaiCameraView} from './bankaiCamera';
@@ -15,18 +18,15 @@ import {createBankai} from './bankai';
 import {createShikai} from './shikai';
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
-import {createStudioEnvironment} from './studio';
 import {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
 import {SSRPass} from 'three/addons/postprocessing/SSRPass.js';
 import {OutputPass} from 'three/addons/postprocessing/OutputPass.js';
 import {UnrealBloomPass} from 'three/addons/postprocessing/UnrealBloomPass.js';
 import {SMAAPass} from 'three/addons/postprocessing/SMAAPass.js';
-import {RectAreaLightUniformsLib} from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import {clearSurfaceMapCache} from './craft';
 import {clearClothMaterialCache} from './clothMaterials';
 import { initializePhysics, createSwordPhysics, FLOOR_Y, type MotionStatus } from './swordPhysics';
 import { createBladeAura, type EffectMode } from './aura';
-export interface LightingSettings { brightness:number; key:number; fill:number; rim:number; ambient:number }
 export type TimelineEffect='bankai'|'shikai';
 export interface EffectSeekRequest { effect:TimelineEffect; time:number; paused:boolean }
 export interface ViewerSettings { viewState?:SwordViewRequest; effectSeek?:EffectSeekRequest; effectPaused?:boolean; glowStrength?:number; glowSpread?:number; petalGlow?:number; upscaling?:'native'|'ultra'|'quality'; dragTarget?:'sword'|'camera'; antiAliasing?:'standard'|'smooth'|'high'; showPerformance?:boolean; lighting?: LightingSettings; rotating: boolean; draw: number; reflections: boolean; lightAngle: number; floorColor?: string; backgroundColor?: string; cameraHeight: number; showSheath?: boolean; swordRotation?: number; effect: EffectMode; effectSpeed: number; effectIntensity: number }
@@ -44,12 +44,11 @@ const cleanups: Array<() => void> = [];
 let active=options.active??true;
 try {
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x141413);scene.fog=new THREE.FogExp2(0x141413,.032);
-const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.85;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.localClippingEnabled=true;RectAreaLightUniformsLib.init();container.appendChild(renderer.domElement);cleanups.push(()=>{clearSurfaceMapCache(renderer);clearClothMaterialCache(renderer);renderer.dispose();renderer.domElement.remove()});
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.85;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.localClippingEnabled=true;container.appendChild(renderer.domElement);cleanups.push(()=>{clearSurfaceMapCache(renderer);clearClothMaterialCache(renderer);renderer.dispose();renderer.domElement.remove()});
 cleanups.push(()=>{
  const geometries=new Set<THREE.BufferGeometry>(), materials=new Set<THREE.Material>(), textures=new Set<THREE.Texture>();
  scene.traverse(object=>{
   if(object instanceof THREE.Mesh || object instanceof THREE.Points){geometries.add(object.geometry);for(const material of Array.isArray(object.material)?object.material:[object.material])materials.add(material);}
-  if(object instanceof THREE.DirectionalLight)object.shadow.dispose();
  });
  for(const material of materials){for(const value of Object.values(material))if(value instanceof THREE.Texture)textures.add(value);material.dispose();}
  for(const geometry of geometries)geometry.dispose();for(const texture of textures)texture.dispose();
@@ -107,26 +106,11 @@ cleanups.push(()=>{
  renderer.domElement.removeEventListener('pointerup',forgetControlPointer);renderer.domElement.removeEventListener('pointercancel',forgetControlPointer);
 });
 await yieldScenePreparation(signal);
-const environment=createStudioEnvironment(renderer,options.model==='senbonzakura');scene.environment=environment.texture;scene.environmentRotation.set(0,.35,0);cleanups.push(()=>environment.dispose());scene.environmentIntensity=.8;
-const ambientLight=new THREE.HemisphereLight(0xb9d8ed,0x1b1312,.12);scene.add(ambientLight);
-function area(color: number,power: number,x: number,y: number,z: number,w: number,h: number){const l=new THREE.RectAreaLight(color,power,w,h);l.position.set(x,y,z);l.lookAt(0,1.5,0);scene.add(l);return l}
-const mainLight=area(0xf4f4f2,5,-4,5,5,3,8),rimLight=area(0xffebd4,4,4,2,-3,2,7),fillLight=area(0xe8efff,3,2,4,4,.6,6);
-// A soft overhead source adds a clean highlight without a visible fixture.
-const overheadLight=area(0xffffff,2.5,0,8,2,4,3);
-// Broad off-camera illumination has no spotlight cone to draw a disc on the floor.
-const key=new THREE.DirectionalLight(0xfff1df,1.8);key.position.set(-12,18,10);key.target.position.set(0,0,0);key.castShadow=true;key.shadow.mapSize.set(2048,2048);key.shadow.bias=-.0002;key.shadow.normalBias=.015;key.shadow.camera.near=.5;key.shadow.camera.far=60;key.shadow.camera.left=-14;key.shadow.camera.right=14;key.shadow.camera.top=14;key.shadow.camera.bottom=-14;key.shadow.radius=3;scene.add(key,key.target);
+const environmentPreset=swordEnvironmentPreset(modelId);
+const environment=createSceneEnvironment(scene,renderer,environmentPreset);cleanups.push(()=>environment.dispose());
 const sword=new THREE.Group();scene.add(sword);sword.rotation.z=Math.PI-.16;
 const model=swordModels[options.model??'longsword'];
 const isKatana=options.model==='senbonzakura',isZangetsu=options.model==='zangetsu';
-// Neutral illumination keeps the steel silver beneath the release effects.
-// Reuse the studio emitters: no extra lights, passes, or shadow maps.
-if(isKatana){
- key.color.set(0xffffff);mainLight.color.set(0xffffff);
- fillLight.color.set(0xffffff);rimLight.color.set(0xffffff);
- ambientLight.color.set(0xb0b0b0);ambientLight.groundColor.set(0x0c0c0c);
- if(scene.fog instanceof THREE.FogExp2)scene.fog.density=.022;
-}
-
 await yieldScenePreparation(signal);
 const scabbard=model.create(renderer,sword);
 await yieldScenePreparation(signal);
@@ -256,19 +240,7 @@ function update(settings: ViewerSettings){
  upscale.enabled=renderScale<1;
  edgeAA.enabled=aaMode!=='standard';
  performanceRequested=!options.preview&&!!settings.showPerformance;meter.setEnabled(active&&performanceRequested);
- const lighting=settings.lighting??{brightness:1,key:1,fill:1,rim:1,ambient:1};
- renderer.toneMappingExposure=.85;
- displayBrightness.value=THREE.MathUtils.clamp(lighting.brightness,.25,2.5);
- overheadLight.intensity=2.5*lighting.key;
- key.intensity=(isKatana?1.2:1.8)*lighting.key;mainLight.intensity=(isKatana?4:5.5)*lighting.key;
- fillLight.intensity=(isKatana?1.6:3.3)*lighting.fill;rimLight.intensity=(isKatana?4.5:4)*lighting.rim;
- // Lift material detail through fill and reflections without increasing bloom exposure.
- ambientLight.intensity=(isKatana?.09:.14)*lighting.ambient;scene.environmentIntensity=(isKatana?.5:.9)*lighting.ambient;
- floorMaterial.color.set(settings.floorColor??(isKatana?'#090b14':'#141413'));
- if(scene.background instanceof THREE.Color)scene.background.set(settings.backgroundColor??(isKatana?'#03050d':'#141413'));
- if(scene.fog)scene.fog.color.set(settings.backgroundColor??(isKatana?'#03050d':'#141413'));
- // Let the lit aisle disappear into the background before the visible horizon.
- if(isKatana&&scene.fog instanceof THREE.FogExp2)scene.fog.density=settings.effect==='bankai'?.055:.022;
+ displayBrightness.value=environment.update({lighting:settings.lighting,backgroundColor:settings.backgroundColor,floorColor:settings.floorColor,floor:floorMaterial,lightAngle:settings.lightAngle,fogDensity:isKatana&&settings.effect==='bankai'?SENBONZAKURA_BANKAI_FOG:environmentPreset.fogDensity});
  effectSpeed=settings.effectSpeed;effectIntensity=settings.effectIntensity;effectPaused=settings.effectPaused??false;effectMode=settings.effect;
  glowStrength=THREE.MathUtils.clamp(settings.glowStrength??.42,0,1.5);glowSpread=THREE.MathUtils.clamp(settings.glowSpread??.8,0,1);petalGlow=THREE.MathUtils.clamp(settings.petalGlow??4,0,8);
  if(bankai?.active&&settings.effect!=='bankai'){bankai.cancel();physics.setDraw(settings.draw/100);physics.restore();}
@@ -302,7 +274,6 @@ function update(settings: ViewerSettings){
  bloom.threshold=isKatana?1.1:3.;
  bloom.strength=isKatana?.24:.14;
  reflectionsRequested=settings.reflections;reflections.output=SSRPass.OUTPUT.Default;updateReflectionPath();
- scene.environmentRotation.y=THREE.MathUtils.degToRad(settings.lightAngle);
  controls.autoRotate=settings.rotating&&settings.effect!=='bankai'&&(options.preview||dragTarget==='camera');
  if(view&&!('reset' in view))applyCameraView(view);
 }

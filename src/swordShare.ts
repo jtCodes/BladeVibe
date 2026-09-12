@@ -1,7 +1,8 @@
 import type {SwordAsset} from './swordLibrary';
 import {swordUrl,swordFormEffect,type SwordForm} from './swordLibrary';
 import type {EffectMode} from './scene/aura';
-import type {LightingSettings} from './scene/createSwordScene';
+import type {LightingSettings} from './scene/sceneEnvironment';
+import {swordEnvironmentPreset} from './scene/sceneEnvironmentPresets';
 import type {SwordViewState} from './scene/swordViewState';
 
 export interface SwordShareState {
@@ -11,10 +12,11 @@ export interface SwordShareState {
  glowStrength:number; glowSpread:number; petalGlow:number; reflections:boolean; view?:SwordViewState;
 }
 export function defaultSwordState(sword:SwordAsset):SwordShareState{
+ const environment=swordEnvironmentPreset(sword.model);
  return {version:1,sword:sword.id,effect:sword.effect,effectIntensity:sword.effectIntensity/100,effectSpeed:sword.effectSpeed,
   time:0,paused:false,draw:100,showSheath:true,swordRotation:0,rotating:false,cameraHeight:0,lightAngle:sword.lightAngle,
   lighting:{brightness:1,key:1,fill:1,rim:1,ambient:1},
-  backgroundColor:sword.model==='senbonzakura'?'#03050d':'#141413',floorColor:sword.model==='senbonzakura'?'#090b14':'#141413',
+  backgroundColor:environment.background,floorColor:environment.floor!,
   glowStrength:.42,glowSpread:.8,petalGlow:6,reflections:sword.reflections};
 }
 function record(value:unknown):Record<string,unknown>{return value!==null&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};}
