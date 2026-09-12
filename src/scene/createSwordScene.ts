@@ -1,3 +1,4 @@
+import {getBankaiCameraView} from './bankaiCamera';
 import type {SwordViewState,SwordViewRequest} from './swordViewState';
 import {prepareSurfaceAssets} from './surfaceAssets';
 import {prepareSakuraAssets} from './sakuraAssets';
@@ -246,13 +247,8 @@ function update(settings: ViewerSettings){
  aura.configure(settings.effect,settings.effectSpeed,settings.effectIntensity);
  if(bankai&&!bankai.active&&settings.effect==='bankai'){
   physics.setDraw(1);physics.restore();shikai?.update(0,0);bankai.start();
-  if(!seekRequest){
-  // Keep the full drop and the ground contact in frame while preserving the viewing direction.
-  const direction=camera.position.clone().sub(controls.target).normalize();
-  controls.target.set(sword.position.x,-.2,sword.position.z);
-  const distance=Math.max(24,7/(Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*Math.min(1,camera.aspect)));
-  camera.position.copy(controls.target).addScaledVector(direction,distance);
-  controls.maxDistance=Math.max(34,distance);
+  if(!options.preview&&(!view||'reset' in view)){
+   applyCameraView(getBankaiCameraView(bankai.formationOrigin,camera.aspect,camera.fov));
   }
  }
  if(seekRequest){
@@ -266,14 +262,15 @@ function update(settings: ViewerSettings){
  reflectionsRequested=settings.reflections;reflections.output=SSRPass.OUTPUT.Default;updateReflectionPath();
  scene.environmentRotation.y=THREE.MathUtils.degToRad(settings.lightAngle);
  controls.autoRotate=settings.rotating&&settings.effect!=='bankai'&&(options.preview||dragTarget==='camera');
- if(view&&!('reset' in view)){
-  // Consume pending orbit damping before applying an absolute shared camera.
-  const damping=controls.enableDamping,autoRotate=controls.autoRotate;
-  controls.enableDamping=false;controls.autoRotate=false;controls.update(0);
-  camera.position.fromArray(view.camera);controls.target.fromArray(view.target);
-  controls.maxDistance=Math.max(34,camera.position.distanceTo(controls.target));controls.update(0);
-  controls.enableDamping=damping;controls.autoRotate=autoRotate;
- }
+ if(view&&!('reset' in view))applyCameraView(view);
+}
+function applyCameraView(view:Pick<SwordViewState,'camera'|'target'>){
+ // Consume pending orbit damping before applying an absolute camera position.
+ const damping=controls.enableDamping,autoRotate=controls.autoRotate;
+ controls.enableDamping=false;controls.autoRotate=false;controls.update(0);
+ camera.position.fromArray(view.camera);controls.target.fromArray(view.target);
+ controls.maxDistance=Math.max(34,camera.position.distanceTo(controls.target));controls.update(0);
+ controls.enableDamping=damping;controls.autoRotate=autoRotate;
 }
 function timelineController(effect:EffectMode=effectMode){return effect==='bankai'?bankai:effect==='shikai'?shikai:null;}
 function getEffectTimeline(effect?:TimelineEffect):EffectTimeline|null {

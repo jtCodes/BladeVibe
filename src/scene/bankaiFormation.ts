@@ -5,7 +5,7 @@ import {addSakuraGlow,addSakuraSurfaceTransition,sakuraPinkBuild} from './sakura
 import * as THREE from 'three';
 import {FLOOR_Y} from './swordPhysics';
 
-import {BANKAI_HEIGHT as HEIGHT,BANKAI_BLADES as BLADES,BANKAI_RISE_END as RISE_END,BANKAI_DISSOLVE_AT as DISSOLVE_AT,BANKAI_DISSOLVE_DURATION as DISSOLVE_DURATION,BANKAI_DISSOLVE_END as DISSOLVE_END,createBankaiRows} from './sakuraLayout';
+import {BANKAI_ROW_OFFSET,BANKAI_FRONT_Z,BANKAI_ROW_SPACING,BANKAI_HEIGHT as HEIGHT,BANKAI_BLADES as BLADES,BANKAI_RISE_END as RISE_END,BANKAI_DISSOLVE_AT as DISSOLVE_AT,BANKAI_DISSOLVE_DURATION as DISSOLVE_DURATION,BANKAI_DISSOLVE_END as DISSOLVE_END,createBankaiRows} from './sakuraLayout';
 
 export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
  const group=new THREE.Group();group.visible=false;scene.add(group);
@@ -89,7 +89,7 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
    }`});
  const contacts=new THREE.InstancedMesh(contactGeometry,contactMaterial,BLADES);contacts.frustumCulled=false;
  for(let i=0;i<BLADES;i++){
-  const p=placement[i];dummy.position.set(p.side*4.3,FLOOR_Y+.006,p.z);
+  const p=placement[i];dummy.position.set(p.side*BANKAI_ROW_OFFSET,FLOOR_Y+.006,p.z);
   dummy.rotation.set(-Math.PI/2,0,0);dummy.scale.setScalar(1);dummy.updateMatrix();contacts.setMatrixAt(i,dummy.matrix);
  }
  contacts.instanceMatrix.needsUpdate=true;group.add(contacts);
@@ -100,7 +100,7 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
  // No emitter plane or distance cutoff can stamp a straight boundary onto the floor.
  const spillPink=new THREE.Color(0xff7ac4);
  const glowLights=[3,11,19].flatMap(row=>[-1,1].map(side=>{
-  const z=2-row*2.05,light=new THREE.PointLight(0xffffff,0,0,2);
+  const z=BANKAI_FRONT_Z-row*BANKAI_ROW_SPACING,light=new THREE.PointLight(0xffffff,0,0,2);
   light.position.set(side*4.05,FLOOR_Y+5,z);light.castShadow=false;group.add(light);
   return {light,delay:delays[row*2],release:DISSOLVE_AT+dissolveDelays[row*2]};
  }));
@@ -123,7 +123,7 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
    if(riseTime!==lastRiseTime){
     for(let i=0;i<BLADES;i++){
      const p=placement[i],rise=THREE.MathUtils.smoothstep(time,p.delay,p.delay+2.1);
-     dummy.position.set(p.side*4.3,FLOOR_Y-(1-rise)*(HEIGHT+.05),p.z);
+     dummy.position.set(p.side*BANKAI_ROW_OFFSET,FLOOR_Y-(1-rise)*(HEIGHT+.05),p.z);
      dummy.rotation.set(0,p.side===-1?0:Math.PI,0);dummy.scale.setScalar(1);dummy.updateMatrix();blades.setMatrixAt(i,dummy.matrix);
     }
     blades.instanceMatrix.needsUpdate=true;
