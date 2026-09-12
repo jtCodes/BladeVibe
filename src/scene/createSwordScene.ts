@@ -1,3 +1,4 @@
+import {swordDisplayCenter,centeredSwordView} from './swordFraming';
 import type {BankaiPetalMotion} from './bankaiPetalMotion';
 import {createSceneEnvironment,type LightingSettings} from './sceneEnvironment';
 export type {LightingSettings} from './sceneEnvironment';
@@ -114,6 +115,7 @@ const model=swordModels[options.model??'longsword'];
 const isKatana=options.model==='senbonzakura',isZangetsu=options.model==='zangetsu';
 await yieldScenePreparation(signal);
 const scabbard=model.create(renderer,sword);
+const displayCenter=swordDisplayCenter(sword);
 await yieldScenePreparation(signal);
 const floorMaterial=new THREE.MeshStandardMaterial({color:0x141413,metalness:0,roughness:.9});
 const floor=new THREE.Mesh(new THREE.PlaneGeometry(1000,1000),floorMaterial);scene.add(floor);floor.rotation.x=-Math.PI/2;floor.position.y=FLOOR_Y;floor.castShadow=false;floor.receiveShadow=true;
@@ -223,10 +225,12 @@ let lastWidth=0,lastHeight=0,lastPixelRatio=0,lastRenderScale=0;
 cleanups.push(()=>{for(const pass of composer.passes)pass.dispose();composer.dispose()});
 let cameraHeight=0,effectSpeed=1,effectIntensity=1,effectPaused=false;
 let effectMode:EffectMode='off';
+let settingsApplied=false,sheathVisible=false;
 let lastSeek:EffectSeekRequest|undefined;
 let lastView: SwordViewRequest|undefined;
 let glowStrength=.42,glowSpread=.8,petalGlow=4,performanceRequested=false;
 function update(settings: ViewerSettings){
+ const firstSettings=!settingsApplied;
  const seekRequest=settings.effectSeek!==lastSeek&&settings.effectSeek?.effect===settings.effect?settings.effectSeek:undefined;
  lastSeek=settings.effectSeek;
  const poseChanged=physics.setGroundedUpright(isKatana&&settings.effect==='shikai');
@@ -250,7 +254,8 @@ function update(settings: ViewerSettings){
  glowStrength=THREE.MathUtils.clamp(settings.glowStrength??.42,0,1.5);glowSpread=THREE.MathUtils.clamp(settings.glowSpread??.8,0,1);petalGlow=THREE.MathUtils.clamp(settings.petalGlow??4,0,8);
  if(bankai?.active&&settings.effect!=='bankai'){bankai.cancel();physics.setDraw(settings.draw/100);physics.restore();}
  if(isZangetsu)scabbard.userData.setUnwrapped(settings.draw/100);
- const showSheath=!options.preview&&settings.effect!=='bankai'&&settings.effect!=='shikai'&&(settings.showSheath??true);
+ const showSheath=!options.preview&&settings.effect!=='bankai'&&settings.effect!=='shikai'&&(settings.showSheath??false);
+ const sheathChanged=sheathVisible!==showSheath;sheathVisible=showSheath;settingsApplied=true;
  if(scabbard.visible!==showSheath){scabbard.visible=showSheath;renderer.shadowMap.needsUpdate=true;}
  physics.setRotation(settings.swordRotation??0);
  const lift=settings.cameraHeight-cameraHeight;camera.position.y+=lift;controls.target.y+=lift;cameraHeight=settings.cameraHeight;
@@ -280,7 +285,13 @@ function update(settings: ViewerSettings){
  bloom.strength=isKatana?.24:.14;
  reflectionsRequested=settings.reflections;reflections.output=SSRPass.OUTPUT.Default;updateReflectionPath();
  controls.autoRotate=settings.rotating&&settings.effect!=='bankai'&&(options.preview||dragTarget==='camera');
+ if(!options.preview&&!showSheath&&settings.effect!=='shikai'&&settings.effect!=='bankai'&&(firstSettings||sheathChanged||(view&&'reset' in view))&&(!view||'reset' in view)){physics.restore();centerDefaultSwordView();}
  if(view&&!('reset' in view))applyCameraView(view);
+}
+function centerDefaultSwordView(){
+ sword.updateWorldMatrix(true,false);
+ const center=displayCenter.clone().applyMatrix4(sword.matrixWorld);center.y+=cameraHeight;
+ applyCameraView(centeredSwordView(camera.position,controls.target,center));
 }
 function applyCameraView(view:Pick<SwordViewState,'camera'|'target'>){
  // Consume pending orbit damping before applying an absolute camera position.
@@ -304,7 +315,7 @@ function reset(){stopSwordDrag();physics.resetOrientation();clearArrows();bankai
  physics.setDraw(1);physics.restore();
  camera.position.set(1.3,isZangetsu?1.5:4.7,isZangetsu?19.5:15);
  controls.target.set(.4,isZangetsu?1.5:3.65,0);controls.update();return;
-}const mobile=(container.clientWidth||window.innerWidth)<700;camera.position.set(2.1,isZangetsu?4.3:2.6,isZangetsu?30:mobile?23:24);camera.position.y+=cameraHeight;controls.target.set(0,(isZangetsu?3.4:mobile?1.1:.8)+cameraHeight,0);controls.update();physics.restore()}
+}const mobile=(container.clientWidth||window.innerWidth)<700;camera.position.set(2.1,isZangetsu?4.3:2.6,isZangetsu?30:mobile?23:24);camera.position.y+=cameraHeight;controls.target.set(0,(isZangetsu?3.4:mobile?1.1:.8)+cameraHeight,0);controls.update();physics.restore();if(settingsApplied&&!sheathVisible&&effectMode!=='shikai'&&effectMode!=='bankai')centerDefaultSwordView();}
 function resize(){
  // A retained view can be display:none before its activation effect runs.
  // Preserve its buffers and projection until it has real dimensions again.

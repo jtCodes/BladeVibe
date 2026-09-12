@@ -1,6 +1,6 @@
 import type {BankaiPetalMotion} from './scene/bankaiPetalMotion';
 import type {SwordAsset} from './swordLibrary';
-import {swordUrl,swordFormEffect,type SwordForm} from './swordLibrary';
+import {swordUrl,swordFormEffect,longswordEffects,type SwordForm} from './swordLibrary';
 import type {EffectMode} from './scene/aura';
 import type {LightingSettings} from './scene/sceneEnvironment';
 import {swordEnvironmentPreset} from './scene/sceneEnvironmentPresets';
@@ -16,7 +16,7 @@ export interface SwordShareState {
 export function defaultSwordState(sword:SwordAsset):SwordShareState{
  const environment=swordEnvironmentPreset(sword.model);
  return {bankaiPetalMotion:'drift',version:1,sword:sword.id,effect:sword.effect,effectIntensity:sword.effectIntensity/100,effectSpeed:sword.effectSpeed,
-  time:0,paused:false,draw:100,showSheath:true,swordRotation:0,rotating:false,cameraHeight:0,lightAngle:sword.lightAngle,
+  time:0,paused:false,draw:100,showSheath:false,swordRotation:0,rotating:false,cameraHeight:0,lightAngle:sword.lightAngle,
   lighting:{brightness:1,key:1,fill:1,rim:1,ambient:1},
   backgroundColor:environment.background,floorColor:environment.floor!,
   glowStrength:.42,glowSpread:.8,petalGlow:6,reflections:sword.reflections};
@@ -30,7 +30,7 @@ function vector(value:unknown,length:number,max:number):number[]|undefined{
 }
 export function normalizeSwordState(sword:SwordAsset,input:unknown):SwordShareState{
  const base=defaultSwordState(sword),raw=record(input),light=record(raw.lighting);
- const allowed:EffectMode[]=sword.model==='senbonzakura'?['off','shikai','bankai']:sword.model==='zangetsu'?['off','bankai']:['off','glow','flame','ice','electric'];
+ const allowed:readonly EffectMode[]=sword.model==='senbonzakura'?['off','shikai','bankai']:sword.model==='zangetsu'?['off','bankai']:longswordEffects;
  const effect=allowed.includes(raw.effect as EffectMode)?raw.effect as EffectMode:base.effect;
  const v=record(raw.view),camera=vector(v.camera,3,200),target=vector(v.target,3,100),rotation=vector(v.rotation,4,1);
  const magnitude=rotation?Math.hypot(...rotation):0;
@@ -38,7 +38,7 @@ export function normalizeSwordState(sword:SwordAsset,input:unknown):SwordShareSt
   {camera:camera as SwordViewState['camera'],target:target as SwordViewState['target'],rotation:rotation.map(n=>n/magnitude) as SwordViewState['rotation']}:undefined;
  return {...base,bankaiPetalMotion:raw.bankaiPetalMotion==='storm'?raw.bankaiPetalMotion:'drift',effect,effectIntensity:number(raw.effectIntensity,base.effectIntensity,0,2),effectSpeed:number(raw.effectSpeed,base.effectSpeed,0,3),
   time:sword.model==='senbonzakura'&&(effect==='shikai'||effect==='bankai')?number(raw.time,0,0,120):0,paused:boolean(raw.paused,false),
-  draw:sword.model==='senbonzakura'&&(effect==='shikai'||effect==='bankai')?100:number(raw.draw,100,0,100),showSheath:boolean(raw.showSheath,true),swordRotation:number(raw.swordRotation,0,-180,180),rotating:boolean(raw.rotating,false),
+  draw:sword.model==='senbonzakura'&&(effect==='shikai'||effect==='bankai')?100:number(raw.draw,100,0,100),showSheath:boolean(raw.showSheath,base.showSheath),swordRotation:number(raw.swordRotation,0,-180,180),rotating:boolean(raw.rotating,false),
   cameraHeight:number(raw.cameraHeight,0,-8,8),lightAngle:number(raw.lightAngle,base.lightAngle,0,360),
   lighting:{brightness:number(light.brightness,1,.25,2.5),key:number(light.key,1,0,4),fill:number(light.fill,1,0,5),rim:number(light.rim,1,0,4),ambient:number(light.ambient,1,0,4)},
   backgroundColor:color(raw.backgroundColor,base.backgroundColor),floorColor:color(raw.floorColor,base.floorColor),

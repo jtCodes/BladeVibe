@@ -1,9 +1,9 @@
-import type {ButtonHTMLAttributes,ComponentProps,ReactNode} from 'react';
+import type {ButtonHTMLAttributes,ComponentProps,ReactNode,Ref} from 'react';
 import {StudyIcon} from './StudyIcon';
 import {AppLink} from './navigation';
 
 type IconName=ComponentProps<typeof StudyIcon>['name'];
-export function IconButton({icon,label,title,...props}:Omit<ButtonHTMLAttributes<HTMLButtonElement>,'children'|'className'|'aria-label'> & {icon:IconName;label:string}){
+export function IconButton({icon,label,title,...props}:Omit<ButtonHTMLAttributes<HTMLButtonElement>,'children'|'className'|'aria-label'> & {icon:IconName;label:string;ref?:Ref<HTMLButtonElement>}){
  return <button {...props} type="button" className="study-icon-button" aria-label={label} title={title??label}><StudyIcon name={icon}/></button>;
 }
 export function PlaybackActions({paused,onToggle,onReplay,playLabel='Play',pauseLabel='Pause',replayLabel='Replay from start'}:{paused:boolean;onToggle:()=>void;onReplay?:()=>void;playLabel?:string;pauseLabel?:string;replayLabel?:string}){

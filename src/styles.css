@@ -91,7 +91,7 @@ canvas { display: block; touch-action: none; }
   pointer-events: none; text-shadow: 0 1px 5px #000;
 }
 .is-replay .experience-header a, .is-replay .experience-header button,
-.is-replay .study-info button, .is-replay .replay-progress { pointer-events: auto; }
+.is-replay .study-info :is(button, a, input, select, textarea, label), .is-replay .replay-progress { pointer-events: auto; }
 .is-replay .experience-header nav button, .is-replay .text-link,
 .is-replay .form-selector button { color: #c4c1ba; }
 .is-replay .experience-header nav button:hover, .is-replay .text-link:hover,
@@ -239,3 +239,26 @@ button, summary, .text-link { letter-spacing:.08em; }
 
 .scene-subtitle { color:var(--muted); font-size:.75rem; letter-spacing:.16em; }
 .scene-control-hint { color:var(--muted); font-size:.6875rem; line-height:1.5; }
+
+/* Secondary options share playback's icon rhythm; the scene stays clear until opened. */
+.replay-tools { display:flex; align-items:center; gap:2px; }
+.scene-options { position:relative; pointer-events:auto; flex:none; }
+.scene-options > button[aria-expanded=true] { background:#ffffff0b; }
+.scene-options-panel { position:absolute; bottom:calc(100% + 10px); left:0; width:220px; max-width:calc(100vw - 48px); max-height:calc(100dvh - 180px); overflow-y:auto; padding:8px; background:#171717; border:1px solid #ffffff24; box-shadow:0 12px 32px #0008; color:var(--text); text-shadow:none; pointer-events:auto; }
+.replay-tools .scene-options-panel { left:auto; right:0; }
+.scene-option-effects { margin:0 0 6px; padding:0 0 6px; border:0; border-bottom:1px solid #ffffff18; min-width:0; }
+.scene-option-effects legend { padding:8px 10px; font-size:.625rem; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+.scene-option-choice,.scene-option-toggle { position:relative; display:flex; align-items:center; justify-content:space-between; gap:16px; width:100%; min-height:44px; padding:0 10px; font-size:.75rem; letter-spacing:.035em; color:#c4c1ba; cursor:pointer; }
+.scene-option-choice input { position:absolute; width:1px; height:1px; opacity:0; }
+.scene-option-choice:hover,.scene-option-toggle:hover { background:#ffffff08; color:var(--text); }
+.scene-option-choice:has(input:checked) { color:var(--text); }
+.scene-option-choice:has(input:focus-visible) { outline:1px solid var(--text); outline-offset:-1px; }
+.scene-option-mark { width:5px; height:5px; border-radius:50%; background:transparent; }
+.scene-option-choice input:checked ~ .scene-option-mark { background:currentColor; }
+.scene-option-state { font-size:.625rem; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+.scene-option-toggle[aria-pressed=true] .scene-option-state { color:var(--text); }
+@media(max-width:380px){.is-replay .form-selector { gap:9px; }.is-replay .replay-controls { column-gap:4px; }.replay-tools { gap:0; }}
+
+.scene-option-draw { padding:8px 10px 0; border-top:1px solid #ffffff18; }
+.scene-option-draw .range-label { font-size:.6875rem; color:#c4c1ba; }
+.scene-option-draw:has(input:disabled) .range-label { opacity:.4; }

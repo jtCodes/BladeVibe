@@ -2,6 +2,8 @@ import {IconButton,SceneHeader,SceneOverlay} from './SceneControls';
 import {useBankaiVoice} from './useBankaiVoice';
 import {BankaiTitle} from './BankaiTitle';
 import {SwordReplayControls} from './SwordReplayControls';
+import {SwordSheathToggle,SwordEffectSelect,SwordDrawSlider} from './SwordDisplayOptions';
+import {SceneOptions} from './SceneOptions';
 import {readSwordPageState,swordSharePath,normalizeSwordState,type SwordShareState} from './swordShare';
 import type {SwordViewRequest} from './scene/swordViewState';
 import {EffectTimelineControls} from './EffectTimelineControls';
@@ -152,6 +154,11 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
     else setEffectPaused(!effectPaused&&effectSpeed!==0);
     if(effectSpeed===0)setEffectSpeed(1);if(effectIntensity===0)setEffectIntensity(100);
   }
+  function changeSheathVisibility(visible:boolean){setShowSheath(visible);if(!visible)setDraw(100);}
+  function changeDraw(value:number){setEffect(current=>current==='shikai'?'off':current);setSwordRotation(0);setDraw(value);}
+  function selectSwordEffect(mode:EffectMode){
+    setEffect(mode);if(effectSpeed===0)setEffectSpeed(1);if(effectIntensity===0)setEffectIntensity(100);
+  }
   function originalForm(){setEffect('off');setDraw(100);navigateForm(sword.model==='zangetsu'?'shikai':undefined);}
 
   return <main className={`sword-experience ${editing?'is-editor':'is-replay'}`}>
@@ -161,7 +168,10 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
     </SceneHeader>
     <div className="experience-body">
       {!editing&&<SceneOverlay title={sword.name}>
-        <SwordReplayControls sword={sword} sceneRef={viewerScene} visible={active} effect={effect} selected={timelineEffect} paused={effectPaused} speed={effectSpeed} intensity={effectIntensity} onSelect={play} onReplay={()=>play()} onPause={togglePlayback} onSeek={time=>inspectEffect(time,true)} onOriginal={originalForm}/>
+        <SwordReplayControls sword={sword} sceneRef={viewerScene} visible={active} effect={effect} selected={timelineEffect} paused={effectPaused} speed={effectSpeed} intensity={effectIntensity} onSelect={play} onReplay={()=>play()} onPause={togglePlayback} onSeek={time=>inspectEffect(time,true)} onOriginal={originalForm} options={(sword.model==='longsword'||(hasSheath&&!bankaiCinematic&&effect!=='shikai'))&&<SceneOptions>
+          {sword.model==='longsword'&&<SwordEffectSelect compact value={effect} onChange={selectSwordEffect}/>}
+          {hasSheath&&<><SwordSheathToggle compact visible={showSheath} onChange={changeSheathVisibility} wrapping={clothWrapped}/><SwordDrawSlider compact value={draw} onChange={changeDraw} disabled={!showSheath||dropped} wrapping={clothWrapped}/></>}
+        </SceneOptions>}/>
         {invalidShare&&<p className="share-notice" role="status">This link could not be read. Showing the original sword.</p>}
       </SceneOverlay>}
       <section className="sword-canvas" aria-label={`${sword.name} interactive view`}>
@@ -197,13 +207,11 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
         <p className="motion-status">Sword rotation is available when drawn and on display. Right-drag pans the camera; scroll zooms.</p>
       </div>
       <div className="motion-panel">
-        {hasSheath&&<label className="reflection-toggle"><input type="checkbox" checked={showSheath} disabled={bankaiCinematic} onChange={event=>setShowSheath(event.target.checked)}/>{clothWrapped?'Show blade wrapping':'Show sheath'}</label>}
+        {hasSheath&&<SwordSheathToggle visible={showSheath} onChange={changeSheathVisibility} wrapping={clothWrapped} disabled={bankaiCinematic||effect==='shikai'}/>}
         <label className="range-label" htmlFor="sword-rotation">Rotate sword <output>{swordRotation}°</output></label>
         <input id="sword-rotation" type="range" min={-180} max={180} step={1} value={swordRotation} disabled={status!=='drawn'||bankaiCinematic} onChange={event=>{setRotating(false);setSwordRotation(Number(event.target.value))}}/>
         <div className="actions"><button disabled={status!=='drawn'||bankaiCinematic} onClick={()=>{setRotating(false);setSwordRotation(180)}}>Blade up</button><button disabled={dropped||bankaiCinematic} onClick={()=>setSwordRotation(0)}>Reset sword angle</button></div>
-        {hasSheath&&<><label className="range-label" htmlFor="draw">{clothWrapped?'Unwrap blade':'Draw sword'} <output>{draw}%</output></label>
-        <input id="draw" type="range" min={0} max={100} value={draw} disabled={dropped||bankaiCinematic} onChange={event=>{setEffect(current=>current==='shikai'?'off':current);setSwordRotation(0);setDraw(Number(event.target.value))}}/>
-        </>}
+        {hasSheath&&<SwordDrawSlider value={draw} onChange={changeDraw} disabled={!showSheath||dropped||bankaiCinematic} wrapping={clothWrapped}/>}
         <div className="actions">{hasSheath&&<button disabled={dropped||bankaiCinematic} onClick={()=>{setEffect(current=>current==='shikai'?'off':current);setSwordRotation(0);setDraw(draw===100?0:100)}}>{clothWrapped?(draw===100?'Wrap blade':'Unwrap blade'):(draw===100?'Sheathe':'Draw')}</button>}<button disabled={status!=='drawn'||effect==='shikai'||bankaiCinematic} onClick={()=>{setRotating(false);setDropVersion(v=>v+1)}}>Drop sword</button></div>
         <p className="motion-status" role="status">{bankaiCinematic?'Bankai release':tensaActive&&!dropped?'Tensa Zangetsu · ready to release':clothWrapped&&!dropped?(draw===0?'Cloth wrapped':draw===100?'Unwrapped · ready to release':'Partially unwrapped'):{sheathed:'Sheathed',drawing:'Guided draw',drawn:'Drawn · ready to release',falling:'Falling',resting:'At rest'}[status]}</p>
         {dropped&&<button className="restore" onClick={()=>setResetVersion(v=>v+1)}>Return to display</button>}
@@ -214,10 +222,7 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
         <button aria-pressed={bankaiActive} disabled={dropped} onClick={()=>{setRotating(false);setDraw(100);setEffect(bankaiActive?'off':'bankai')}}>{bankaiActive?'Restore sword':'Bankai · Release'}</button>
         {bankaiActive&&<p className="motion-status">Sword sinks → blade rows rise → petals scatter</p>}
         </>:<>
-        <label className="range-label" htmlFor="effect-mode">Effects</label>
-        <select id="effect-mode" value={effect} onChange={event=>setEffect(event.target.value as EffectMode)}>
-          <option value="off">Off</option><option value="glow">Glow & sparks</option><option value="flame">Flame</option><option value="ice">Ice</option><option value="electric">Electric</option>
-        </select></>}
+        <SwordEffectSelect value={effect} onChange={selectSwordEffect}/></>}
         <label className="range-label" htmlFor="effect-intensity">Effect intensity <output>{effectIntensity}%</output></label>
         <input id="effect-intensity" type="range" min={0} max={200} step={5} value={effectIntensity} onChange={event=>setEffectIntensity(Number(event.target.value))}/>
         {sword.model==='senbonzakura'&&<>
