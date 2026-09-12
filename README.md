@@ -22,7 +22,8 @@ Changes made in the hosted chat workspace do not automatically sync to this copy
 
 ## Controls
 
-Drag: orbit. Right-drag: pan. Two-finger drag: pan. Pinch/scroll: zoom.
+Left-drag turns the sword by default; the editor can switch it to camera orbit.
+Right-drag / two-finger drag pans. Pinch or scroll zooms.
 Use Move up / Move down or the camera slider for vertical translation.
 Reset view restores framing. Draw/Sheathe animates the scabbard interaction.
 Drop sword enables rigid-body physics after drawing fully.
@@ -79,3 +80,34 @@ render targets. Gallery scroll position and editor settings stay in place.
 This cache retains GPU resources in memory for the current page lifetime. A full
 refresh starts a new session; the lossless asset files use the separate HTTP cache.
 First visits and newly selected swords still need renderer initialization.
+
+## Public studies, editor and sharing
+
+- `/` is the editorial collection.
+- `/swords/<id>` is the public study, with simple form and replay controls.
+- `/swords/<id>/edit` opens the full editor and its Settings inspector.
+
+Current IDs are `steel-longsword`, `senbonzakura`, and `zangetsu`. Existing bare
+sword routes now open the public study. **Edit** and **View study** switch modes
+without rebuilding the current scene or resetting its live animation/camera.
+
+**Share** copies a public URL with a versioned `#state=` snapshot. It includes
+appearance, lighting, background/floor, sheath/draw state, effect settings, camera
+position/target, and the sword's display rotation. Senbonzakura links restore a
+paused Shikai/Bankai moment (up to two minutes) with Continue, Replay, and scrubbing.
+Zangetsu links restore the selected form. Longsword aura effects start playing;
+their evolving particle simulation is not a frozen snapshot. Share becomes
+available after a dropped sword returns to display.
+
+The URL is the saved state; there is no account, database or server-side save.
+Links use the current origin, so a localhost link is only useful on that machine.
+For remote sharing, serve the app at a reachable URL with an SPA fallback to
+`index.html` for `/swords/*` routes. This change does not deploy the app.
+
+Imported state is size-limited, version checked, restricted to the sword's valid
+effects, and sanitized to finite values/known settings. Invalid links show a
+notice and load default settings. A plain route resumes the cached study within
+the current page session. Render quality, performance metering and drag-control
+preferences remain local to the current editor session.
+
+Run `node scripts/check-sword-sharing.cjs` for share-format regression checks.

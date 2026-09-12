@@ -1,24 +1,22 @@
 import {lazy,Suspense,useEffect,useState} from 'react';
 import {Gallery} from './Gallery';
-import {AppLink,usePath} from './navigation';
-import {swords,type SwordAsset} from './swordLibrary';
-// Keep at most one detailed editor, alongside the visited gallery previews.
-const editors={longsword:lazy(()=>import('./SwordEditor')),senbonzakura:lazy(()=>import('./SwordEditor')),zangetsu:lazy(()=>import('./SwordEditor'))} satisfies Record<SwordAsset['model'],ReturnType<typeof lazy>>;
-
+import {AppLink,useLocation} from './navigation';
+import {swords} from './swordLibrary';
+const Experience=lazy(()=>import('./SwordEditor'));
 export default function App(){
- const path=usePath();
- const match=/^\/swords\/([a-zA-Z0-9-]+)$/.exec(path);
+ const {path,hash}=useLocation();
+ const match=/^\/swords\/([a-zA-Z0-9-]+)(\/edit)?$/.exec(path);
  const sword=match?swords.find(s=>s.id===match[1]):undefined;
  const home=path==='/';
  const [visitedHome,setVisitedHome]=useState(home);
- const [lastSword,setLastSword]=useState(sword);
- useEffect(()=>{if(home)setVisitedHome(true);if(sword)setLastSword(sword);},[home,sword]);
- const retainedSword=sword??lastSword;
- const Editor=retainedSword?editors[retainedSword.model]:null;
- useEffect(()=>{document.title=home?'Gallery — Aetherblade':sword?`${sword.name} — Aetherblade`:'Sword not found — Aetherblade';},[home,sword?.name]);
+ const route=sword?{sword,editing:!!match?.[2],hash}:undefined;
+ const [lastRoute,setLastRoute]=useState(route);
+ useEffect(()=>{if(home)setVisitedHome(true);if(sword)setLastRoute({sword,editing:!!match?.[2],hash});},[home,sword,path,hash]);
+ const retained=route??lastRoute;
+ useEffect(()=>{document.title=home?'The collection — Aetherblade':sword?`${sword.name}${match?.[2]?' · Editor':''} — Aetherblade`:'Study not found — Aetherblade';},[home,sword,path]);
  return <>
   <div className="session-page" hidden={!home} inert={!home}>{(home||visitedHome)&&<Gallery swords={swords} active={home}/>}</div>
-  <div className="session-page" hidden={!sword} inert={!sword}>{retainedSword&&Editor&&<Suspense fallback={<main><AppLink className="gallery-back" href="/">← Gallery</AppLink><div id="loading" role="status">Opening sword editor…</div></main>}><Editor key={retainedSword.id} sword={retainedSword} active={!!sword}/></Suspense>}</div>
-  {!home&&!sword&&<main className="missing-sword"><p className="gallery-kicker">AETHER / FORGE</p><h1>Sword not found</h1><p>This sword is not in the gallery.</p><AppLink href="/" className="gallery-primary">Back to gallery</AppLink></main>}
+  <div className="session-page" hidden={!sword} inert={!sword}>{retained&&<Suspense fallback={<main className="opening-page"><AppLink href="/" className="text-link">The collection</AppLink><p role="status">Opening the study…</p></main>}><Experience key={retained.sword.id} sword={retained.sword} active={!!sword} editing={retained.editing} shareHash={retained.hash}/></Suspense>}</div>
+  {!home&&!sword&&<main className="missing-sword"><p className="eyebrow">Aetherblade</p><h1>Study not found.</h1><AppLink href="/" className="text-link">Return to the collection</AppLink></main>}
  </>;
 }

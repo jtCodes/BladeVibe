@@ -1,3 +1,6 @@
+import {SwordReplayControls} from './SwordReplayControls';
+import {readSwordShare,swordSharePath,normalizeSwordState,type SwordShareState} from './swordShare';
+import type {SwordViewRequest} from './scene/swordViewState';
 import {EffectTimelineControls} from './EffectTimelineControls';
 import type {SwordScene,EffectSeekRequest,TimelineEffect} from './scene/createSwordScene';
 import type { EffectMode } from './scene/aura';
@@ -6,14 +9,19 @@ import { SwordViewer } from './SwordViewer';
 import type { MotionStatus } from './scene/swordPhysics';
 
 import type { SwordAsset } from './swordLibrary';
-import { AppLink } from './navigation';
+import { AppLink,navigate } from './navigation';
 
-export default function SwordEditor({sword,active=true}:{sword:SwordAsset;active?:boolean}) {
+export default function SwordEditor({sword,active=true,editing=true,shareHash=''}:{sword:SwordAsset;active?:boolean;editing?:boolean;shareHash?:string}) {
+  const [initialShare]=useState(()=>readSwordShare(sword,shareHash));
+  const initial=initialShare.state;
+  const [viewState,setViewState]=useState<SwordViewRequest|undefined>(initial.view);
+  const [invalidShare,setInvalidShare]=useState(initialShare.invalid);
+  const [shareUrl,setShareUrl]=useState(''),[shareMessage,setShareMessage]=useState('');
   const viewerScene=useRef<SwordScene|null>(null);
-  const [effectPaused,setEffectPaused]=useState(false);
-  const [glowStrength,setGlowStrength]=useState(.42);
-  const [glowSpread,setGlowSpread]=useState(.8);
-  const [petalGlow,setPetalGlow]=useState(4);
+  const [effectPaused,setEffectPaused]=useState(initial.paused);
+  const [glowStrength,setGlowStrength]=useState(initial.glowStrength);
+  const [glowSpread,setGlowSpread]=useState(initial.glowSpread);
+  const [petalGlow,setPetalGlow]=useState(initial.petalGlow);
   const [upscaling,setUpscaling]=useState<'native'|'ultra'|'quality'>('ultra');
   const [dragTarget,setDragTarget]=useState<'sword'|'camera'>('sword');
   const [settingsOpen,setSettingsOpen]=useState(false);
@@ -21,15 +29,16 @@ export default function SwordEditor({sword,active=true}:{sword:SwordAsset;active
   const [antiAliasing,setAntiAliasing]=useState<'standard'|'smooth'|'high'>('smooth');
   const settingsButton=useRef<HTMLButtonElement>(null);
   useEffect(()=>{
-    if(!active||!settingsOpen)return;
+    if(!active||!editing||!settingsOpen)return;
     const close=(event:KeyboardEvent)=>{if(event.key==='Escape'){setSettingsOpen(false);settingsButton.current?.focus();}};
     window.addEventListener('keydown',close);return ()=>window.removeEventListener('keydown',close);
-  },[active,settingsOpen]);
-  const [effect,setEffectState]=useState<EffectMode>(sword.effect);
-  const [timelineEffect,setTimelineEffect]=useState<TimelineEffect>('bankai');
-  const [effectSeek,setEffectSeek]=useState<EffectSeekRequest>();
+  },[active,editing,settingsOpen]);
+  const [effect,setEffectState]=useState<EffectMode>(initial.effect);
+  const [timelineEffect,setTimelineEffect]=useState<TimelineEffect>(initial.effect==='shikai'?'shikai':'bankai');
+  const [effectSeek,setEffectSeek]=useState<EffectSeekRequest|undefined>(()=>sword.model==='senbonzakura'&&(initial.effect==='shikai'||initial.effect==='bankai')?{effect:initial.effect,time:initial.time,paused:initial.paused}:undefined);
   function setEffect(value:SetStateAction<EffectMode>){
     const next=typeof value==='function'?value(effect):value;
+    if(sword.model==='zangetsu'&&(next==='bankai')!==(effect==='bankai'))setViewState(viewerScene.current?.getViewState());
     setEffectPaused(false);setEffectSeek(undefined);setEffectState(next);
     if(next==='bankai'||next==='shikai')setTimelineEffect(next);
   }
@@ -37,19 +46,19 @@ export default function SwordEditor({sword,active=true}:{sword:SwordAsset;active
     setDraw(100);setRotating(false);setEffectPaused(paused);setEffectState(timelineEffect);
     setEffectSeek({effect:timelineEffect,time,paused});
   }
-  const [effectIntensity,setEffectIntensity]=useState(sword.effectIntensity);
-  const [effectSpeed,setEffectSpeed]=useState(sword.effectSpeed);
-  const [reflections,setReflections]=useState(sword.reflections);
-  const [cameraHeight,setCameraHeight]=useState(0);
-  const [showSheath,setShowSheath]=useState(true);
-  const [swordRotation,setSwordRotation]=useState(0);
-  const [lightAngle,setLightAngle]=useState(sword.lightAngle);
-  const [lighting,setLighting]=useState({brightness:1,key:1,fill:1,rim:1,ambient:1});
-  const [floorColor,setFloorColor]=useState('#141413');
-  const [backgroundColor,setBackgroundColor]=useState('#141413');
-  const [rotating, setRotating] = useState(() => !window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const [effectIntensity,setEffectIntensity]=useState(initial.effectIntensity*100);
+  const [effectSpeed,setEffectSpeed]=useState(initial.effectSpeed);
+  const [reflections,setReflections]=useState(initial.reflections);
+  const [cameraHeight,setCameraHeight]=useState(initial.cameraHeight);
+  const [showSheath,setShowSheath]=useState(initial.showSheath);
+  const [swordRotation,setSwordRotation]=useState(initial.swordRotation);
+  const [lightAngle,setLightAngle]=useState(initial.lightAngle);
+  const [lighting,setLighting]=useState(initial.lighting);
+  const [floorColor,setFloorColor]=useState(initial.floorColor);
+  const [backgroundColor,setBackgroundColor]=useState(initial.backgroundColor);
+  const [rotating, setRotating] = useState(initial.rotating);
   const [resetVersion, setResetVersion] = useState(0);
-  const [draw,setDraw]=useState(100);
+  const [draw,setDraw]=useState(initial.draw);
   const [dropVersion,setDropVersion]=useState(0);
   const [status,setStatus]=useState<MotionStatus>('sheathed');
   const dropped=status==='falling'||status==='resting';
@@ -60,13 +69,72 @@ export default function SwordEditor({sword,active=true}:{sword:SwordAsset;active
   const hasSheath=!tensaActive;
 
 
-  return <main>
-    <AppLink className="gallery-back" href="/">← Gallery</AppLink>
-    <SwordViewer active={active} sceneRef={viewerScene} effectSeek={effectSeek} effectPaused={effectPaused} glowStrength={glowStrength} glowSpread={glowSpread} petalGlow={petalGlow} upscaling={upscaling} dragTarget={dragTarget} antiAliasing={antiAliasing} showPerformance={showPerformance} model={tensaActive?'tensa-zangetsu':sword.model} floorColor={floorColor} backgroundColor={backgroundColor} effect={tensaActive?'off':effect} effectSpeed={effectSpeed} effectIntensity={effectIntensity/100} cameraHeight={cameraHeight} showSheath={showSheath} swordRotation={swordRotation} rotating={rotating} resetVersion={resetVersion} draw={draw} reflections={reflections} lightAngle={lightAngle} lighting={lighting} dropVersion={dropVersion} onStatus={setStatus} />
+  const importedHash=useRef(shareHash);
+  useEffect(()=>{
+    if(importedHash.current===shareHash)return;
+    importedHash.current=shareHash;
+    // A plain collection link resumes the cached study. Explicit snapshots replace it.
+    if(!shareHash){setInvalidShare(false);return;}
+    const result=readSwordShare(sword,shareHash),state=result.state;
+    setInvalidShare(result.invalid);setViewState(state.view??{reset:true});setEffectState(state.effect);setEffectPaused(state.paused);
+    setEffectIntensity(state.effectIntensity*100);setEffectSpeed(state.effectSpeed);setDraw(state.draw);setShowSheath(state.showSheath);
+    setSwordRotation(state.swordRotation);setRotating(state.rotating);setCameraHeight(state.cameraHeight);setLightAngle(state.lightAngle);
+    setLighting(state.lighting);setFloorColor(state.floorColor);setBackgroundColor(state.backgroundColor);setReflections(state.reflections);
+    setGlowStrength(state.glowStrength);setGlowSpread(state.glowSpread);setPetalGlow(state.petalGlow);
+    if(state.effect==='shikai'||state.effect==='bankai')setTimelineEffect(state.effect);
+    setEffectSeek(sword.model==='senbonzakura'&&(state.effect==='shikai'||state.effect==='bankai')?{effect:state.effect,time:state.time,paused:state.paused}:undefined);
+  },[shareHash,sword]);
+  function snapshot(freeze=false):SwordShareState{
+    const time=sword.model==='senbonzakura'&&(effect==='shikai'||effect==='bankai')?viewerScene.current?.getEffectTimeline(effect)?.time??effectSeek?.time??0:0;
+    return normalizeSwordState(sword,{version:1,sword:sword.id,effect,effectIntensity:effectIntensity/100,effectSpeed,time,
+      paused:sword.model==='senbonzakura'?freeze||effectPaused:false,draw,showSheath,swordRotation,rotating:freeze?false:rotating,cameraHeight,lightAngle,lighting,
+      backgroundColor,floorColor,reflections,glowStrength,glowSpread,petalGlow,view:viewerScene.current?.getViewState()??viewState});
+  }
+  function openMode(){
+    const path=swordSharePath(sword,snapshot(),!editing);
+    importedHash.current=path.slice(path.indexOf('#'));navigate(path);
+  }
+  async function share(){
+    const url=new URL(swordSharePath(sword,snapshot(true)),window.location.href).href;
+    setShareUrl(url);
+    try{if(!navigator.clipboard)throw new Error('Clipboard unavailable');await navigator.clipboard.writeText(url);setShareMessage('Link copied.');}
+    catch{setShareMessage('Copy the link below.');}
+  }
+  function play(mode:TimelineEffect=timelineEffect){
+    if(sword.model==='zangetsu'&&effect!==mode)setViewState(viewerScene.current?.getViewState());
+    setDraw(100);setRotating(false);setEffectPaused(false);if(effectSpeed===0)setEffectSpeed(1);if(effectIntensity===0)setEffectIntensity(100);
+    setTimelineEffect(mode);setEffectState(mode);
+    setEffectSeek(sword.model==='senbonzakura'?{effect:mode,time:0,paused:false}:undefined);
+  }
+  function togglePlayback(){
+    if(sword.model==='senbonzakura'&&effect!==timelineEffect){play();return;}
+    if(effect==='off'){setEffect(sword.effect==='off'?'glow':sword.effect);setEffectPaused(false);}
+    else setEffectPaused(!effectPaused&&effectSpeed!==0);
+    if(effectSpeed===0)setEffectSpeed(1);if(effectIntensity===0)setEffectIntensity(100);
+  }
+  function originalForm(){setEffect('off');setDraw(100);}
+
+  return <main className={`sword-experience ${editing?'is-editor':'is-replay'}`}>
+    <header className="experience-header">
+      <AppLink className="wordmark" href="/" aria-label="Aetherblade — collection">Aetherblade</AppLink>
+      <nav aria-label="Study navigation"><button onClick={openMode}>{editing?'View study':'Edit'}</button><button onClick={share} disabled={dropped} title={dropped?'Return the sword to display to share this study':undefined}>Share</button></nav>
+    </header>
+    <div className="experience-body">
+      {!editing&&<section className="study-info">
+        <h1 className="study-title">{sword.name}</h1>
+        <SwordReplayControls sword={sword} sceneRef={viewerScene} visible={active} effect={effect} selected={timelineEffect} paused={effectPaused} speed={effectSpeed} intensity={effectIntensity} onSelect={play} onReplay={()=>play()} onPause={togglePlayback} onSeek={time=>inspectEffect(time,true)} onOriginal={originalForm}/>
+        {invalidShare&&<p className="share-notice" role="status">This link could not be read. Showing the original study.</p>}
+      </section>}
+      <section className="sword-canvas" aria-label={`${sword.name} interactive view`}>
+    <SwordViewer viewState={viewState} active={active} sceneRef={viewerScene} effectSeek={effectSeek} effectPaused={effectPaused} glowStrength={glowStrength} glowSpread={glowSpread} petalGlow={petalGlow} upscaling={upscaling} dragTarget={dragTarget} antiAliasing={antiAliasing} showPerformance={editing&&showPerformance} model={tensaActive?'tensa-zangetsu':sword.model} floorColor={floorColor} backgroundColor={backgroundColor} effect={tensaActive?'off':effect} effectSpeed={effectSpeed} effectIntensity={effectIntensity/100} cameraHeight={cameraHeight} showSheath={showSheath} swordRotation={swordRotation} rotating={rotating} resetVersion={resetVersion} draw={draw} reflections={reflections} lightAngle={lightAngle} lighting={lighting} dropVersion={dropVersion} onStatus={setStatus} />
+      </section>
+    </div>
+    {shareUrl&&<section className="share-popover" aria-label="Share this study"><div><p role="status">{shareMessage}</p><button aria-label="Close share link" onClick={()=>setShareUrl('')}>×</button></div><input readOnly aria-label="Shareable study link" value={shareUrl} onFocus={event=>event.target.select()}/></section>}
+    {editing&&<>
     <button ref={settingsButton} className="settings-toggle" aria-label={settingsOpen?'Close settings':'Open settings'} aria-expanded={settingsOpen} aria-controls="sword-settings" onClick={()=>setSettingsOpen(open=>!open)}>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
         {settingsOpen?<path d="m6 6 12 12M18 6 6 18"/>:<><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="currentColor"/><circle cx="15" cy="17" r="3" fill="currentColor"/></>}
-      </svg>
+      </svg><span>Settings</span>
     </button>
     {settingsOpen&&<aside id="sword-settings" className="settings-panel" aria-label="Sword settings">
       <h2 className="settings-heading">Settings</h2>
@@ -120,7 +188,7 @@ export default function SwordEditor({sword,active=true}:{sword:SwordAsset;active
           <label className="range-label" htmlFor="petal-glow">Petal glow <output>{petalGlow.toFixed(1)}×</output></label>
           <input id="petal-glow" type="range" min={0} max={8} step={.1} value={petalGlow} onChange={event=>setPetalGlow(Number(event.target.value))}/>
         </>}
-        {sword.model==='senbonzakura'&&<EffectTimelineControls visible={active} key={timelineEffect} sceneRef={viewerScene} effect={timelineEffect} active={effect===timelineEffect} paused={effectPaused} speed={effectSpeed} onEffectChange={value=>{setTimelineEffect(value);setEffectPaused(true);}} onPositionChange={inspectEffect} onPauseChange={setEffectPaused} onSpeedChange={setEffectSpeed}/>}
+        {sword.model==='senbonzakura'&&<EffectTimelineControls visible={active&&editing} key={timelineEffect} sceneRef={viewerScene} effect={timelineEffect} active={effect===timelineEffect} paused={effectPaused} speed={effectSpeed} onEffectChange={value=>{setTimelineEffect(value);setEffectPaused(true);}} onPositionChange={inspectEffect} onPauseChange={setEffectPaused} onSpeedChange={setEffectSpeed}/>}
         <label className="range-label" htmlFor="effect-speed">Effect speed <output>{effectSpeed===0?'Paused':`${effectSpeed.toFixed(1)}×`}</output></label>
         <input id="effect-speed" type="range" min={0} max={3} step={.1} value={effectSpeed} onChange={event=>setEffectSpeed(Number(event.target.value))}/>
       </div>}
@@ -151,8 +219,9 @@ export default function SwordEditor({sword,active=true}:{sword:SwordAsset;active
       <details className="sword-info"><summary>About this sword &amp; controls</summary>
         <h3>{sword.name}</h3><p>{sword.description}</p>
         <p>Left-drag follows your selected mode · Arrow keys to move · Right-drag or two-finger drag to pan · Pinch or scroll to zoom</p>
-        <p className="study-credit">AETHER / FORGE · SWORD STUDY 001</p>
+        <p className="study-credit">AETHERBLADE / {sword.name.toUpperCase()}</p>
       </details>
     </aside>}
+    </>}
   </main>;
 }

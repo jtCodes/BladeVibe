@@ -69,5 +69,5 @@ export function createSwordPhysics(sword: THREE.Group, onStatus: (status: Motion
     sync();if(released&&body.isSleeping())notify('resting');
   }
   restore();onStatus(status);
-  return {setDraw,setRotation,rotateBy,resetOrientation,release,restore,step,get draw(){return draw},get released(){return released},world,body,dispose(){world.free()}};
+  return {getDragRotation:()=>dragRotation.toArray() as [number,number,number,number],setDragRotation:(value:readonly number[])=>{dragRotation.fromArray(value).normalize();},setDraw,setRotation,rotateBy,resetOrientation,release,restore,step,get draw(){return draw},get released(){return released},world,body,dispose(){world.free()}};
 }
