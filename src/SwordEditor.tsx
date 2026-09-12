@@ -1,3 +1,4 @@
+import {StudyIcon} from './StudyIcon';
 import {useBankaiVoice} from './useBankaiVoice';
 import {BankaiTitle} from './BankaiTitle';
 import {SwordReplayControls} from './SwordReplayControls';
@@ -155,7 +156,7 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
   return <main className={`sword-experience ${editing?'is-editor':'is-replay'}`}>
     <header className="experience-header">
       <AppLink className="wordmark" href="/" aria-label="BladeX — collection">BladeX</AppLink>
-      <nav aria-label="Study navigation"><button onClick={openMode}>{editing?'View study':'Edit'}</button><button onClick={share} disabled={dropped} title={dropped?'Return the sword to display to share this study':undefined}>Share</button></nav>
+      <nav aria-label="Study navigation"><button className="study-icon-button" onClick={openMode} aria-label={editing?'View study':'Edit study'} title={editing?'View study':'Edit study'}><StudyIcon name={editing?'view':'edit'}/></button><button className="study-icon-button" onClick={share} disabled={dropped} aria-label="Share study" title={dropped?'Return the sword to display to share this study':'Share study'}><StudyIcon name="share"/></button></nav>
     </header>
     <div className="experience-body">
       {!editing&&<section className="study-info">

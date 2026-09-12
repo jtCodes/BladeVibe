@@ -201,3 +201,18 @@ body { letter-spacing:.035em; }
 h1, h2, h3, .wordmark, .study-title, .live-sword-caption h2, .missing-sword h1, .sharingan-caption h1 { letter-spacing:.12em; }
 button, summary, .text-link { letter-spacing:.08em; }
 .sharingan-caption h1 { font-size:clamp(28px,4vw,58px); }
+
+/* View controls live beside the title, leaving the scene unobstructed. */
+.is-replay .study-info { left:clamp(24px,5vw,80px); right:auto; bottom:calc(clamp(24px,5vh,64px) + env(safe-area-inset-bottom)); width:min(440px,calc(100% - 48px)); padding:0; display:flex; flex-direction:column; align-items:flex-start; gap:10px; background:none; }
+.is-replay .study-title { font-size:clamp(26px,3.6vw,52px); line-height:1.2; letter-spacing:.055em; }
+.is-replay .replay-controls { width:100%; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px 16px; }
+.is-replay .replay-controls.simple-controls { display:flex; justify-content:flex-start; gap:20px; }
+.is-replay .form-selector { gap:20px; grid-column:auto; }
+.is-replay .form-selector button { font-size:.75rem; }
+.is-replay .replay-actions { gap:2px; }
+.is-replay .replay-progress { grid-column:1/-1; width:100%; opacity:.65; }
+.is-replay .replay-progress:hover, .is-replay .replay-progress:focus-within { opacity:1; }
+.study-icon-button { display:inline-flex; align-items:center; justify-content:center; width:44px; min-width:44px; height:44px; padding:0; border:0; background:transparent; color:var(--text); }
+.study-icon-button:hover { background:#ffffff0b; }
+@media(max-width:540px){.is-replay .study-title { font-size:26px; }.is-replay .form-selector { gap:14px; }.is-replay .replay-controls { gap:4px 8px; }}
+@media(max-height:500px){.is-replay .study-info { bottom:16px; gap:4px; }.is-replay .study-title { font-size:24px; }}
