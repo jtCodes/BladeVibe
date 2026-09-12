@@ -1,5 +1,5 @@
 import {StudyIcon} from './StudyIcon';
-import {useEffect,useState,type RefObject} from 'react';
+import {useEffect,useState,type CSSProperties,type RefObject} from 'react';
 import type {SwordAsset} from './swordLibrary';
 import type {SwordScene,EffectTimeline,TimelineEffect} from './scene/createSwordScene';
 import type {EffectMode} from './scene/aura';
@@ -25,7 +25,7 @@ export function SwordReplayControls({sword,sceneRef,visible,effect,selected,paus
  return <div className="replay-controls">
   <div className="form-selector" aria-label="Transformation"><button aria-pressed={effect==='off'} onClick={onOriginal}>Original</button><button aria-pressed={effect==='shikai'} onClick={()=>onSelect('shikai')}>Shikai</button><button aria-pressed={effect==='bankai'} onClick={()=>onSelect('bankai')}>Bankai</button></div>
   <div className="replay-actions"><button className="study-icon-button" aria-label={playLabel} title={playLabel} onClick={!playing?onReplay:onPause}><StudyIcon name={stopped?'play':'pause'}/></button><button className="study-icon-button" aria-label="Replay from start" title="Replay from start" onClick={onReplay}><StudyIcon name="replay"/></button></div>
-  <label className="replay-progress"><span className="sr-only">Replay position</span><input type="range" aria-valuetext={`${(playing?timeline?.time??0:0).toFixed(1)} seconds`} min={0} max={timeline?.duration??1} step={.01} value={playing?timeline?.time??0:0} disabled={!timeline} onChange={event=>onSeek(Number(event.target.value))}/></label>
+  <label className="replay-progress"><span className="sr-only">Replay position</span><input type="range" style={{'--progress':`${Math.min(100,Math.max(0,(playing?timeline?.time??0:0)/(timeline?.duration||1)*100))}%`} as CSSProperties} aria-valuetext={`${(playing?timeline?.time??0:0).toFixed(1)} seconds`} min={0} max={timeline?.duration??1} step={.01} value={playing?timeline?.time??0:0} disabled={!timeline} onChange={event=>onSeek(Number(event.target.value))}/></label>
   {intensity===0&&<p className="replay-caption">Play restores the effect’s intensity.</p>}
  </div>;
 }

@@ -216,3 +216,14 @@ button, summary, .text-link { letter-spacing:.08em; }
 .study-icon-button:hover { background:#ffffff0b; }
 @media(max-width:540px){.is-replay .study-title { font-size:26px; }.is-replay .form-selector { gap:14px; }.is-replay .replay-controls { gap:4px 8px; }}
 @media(max-height:500px){.is-replay .study-info { bottom:16px; gap:4px; }.is-replay .study-title { font-size:24px; }}
+
+/* A quiet playback line; retain a generous pointer and touch target. */
+.replay-progress input[type=range] { appearance:none; -webkit-appearance:none; display:block; height:44px; min-height:44px; padding:0; margin:0; border:0; background:transparent; accent-color:auto; }
+.replay-progress input[type=range]::-webkit-slider-runnable-track { height:1.5px; border:0; background:linear-gradient(to right,#dedbd4 0 var(--progress,0%),#ffffff26 var(--progress,0%) 100%); }
+.replay-progress input[type=range]::-moz-range-track { height:1.5px; border:0; background:#ffffff26; }
+.replay-progress input[type=range]::-moz-range-progress { height:1.5px; background:#dedbd4; }
+.replay-progress input[type=range]::-webkit-slider-thumb { appearance:none; -webkit-appearance:none; width:1.5px; height:12px; margin-top:-5.25px; border:0; border-radius:0; background:#dedbd4; transition:transform .15s ease; }
+.replay-progress input[type=range]::-moz-range-thumb { width:1.5px; height:12px; border:0; border-radius:0; background:#dedbd4; transition:transform .15s ease; }
+.replay-progress input[type=range]:hover::-webkit-slider-thumb,.replay-progress input[type=range]:focus-visible::-webkit-slider-thumb { transform:scaleY(1.25); }
+.replay-progress input[type=range]:hover::-moz-range-thumb,.replay-progress input[type=range]:focus-visible::-moz-range-thumb { transform:scaleY(1.25); }
+.replay-progress input[type=range]:disabled { cursor:default; opacity:.3; }
