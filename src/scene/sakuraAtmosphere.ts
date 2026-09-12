@@ -41,5 +41,5 @@ export function createSakuraAtmosphere(clock:{value:number},power:{value:number}
   dummy.updateMatrix();mesh.setMatrixAt(i++,dummy.matrix);
  }
  mesh.instanceMatrix.needsUpdate=true;
- return {mesh,update(glow:number){petalPower.value=THREE.MathUtils.clamp(glow/6,0,1.4);},dispose(){mesh.removeFromParent();mesh.dispose();geometry.dispose();material.dispose();}};
+ return {mesh,update(glow:number,presence=1){petalPower.value=THREE.MathUtils.clamp(glow/6,0,1.4)*THREE.MathUtils.clamp(presence,0,1);mesh.visible=petalPower.value>0;},dispose(){mesh.removeFromParent();mesh.dispose();geometry.dispose();material.dispose();}};
 }

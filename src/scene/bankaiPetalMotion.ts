@@ -1,4 +1,11 @@
+import {MathUtils} from 'three';
+import {BANKAI_DISSOLVE_END} from './sakuraLayout';
 export type BankaiPetalMotion='drift'|'storm';
+
+// Fade stationary row lighting as storm petals leave the columns.
+export function bankaiStationaryGlow(time:number,motion:BankaiPetalMotion){
+ return motion==='storm'?1-MathUtils.smoothstep(time,BANKAI_DISSOLVE_END-.3,BANKAI_DISSOLVE_END+1.15):1;
+}
 
 // Shared by solid petals and fine dust; time-based so seeking stays deterministic.
 export const PETAL_STORM_GLSL=`
