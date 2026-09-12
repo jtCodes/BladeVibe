@@ -18,7 +18,7 @@ const out=path.join(root,'src/assets/sakura');
 if(!check)fs.mkdirSync(out,{recursive:true});
 for(const kind of Object.keys(SAKURA_COUNTS)){
  const bankai=kind==='bankai',count=SAKURA_COUNTS[kind];
- const geometry=createKatanaBladeGeometry();
+ const geometry=createKatanaBladeGeometry({length:SHIKAI_HEIGHT});
  if(bankai){geometry.computeBoundingBox();const enlargement=BANKAI_HEIGHT/geometry.boundingBox.max.y;geometry.scale(enlargement,enlargement,enlargement);}
  const random=createSakuraRandom(bankai?9721:391),sampleSurface=createSakuraSurfaceSampler(geometry,random);
  const data=Object.fromEntries(Object.entries(SAKURA_FIELDS).map(([name,size])=>[name,new Float32Array(count*size)]));

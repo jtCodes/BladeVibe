@@ -1,6 +1,7 @@
+import {SENBONZAKURA_BLADE_LENGTH} from './senbonzakuraDimensions';
 // Timing and placement are shared with the offline asset generator so surface
 // breakup and precomputed particle release times stay in agreement.
-export const SHIKAI_HEIGHT=5.02,SHIKAI_DISSOLVE_AT=.85,SHIKAI_DISSOLVE_DURATION=1.9;
+export const SHIKAI_HEIGHT=SENBONZAKURA_BLADE_LENGTH,SHIKAI_DISSOLVE_AT=.85,SHIKAI_DISSOLVE_DURATION=1.9;
 export const BANKAI_HEIGHT=12,BANKAI_PAIRS=24,BANKAI_BLADES=BANKAI_PAIRS*2;
 export const BANKAI_ROW_OFFSET=4.3,BANKAI_FRONT_Z=2,BANKAI_ROW_SPACING=2.05;
 export const BANKAI_RISE_STAGGER=.1,BANKAI_DISSOLVE_WINDOW=.65;

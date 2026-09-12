@@ -1,4 +1,4 @@
-import {SENBONZAKURA_POMMEL_TIP_Y} from './senbonzakuraDimensions';
+import {SENBONZAKURA_POMMEL_TIP_Y,SENBONZAKURA_BLADE_LENGTH} from './senbonzakuraDimensions';
 import {getBankaiCameraView} from './bankaiCamera';
 import type {SwordViewState,SwordViewRequest} from './swordViewState';
 import {prepareSurfaceAssets} from './surfaceAssets';
@@ -261,7 +261,7 @@ function update(settings: ViewerSettings){
  if(poseChanged){
   physics.restore();
   if(settings.effect==='shikai'&&!options.preview&&(!view||'reset' in view)){
-   const center=FLOOR_Y+(5.02-SENBONZAKURA_POMMEL_TIP_Y)/2+cameraHeight;
+   const center=FLOOR_Y+(SENBONZAKURA_BLADE_LENGTH-SENBONZAKURA_POMMEL_TIP_Y)/2+cameraHeight;
    const distance=Math.max(14,4/(Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*Math.min(1,camera.aspect)));
    applyCameraView({camera:[1.1,center+.3,distance],target:[0,center,0]});
   }

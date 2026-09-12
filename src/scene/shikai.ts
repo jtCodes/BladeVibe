@@ -19,7 +19,7 @@ export function createShikai(sword:THREE.Group){
    float shikaiDissolve=clamp((shikaiTime-${DISSOLVE_AT})/${DISSOLVE_DURATION},0.,1.);
    float shikaiThreshold=clamp(1.-dissolvePosition.y/${HEIGHT}+petalBreakup(dissolvePosition.xy,0.),.003,.997);
    if(shikaiDissolve>=shikaiThreshold)discard;
-   float shikaiDistance=(shikaiThreshold-shikaiDissolve)*5.02;
+   float shikaiDistance=(shikaiThreshold-shikaiDissolve)*${HEIGHT};
   `);
  };
  for(const material of Array.isArray(blade.material)?blade.material:[blade.material]){

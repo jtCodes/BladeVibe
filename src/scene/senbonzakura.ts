@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {SENBONZAKURA_POMMEL_CENTER_Y,SENBONZAKURA_GRIP_TOP_Y,SENBONZAKURA_GRIP_BOTTOM_Y} from './senbonzakuraDimensions';
+import {SENBONZAKURA_BLADE_LENGTH,SENBONZAKURA_SAYA_LENGTH,SENBONZAKURA_POMMEL_CENTER_Y,SENBONZAKURA_GRIP_TOP_Y,SENBONZAKURA_GRIP_BOTTOM_Y} from './senbonzakuraDimensions';
 import {surfaceMaps} from './craft';
 import {createSatinMetal} from './metalMaterials';
 import {createClothMaterial} from './clothMaterials';
@@ -57,7 +57,7 @@ export function createSenbonzakura(renderer:THREE.WebGLRenderer,sword:THREE.Grou
  const gripWood=new THREE.MeshPhysicalMaterial({color:0x828574,metalness:0,roughness:1,specularIntensity:.18,...gripWoodMaps(renderer),bumpScale:.0004});
  const lacquer=new THREE.MeshPhysicalMaterial({color:0xd3d2c9,roughness:.34,metalness:.04,clearcoat:.55,clearcoatRoughness:.24});
  const add=(geometry:THREE.BufferGeometry,material:THREE.Material|THREE.Material[],parent:THREE.Group=sword)=>{const mesh=new THREE.Mesh(geometry,material);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh;};
- add(createKatanaBladeGeometry(),[metal,spine]).name='senbonzakura-blade';
+ add(createKatanaBladeGeometry({length:SENBONZAKURA_BLADE_LENGTH}),[metal,spine]).name='senbonzakura-blade';
  function collar(y:number,height:number,radius:number,mat:THREE.Material,parent=sword){const m=add(new THREE.CylinderGeometry(radius,radius,height,48),mat,parent);m.scale.z=.72;m.position.y=y;return m;}
  // Habaki and seppa seat the blade directly against the tsuba.
  // The longer sleeve has broad satin-metal facets, with the blade ridge carried through it.
@@ -196,9 +196,10 @@ export function createSenbonzakura(renderer:THREE.WebGLRenderer,sword:THREE.Grou
   const end=add(endGeometry,cloth);end.name=`senbonzakura-pommel-wrap-end-${face}`;end.position.y=capCenter;
  }
 
- const saya=new THREE.Group();saya.rotation.copy(sword.rotation);add(createSayaGeometry(),lacquer,saya);
+ const saya=new THREE.Group();saya.rotation.copy(sword.rotation);add(createSayaGeometry(SENBONZAKURA_SAYA_LENGTH),lacquer,saya);
  const mouth=add(new THREE.TorusGeometry(.182,.012,8,48),bronze,saya);mouth.rotation.x=Math.PI/2;mouth.scale.y=.46;mouth.position.copy(bend(0,.08,0));
- const tip=collar(5.13,.09,.16,lacquer,saya);tip.position.copy(bend(0,5.13,0));tip.rotation.z=-5.13/KATANA_RADIUS;tip.scale.z=.46;
+ const sayaTip=SENBONZAKURA_SAYA_LENGTH-.05;
+ const tip=collar(sayaTip,.09,.16,lacquer,saya);tip.position.copy(bend(0,sayaTip,0));tip.rotation.z=-sayaTip/KATANA_RADIUS;tip.scale.z=.46;
  // Wide woven sageo: two broad wraps, folded loops, a central knot, and tails.
  for(const y of [.53,.72]){
   const wrap=collar(y,.135,.197,cloth,saya);wrap.position.copy(bend(0,y,0));wrap.rotation.z=-y/KATANA_RADIUS;wrap.scale.z=.46;

@@ -11,10 +11,11 @@ export const DRAW_DISTANCE = 5.15;
 let initialization: Promise<void> | undefined;
 export function initializePhysics() { return initialization ??= RAPIER.init(); }
 
-export function createSwordPhysics(sword: THREE.Group, onStatus: (status: MotionStatus) => void, options:{bladeGeometry?:()=>THREE.BufferGeometry;scabbardGeometry?:()=>THREE.BufferGeometry;curveRadius?:number;katana?:boolean;unsheathed?:boolean;pommelY?:number}={}) {
+export function createSwordPhysics(sword: THREE.Group, onStatus: (status: MotionStatus) => void, options:{bladeGeometry?:()=>THREE.BufferGeometry;scabbardGeometry?:()=>THREE.BufferGeometry;curveRadius?:number;katana?:boolean;unsheathed?:boolean;pommelY?:number;drawDistance?:number}={}) {
   const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
   world.timestep = 1 / 120;
   const scale = METERS_PER_UNIT;
+  const drawDistance=options.drawDistance??DRAW_DISTANCE;
   const pommelY=options.pommelY??-1.79;
   const rotation = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, Math.PI - 0.16));
   const origin = new THREE.Vector3(0, 0, 0);
@@ -46,15 +47,15 @@ export function createSwordPhysics(sword: THREE.Group, onStatus: (status: Motion
     return pommel.clone().applyQuaternion(orientation()).negate().add(new THREE.Vector3(0,FLOOR_Y,0)).multiplyScalar(scale);
    }
    let p:THREE.Vector3;
-   if(options.curveRadius){const radius=options.curveRadius,a=draw*DRAW_DISTANCE/radius;p=new THREE.Vector3(radius*(1-Math.cos(a)),-radius*Math.sin(a),0).applyQuaternion(rotation).multiplyScalar(scale);}
-   else p=origin.clone().addScaledVector(axis,draw*DRAW_DISTANCE).multiplyScalar(scale);
+   if(options.curveRadius){const radius=options.curveRadius,a=draw*drawDistance/radius;p=new THREE.Vector3(radius*(1-Math.cos(a)),-radius*Math.sin(a),0).applyQuaternion(rotation).multiplyScalar(scale);}
+   else p=origin.clone().addScaledVector(axis,draw*drawDistance).multiplyScalar(scale);
    // Turn around the sword's center so changing its pose keeps it in frame.
    centerBefore.set(0,1.5*scale,0).applyQuaternion(baseOrientation());
    centerAfter.set(0,1.5*scale,0).applyQuaternion(orientation());
    return p.add(centerBefore).sub(centerAfter);
   }
   const drawRotation=new THREE.Quaternion(),curveRotation=new THREE.Quaternion(),zAxis=new THREE.Vector3(0,0,1);
-  function baseOrientation(){return options.curveRadius?drawRotation.copy(rotation).multiply(curveRotation.setFromAxisAngle(zAxis,draw*DRAW_DISTANCE/options.curveRadius)):rotation;}
+  function baseOrientation(){return options.curveRadius?drawRotation.copy(rotation).multiply(curveRotation.setFromAxisAngle(zAxis,draw*drawDistance/options.curveRadius)):rotation;}
   function orientation(){return posedRotation.copy(groundedUpright&&draw>=.999?identityRotation:baseOrientation()).premultiply(displayRotation.setFromAxisAngle(zAxis,draw>=.999?displayAngle:0)).premultiply(draw>=.999?dragRotation:identityRotation);}
   function setRotation(degrees:number){if(!released){const angle=THREE.MathUtils.degToRad(degrees);if(angle!==displayAngle)dragRotation.identity();displayAngle=angle;}}
   function rotateBy(delta:THREE.Quaternion){if(!released&&draw>=.999)dragRotation.premultiply(delta).normalize();}
