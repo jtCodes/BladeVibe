@@ -30,6 +30,27 @@ function gripWoodMaps(renderer:THREE.WebGLRenderer){
  }
  return {map:texture(color,true),bumpMap:texture(bump),roughnessMap:texture(roughness)};
 }
+// Fine longitudinal yarns follow each folded cloth section, without a checkerboard weave.
+function clothFiberMaps(renderer:THREE.WebGLRenderer){
+ const width=1024,height=128,color=new Uint8Array(width*height*4),bump=new Uint8Array(color.length),tau=Math.PI*2;
+ for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+  const u=x/width,v=y/height;
+  const drift=.22*Math.sin(tau*u*3+Math.sin(tau*v*5))+.12*Math.sin(tau*(u*11+v*7));
+  const fine=Math.pow(.5+.5*Math.cos(tau*(y/4+drift)),2);
+  const fuzz=.5+.5*Math.sin(tau*(u*173+v*47)+Math.sin(tau*u*19));
+  const yarn=fine*(.8+.2*Math.sin(tau*(u*7+v*3)));
+  const c=Math.round(255*(.94+yarn*.035+fuzz*.008));
+  const h=Math.round(255*(.43+yarn*.15+fuzz*.018));
+  const i=(y*width+x)*4;color.set([c,c,c,255],i);bump.set([h,h,h,255],i);
+ }
+ function texture(data:Uint8Array<ArrayBuffer>,isColor=false){
+  const map=new THREE.DataTexture(data,width,height);map.wrapS=map.wrapT=THREE.RepeatWrapping;
+  map.minFilter=THREE.LinearMipmapLinearFilter;map.magFilter=THREE.LinearFilter;map.generateMipmaps=true;
+  map.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+  if(isColor)map.colorSpace=THREE.SRGBColorSpace;map.needsUpdate=true;return map;
+ }
+ return {map:texture(color,true),bumpMap:texture(bump)};
+}
 export function createSenbonzakura(renderer:THREE.WebGLRenderer,sword:THREE.Group){
  const metal=new THREE.MeshPhysicalMaterial({color:0xbfc5cd,metalness:1,roughness:.24,...surfaceMaps('steel',renderer),bumpScale:.00008});
  metal.onBeforeCompile=shader=>{
@@ -51,8 +72,8 @@ export function createSenbonzakura(renderer:THREE.WebGLRenderer,sword:THREE.Grou
  const spine=new THREE.MeshStandardMaterial({color:0x89949f,metalness:1,roughness:.21});
  const bronze=createSatinMetal(renderer,{color:0x777c65});
  const guardMetal=createSatinMetal(renderer,{color:0x686f60,roughnessScale:1});
- // Fabric reads through soft grazing-angle fiber sheen, without tiled color or bump patterns.
- const cloth=new THREE.MeshPhysicalMaterial({color:0x858b9f,metalness:0,roughness:1,specularIntensity:.15,sheen:.4,sheenColor:0x858b9f,sheenRoughness:1});
+ // Soft fiber sheen and fine lengthwise yarn relief match the wrapping reference.
+ const cloth=new THREE.MeshPhysicalMaterial({color:0x858b9f,metalness:0,roughness:1,specularIntensity:.15,sheen:.4,sheenColor:0x858b9f,sheenRoughness:1,...clothFiberMaps(renderer),bumpScale:.00055});
  const gripWood=new THREE.MeshPhysicalMaterial({color:0x828574,metalness:0,roughness:1,specularIntensity:.18,...gripWoodMaps(renderer),bumpScale:.0004});
  const lacquer=new THREE.MeshPhysicalMaterial({color:0xd3d2c9,roughness:.34,metalness:.04,clearcoat:.55,clearcoatRoughness:.24});
  const add=(geometry:THREE.BufferGeometry,material:THREE.Material|THREE.Material[],parent:THREE.Group=sword)=>{const mesh=new THREE.Mesh(geometry,material);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh;};
@@ -88,38 +109,58 @@ export function createSenbonzakura(renderer:THREE.WebGLRenderer,sword:THREE.Grou
  const collarProfile=[[0,-.108],[.124,-.108],[.131,-.104],[.134,-.097],[.134,-.05],[.131,-.04],[0,-.04]];
  const collarGeometry=new THREE.LatheGeometry(collarProfile.map(([r,y])=>new THREE.Vector2(r,y)),96);collarGeometry.scale(1,1,.72);
  add(collarGeometry,bronze).name='senbonzakura-handle-collar';
- const handle=collar((SENBONZAKURA_GRIP_TOP_Y+SENBONZAKURA_GRIP_BOTTOM_Y)/2,SENBONZAKURA_GRIP_TOP_Y-SENBONZAKURA_GRIP_BOTTOM_Y,.116,gripWood);
- handle.scale.x=1.04;
- const capCenter=SENBONZAKURA_POMMEL_CENTER_Y,gripStart=-.12,gripEnd=capCenter+.07;
- const wrapStart=-.07,wrapEnd=capCenter+.025;
- // Align the crossed bands on both broad faces; each front opening is centered.
- // A rounded rectangular perimeter keeps the diagonals flat across the handle.
- for(const handedness of [-1,1]){
-  const p:number[]=[],uv:number[]=[],idx:number[]=[],segments=1440,turns=12,bandWidth=.07;
-  let tapeDistance=0;const previous=new THREE.Vector3(),point=new THREE.Vector3();
-  for(let j=0;j<=segments;j++){
-   const centerY=THREE.MathUtils.lerp(wrapStart,wrapEnd,j/segments);
-   const t=(centerY-gripStart)/(gripEnd-gripStart),phase=t*turns;
-   // Smooth the side turn while keeping the front/back diagonals nearly straight.
-   const a=phase*Math.PI*2,front=Math.cos(a);
-   const x=-handedness*(2/Math.PI)*Math.asin(Math.sin(a));
-   const z=Math.sign(front)*Math.sqrt(Math.max(0,1-Math.pow(Math.abs(x),6)));
-   point.set(x*.123,centerY,z*.123*.73);
-   if(j>0)tapeDistance+=point.distanceTo(previous);previous.copy(point);
-   for(let k=0;k<=4;k++){
-    const w=k/4,y=centerY+(w-.5)*bandWidth;
-    // The concealed ends conform to the oval metal fittings, avoiding protruding corners.
-    const guardTuck=THREE.MathUtils.smoothstep(y,-.155,-.10);
-    const capTuck=1-THREE.MathUtils.smoothstep(y,capCenter+.087,capCenter+.145);
-    const tuck=Math.max(guardTuck,capTuck);
-    const radius=THREE.MathUtils.lerp(.123+Math.sin(w*Math.PI)*.0006+(handedness===1?.0012:0),.118,tuck);
-    const ovalZ=Math.sign(front)*Math.sqrt(Math.max(0,1-x*x));
-    p.push(x*radius,y,THREE.MathUtils.lerp(z,ovalZ,tuck)*radius*.73);uv.push(tapeDistance/(bandWidth*4),w);
+ // A straight rounded rectangle gives the grip distinct broad faces and soft corners.
+ const gripSection=new THREE.Shape(),hw=.112,hd=.070,cr=.057;
+ gripSection.moveTo(-hw+cr,-hd);gripSection.lineTo(hw-cr,-hd);
+ gripSection.absarc(hw-cr,-hd+cr,cr,-Math.PI/2,0,false);
+ gripSection.lineTo(hw,hd-cr);gripSection.absarc(hw-cr,hd-cr,cr,0,Math.PI/2,false);
+ gripSection.lineTo(-hw+cr,hd);gripSection.absarc(-hw+cr,hd-cr,cr,Math.PI/2,Math.PI,false);
+ gripSection.lineTo(-hw,-hd+cr);gripSection.absarc(-hw+cr,-hd+cr,cr,Math.PI,Math.PI*1.5,false);gripSection.closePath();
+ const gripGeometry=new THREE.ExtrudeGeometry(gripSection,{depth:SENBONZAKURA_GRIP_TOP_Y-SENBONZAKURA_GRIP_BOTTOM_Y,steps:1,curveSegments:12,bevelEnabled:false});
+ gripGeometry.rotateX(Math.PI/2);gripGeometry.translate(0,SENBONZAKURA_GRIP_TOP_Y,0);gripGeometry.computeVertexNormals();
+ const handle=add(gripGeometry,gripWood);handle.name='senbonzakura-grip-core';
+ // Folded tsukamaki covers both narrow sides; only the face diamonds expose the core.
+ const contactSurface=new THREE.Mesh(handle.geometry,handle.material);
+ contactSurface.position.copy(handle.position);contactSurface.scale.copy(handle.scale);contactSurface.updateMatrixWorld(true);
+ const contactRay=new THREE.Raycaster(),origin=new THREE.Vector3(),direction=new THREE.Vector3();
+ const normalMatrix=new THREE.Matrix3().getNormalMatrix(contactSurface.matrixWorld);
+ const capCenter=SENBONZAKURA_POMMEL_CENTER_Y,wrapStart=-.07,wrapEnd=capCenter+.025;
+ const diamonds=12,pitch=(wrapStart-wrapEnd)/diamonds,diamondHalfWidth=.070,diamondHalfHeight=.043;
+ const around=256,across=4,section:{point:THREE.Vector3;normal:THREE.Vector3;opening:number}[]=[];
+ for(let j=0;j<=around;j++){
+  if(j===around){section.push(section[0]);continue;}
+  const angle=j/around*Math.PI*2;
+  origin.set(Math.sin(angle),(SENBONZAKURA_GRIP_TOP_Y+SENBONZAKURA_GRIP_BOTTOM_Y)/2,Math.cos(angle));
+  direction.set(-origin.x,0,-origin.z).normalize();contactRay.set(origin,direction);
+  const hit=contactRay.intersectObject(contactSurface,false)[0];
+  if(!hit)throw new Error('Cloth wrapping could not reach the grip surface');
+  section.push({point:hit.point.clone(),normal:hit.face!.normal.clone().applyNormalMatrix(normalMatrix),opening:diamondHalfHeight*Math.max(0,1-Math.abs(hit.point.x)/diamondHalfWidth)});
+ }
+ const wrapPositions:number[]=[],wrapUvs:number[]=[],wrapIndices:number[]=[];
+ for(let band=0;band<=diamonds;band++){
+  const base=wrapPositions.length/3;
+  for(let j=0;j<=around;j++){
+   const {point,normal,opening}=section[j];
+   const top=band===0?wrapStart:wrapStart-(band-.5)*pitch-opening;
+   const bottom=band===diamonds?wrapEnd:wrapStart-(band+.5)*pitch+opening;
+   for(let k=0;k<=across;k++){
+    const v=k/across,y=THREE.MathUtils.lerp(top,bottom,v);
+    // Compressed cloth with a small folded lip around the true diamond cutouts.
+    const lip=Math.exp(-Math.min(v,1-v)*18)*.00025;
+    const thickness=.0006+lip+Math.sin(v*Math.PI)*.00015;
+    wrapPositions.push(point.x+normal.x*thickness,y,point.z+normal.z*thickness);
+    wrapUvs.push(j/around+band*.381966,v+band*.173205);
    }
   }
-  for(let j=0;j<segments;j++)for(let k=0;k<4;k++){const a=j*5+k;idx.push(a,a+1,a+5,a+1,a+6,a+5);}
-  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(p,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(idx);g.computeVertexNormals();const mat=cloth.clone();mat.side=THREE.DoubleSide;add(g,mat).name=`senbonzakura-handle-wrap-${handedness}`;
+  for(let j=0;j<around;j++)for(let k=0;k<across;k++){
+   const a=base+j*(across+1)+k;wrapIndices.push(a,a+1,a+across+1,a+1,a+across+2,a+across+1);
+  }
  }
+ const wrapGeometry=new THREE.BufferGeometry();
+ wrapGeometry.setAttribute('position',new THREE.Float32BufferAttribute(wrapPositions,3));
+ wrapGeometry.setAttribute('uv',new THREE.Float32BufferAttribute(wrapUvs,2));wrapGeometry.setIndex(wrapIndices);wrapGeometry.computeVertexNormals();
+ const wrapMaterial=cloth.clone();wrapMaterial.side=THREE.DoubleSide;
+ add(wrapGeometry,wrapMaterial).name='senbonzakura-handle-wrap-folded';
  // The lower shoulder rises beside the wrap end; the outline comes from the metal's shape.
  const capRadius=.129,capLipRadius=.135;
  // A rounded crown joins the straight cap walls tangentially, without a flat end face.
