@@ -1,20 +1,21 @@
 import * as THREE from 'three';
 
-export const KATANA_RADIUS=38;
+export const KATANA_RADIUS=30;
 const LENGTH=5.02;
 export function bend(x:number,y:number,z:number){const a=y/KATANA_RADIUS;return new THREE.Vector3(KATANA_RADIUS*(1-Math.cos(a))+x*Math.cos(a),KATANA_RADIUS*Math.sin(a)-x*Math.sin(a),z);}
 const cross=[[-.105,-.022],[-.12,0],[-.105,.022],[-.018,.040],[.135,0],[-.018,-.040]];
 export function createKatanaBladeGeometry(options:{straight?:boolean;length?:number}={}){
  const length=options.length??LENGTH;
  // The curved blade uses the shorter bevel at negative x as its edge.
- const tipX=options.straight?.135:-.12;
+ const tipX=options.straight?.135:.095;
+ const tipLength=options.straight?.42:.24;
  const positions:number[]=[],uv:number[]=[],indices:number[]=[],rows=100;
  const geometry=new THREE.BufferGeometry();
  for(let face=0;face<cross.length;face++){
   const base=positions.length/3,start=indices.length;
   for(let row=0;row<=rows;row++){
    const y=-.08+(length+.08)*row/rows,taper=1.-.22*Math.max(0,y)/length;
-   const tip=THREE.MathUtils.clamp((y-(length-.42))/.42,0,1);
+   const tip=THREE.MathUtils.clamp((y-(length-tipLength))/tipLength,0,1);
    for(const [x,z] of [cross[face],cross[(face+1)%cross.length]]){
     const bladeX=(x*(1-tip)+tipX*tip)*taper,bladeZ=z*taper*(1-tip);
     const p=options.straight?new THREE.Vector3(bladeX,y,bladeZ):bend(bladeX,y,bladeZ);positions.push(p.x,p.y,p.z);uv.push((x+.12)/.255,y/length);
