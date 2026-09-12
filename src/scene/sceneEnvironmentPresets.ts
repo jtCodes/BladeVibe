@@ -7,7 +7,14 @@ const studioLights:SceneEnvironmentPreset['lights']=[
  {kind:'directional',channel:'key',color:0xfff1df,intensity:1.8,position:[-12,18,10],shadow:true},
 ];
 export const SWORD_ENVIRONMENT:SceneEnvironmentPreset={cameraFill:{color:0xffffff,intensity:.85,rimIntensity:4},exposure:.85,background:'#000000',floor:'#101010',fogDensity:0,ambient:{sky:0xb0b0b0,ground:0x181818,intensity:.18},studio:{neutral:false,intensity:.9,rotation:.35},lights:studioLights};
-export const SENBONZAKURA_ENVIRONMENT:SceneEnvironmentPreset={...SWORD_ENVIRONMENT,fogDensity:0,ambient:{sky:0xb0b0b0,ground:0x181818,intensity:.14},studio:{neutral:true,intensity:.72,rotation:.35},lights:studioLights.map((light,i)=>({...light,color:0xffffff,intensity:[4.2,4,1.3,1.5,1.2][i]}))};
+export const SENBONZAKURA_ENVIRONMENT:SceneEnvironmentPreset={
+ ...SWORD_ENVIRONMENT,
+ cameraFill:{color:0xffffff,intensity:.55,rimIntensity:4,rimColors:[0xffd6a2,0xa6e5f2],rimWidth:.9},
+ ambient:{sky:0xb0b0b0,ground:0x181818,intensity:.12},
+ studio:{neutral:true,intensity:.72,rotation:.35},
+ // Warm key, neutral face fill, and narrow opposing accents from the reference.
+ lights:studioLights.map((light,i)=>({...light,color:[0xfff0dc,0xffdbad,0xffffff,0xfff3e6,0xfff1df][i],intensity:[3.5,2.4,1.1,1,1][i]})),
+};
 // Keep black faces dark while a tall side/rear strip describes the silhouette.
 export const DARK_METAL_ENVIRONMENT:SceneEnvironmentPreset={
  ...SWORD_ENVIRONMENT,cameraFill:{color:0xffffff,intensity:1.1,rimIntensity:5},

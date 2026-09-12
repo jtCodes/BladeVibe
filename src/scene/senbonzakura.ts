@@ -52,18 +52,18 @@ export function createSenbonzakura(renderer:THREE.WebGLRenderer,sword:THREE.Grou
  };
  metal.customProgramCacheKey=()=> 'senbonzakura-shared-steel-hamon-v7';
  const spine=createMetalMaterial(renderer,{color:0x3d4044,finish:'blade'});
- const bronze=createMetalMaterial(renderer,{color:0x777c65,finish:'fittings'});
- const guardMetal=createMetalMaterial(renderer,{color:0x686f60,finish:'fittings'});
+ const bronze=createMetalMaterial(renderer,{color:0xb39a64,finish:'satinFittings'});
+ const guardMetal=createMetalMaterial(renderer,{color:0x947d50,finish:'satinFittings'});
  // Soft fiber sheen and fine lengthwise yarn relief match the wrapping reference.
- const cloth=createClothMaterial(renderer,{color:0x747b94,sheen:.25});
- const gripWood=new THREE.MeshPhysicalMaterial({color:0x828574,metalness:0,roughness:1,specularIntensity:.18,...gripWoodMaps(renderer),bumpScale:.0004});
- const lacquer=new THREE.MeshPhysicalMaterial({color:0xd3d2c9,roughness:.34,metalness:.04,clearcoat:.55,clearcoatRoughness:.24});
+ const cloth=createClothMaterial(renderer,{color:0x8980a6,sheen:.25});
+ const gripWood=new THREE.MeshPhysicalMaterial({color:0xa28e62,metalness:0,roughness:1,specularIntensity:.18,...gripWoodMaps(renderer),bumpScale:.0004});
+ const lacquer=new THREE.MeshPhysicalMaterial({color:0xe5e2da,roughness:.34,metalness:.04,clearcoat:.55,clearcoatRoughness:.24});
  const add=(geometry:THREE.BufferGeometry,material:THREE.Material|THREE.Material[],parent:THREE.Group=sword)=>{const mesh=new THREE.Mesh(geometry,material);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh;};
  add(createKatanaBladeGeometry({length:SENBONZAKURA_BLADE_LENGTH}),[metal,spine]).name='senbonzakura-blade';
  function collar(y:number,height:number,radius:number,mat:THREE.Material,parent=sword){const m=add(new THREE.CylinderGeometry(radius,radius,height,48),mat,parent);m.scale.z=.72;m.position.y=y;return m;}
  // Habaki and seppa seat the blade directly against the tsuba.
  // The longer sleeve has broad satin-metal facets, with the blade ridge carried through it.
- const habakiMetal=createMetalMaterial(renderer,{color:0x777d70,finish:'fittings'});
+ const habakiMetal=createMetalMaterial(renderer,{color:0xad935f,finish:'satinFittings'});
  const habakiSection=new THREE.Shape();
  const sleeveCross=[[-.128,-.037],[-.128,.037],[-.018,.052],[.142,.042],[.142,-.042],[-.018,-.052]];
  sleeveCross.forEach(([x,z],i)=>i?habakiSection.lineTo(x,-z):habakiSection.moveTo(x,-z));habakiSection.closePath();

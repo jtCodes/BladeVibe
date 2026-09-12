@@ -5,7 +5,7 @@ import {createStudioEnvironment} from './studio';
 export interface LightingSettings { brightness:number;key:number;fill:number;rim:number;ambient:number }
 type Position=[number,number,number];
 export interface SceneEnvironmentPreset {
- cameraFill?:{color:number;intensity:number;rimIntensity?:number};
+ cameraFill?:{color:number;intensity:number;rimIntensity?:number;rimColors?:[number,number];rimWidth?:number};
  exposure:number;background:string;floor?:string;fogDensity?:number;
  ambient:{sky:number;ground:number;intensity:number};
  studio?:{neutral:boolean;intensity:number;rotation:number;baseRadiance?:number};
@@ -22,7 +22,7 @@ export function createSceneEnvironment(scene:THREE.Scene,renderer:THREE.WebGLRen
  if(preset.lights.some(light=>light.kind==='area'))RectAreaLightUniformsLib.init();
  const cameraFill=preset.cameraFill?new THREE.DirectionalLight(preset.cameraFill.color,preset.cameraFill.intensity):null;
  if(cameraFill)scene.add(cameraFill,cameraFill.target);
- const cameraRims=preset.cameraFill?.rimIntensity?[new THREE.RectAreaLight(0xffffff,preset.cameraFill.rimIntensity,2,12),new THREE.RectAreaLight(0xffffff,preset.cameraFill.rimIntensity*.7,2,12)]:[];
+ const cameraRims=preset.cameraFill?.rimIntensity?[new THREE.RectAreaLight(preset.cameraFill.rimColors?.[0]??0xffffff,preset.cameraFill.rimIntensity,preset.cameraFill.rimWidth??2,12),new THREE.RectAreaLight(preset.cameraFill.rimColors?.[1]??0xffffff,preset.cameraFill.rimIntensity*.7,preset.cameraFill.rimWidth??2,12)]:[];
  if(cameraRims.length){RectAreaLightUniformsLib.init();scene.add(...cameraRims);}
  const viewRotation=new THREE.Quaternion();
 

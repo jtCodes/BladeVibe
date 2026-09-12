@@ -5,6 +5,7 @@ import {surfaceMaps} from './craft';
 export const METAL_FINISHES={
  blade:{roughness:.42,bumpScale:.0003,anisotropy:.2,repeat:[1,1] as [number,number]},
  edge:{roughness:.075,bumpScale:0,anisotropy:0,repeat:[1,1] as [number,number]},
+ satinFittings:{roughness:.95,bumpScale:.00009,anisotropy:0,repeat:[2,.2] as [number,number],envMapIntensity:.6},
  fittings:{roughness:.3,bumpScale:.00009,anisotropy:0,repeat:[2,.2] as [number,number]},
  recessed:{roughness:.56,bumpScale:0,anisotropy:0,repeat:[1,1] as [number,number]},
  matteBlackened:{roughness:.92,bumpScale:.00008,anisotropy:0,repeat:[1,1] as [number,number],metalness:.55,envMapIntensity:.08},
