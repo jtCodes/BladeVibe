@@ -260,7 +260,7 @@ function update(settings: ViewerSettings){
  physics.setRotation(settings.swordRotation??0);
  const lift=settings.cameraHeight-cameraHeight;camera.position.y+=lift;controls.target.y+=lift;cameraHeight=settings.cameraHeight;
  physics.setDraw(settings.draw/100);
- if(poseChanged){
+ if(poseChanged||(view&&'reset' in view&&settings.effect==='shikai')){
   physics.restore();
   if(settings.effect==='shikai'&&!options.preview&&(!view||'reset' in view)){
    const center=FLOOR_Y+(SENBONZAKURA_BLADE_LENGTH-SENBONZAKURA_POMMEL_TIP_Y)/2+cameraHeight;

@@ -248,9 +248,9 @@ button, summary, .text-link { letter-spacing:.08em; }
 .replay-tools .scene-options-panel { left:auto; right:0; }
 .scene-option-effects { margin:0 0 6px; padding:0 0 6px; border:0; border-bottom:1px solid #ffffff18; min-width:0; }
 .scene-option-effects legend { padding:8px 10px; font-size:.625rem; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
-.scene-option-choice,.scene-option-toggle { position:relative; display:flex; align-items:center; justify-content:space-between; gap:16px; width:100%; min-height:44px; padding:0 10px; font-size:.75rem; letter-spacing:.035em; color:#c4c1ba; cursor:pointer; }
+.scene-option-choice,.scene-option-toggle,.scene-option-action { position:relative; display:flex; align-items:center; justify-content:space-between; gap:16px; width:100%; min-height:44px; padding:0 10px; font-size:.75rem; letter-spacing:.035em; color:#c4c1ba; cursor:pointer; }
 .scene-option-choice input { position:absolute; width:1px; height:1px; opacity:0; }
-.scene-option-choice:hover,.scene-option-toggle:hover { background:#ffffff08; color:var(--text); }
+.scene-option-choice:hover,.scene-option-toggle:hover,.scene-option-action:hover { background:#ffffff08; color:var(--text); }
 .scene-option-choice:has(input:checked) { color:var(--text); }
 .scene-option-choice:has(input:focus-visible) { outline:1px solid var(--text); outline-offset:-1px; }
 .scene-option-mark { width:5px; height:5px; border-radius:50%; background:transparent; }
@@ -262,3 +262,6 @@ button, summary, .text-link { letter-spacing:.08em; }
 .scene-option-draw { padding:8px 10px 0; border-top:1px solid #ffffff18; }
 .scene-option-draw .range-label { font-size:.6875rem; color:#c4c1ba; }
 .scene-option-draw:has(input:disabled) .range-label { opacity:.4; }
+
+.scene-option-action { justify-content:flex-start; gap:10px; margin-top:6px; border-top:1px solid #ffffff18; }
+.scene-option-action svg { flex:none; }

@@ -4,6 +4,7 @@ import {BankaiTitle} from './BankaiTitle';
 import {SwordReplayControls} from './SwordReplayControls';
 import {SwordSheathToggle,SwordEffectSelect,SwordDrawSlider} from './SwordDisplayOptions';
 import {SceneOptions} from './SceneOptions';
+import {StudyIcon} from './StudyIcon';
 import {readSwordPageState,swordSharePath,normalizeSwordState,type SwordShareState} from './swordShare';
 import type {SwordViewRequest} from './scene/swordViewState';
 import {EffectTimelineControls} from './EffectTimelineControls';
@@ -159,6 +160,14 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
   function selectSwordEffect(mode:EffectMode){
     setEffect(mode);if(effectSpeed===0)setEffectSpeed(1);if(effectIntensity===0)setEffectIntensity(100);
   }
+  function resetSwordView(){
+    const timed=sword.model==='senbonzakura'&&(effect==='shikai'||effect==='bankai')?effect:undefined;
+    const time=timed?viewerScene.current?.getEffectTimeline(timed)?.time??0:0;
+    setSwordRotation(0);setCameraHeight(0);setRotating(false);setDraw(100);
+    setViewState({reset:true});
+    // Reframe an active transformation at its current moment rather than replaying it.
+    setEffectSeek(timed?{effect:timed,time,paused:effectPaused}:undefined);
+  }
   function originalForm(){setEffect('off');setDraw(100);navigateForm(sword.model==='zangetsu'?'shikai':undefined);}
 
   return <main className={`sword-experience ${editing?'is-editor':'is-replay'}`}>
@@ -168,9 +177,10 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
     </SceneHeader>
     <div className="experience-body">
       {!editing&&<SceneOverlay title={sword.name}>
-        <SwordReplayControls sword={sword} sceneRef={viewerScene} visible={active} effect={effect} selected={timelineEffect} paused={effectPaused} speed={effectSpeed} intensity={effectIntensity} onSelect={play} onReplay={()=>play()} onPause={togglePlayback} onSeek={time=>inspectEffect(time,true)} onOriginal={originalForm} options={(sword.model==='longsword'||(hasSheath&&!bankaiCinematic&&effect!=='shikai'))&&<SceneOptions>
+        <SwordReplayControls sword={sword} sceneRef={viewerScene} visible={active} effect={effect} selected={timelineEffect} paused={effectPaused} speed={effectSpeed} intensity={effectIntensity} onSelect={play} onReplay={()=>play()} onPause={togglePlayback} onSeek={time=>inspectEffect(time,true)} onOriginal={originalForm} options={<SceneOptions>
           {sword.model==='longsword'&&<SwordEffectSelect compact value={effect} onChange={selectSwordEffect}/>}
-          {hasSheath&&<><SwordSheathToggle compact visible={showSheath} onChange={changeSheathVisibility} wrapping={clothWrapped}/><SwordDrawSlider compact value={draw} onChange={changeDraw} disabled={!showSheath||dropped} wrapping={clothWrapped}/></>}
+          {hasSheath&&!bankaiCinematic&&effect!=='shikai'&&<><SwordSheathToggle compact visible={showSheath} onChange={changeSheathVisibility} wrapping={clothWrapped}/><SwordDrawSlider compact value={draw} onChange={changeDraw} disabled={!showSheath||dropped} wrapping={clothWrapped}/></>}
+          <button type="button" className="scene-option-action" onClick={resetSwordView}><StudyIcon name="replay"/><span>Reset sword &amp; camera</span></button>
         </SceneOptions>}/>
         {invalidShare&&<p className="share-notice" role="status">This link could not be read. Showing the original sword.</p>}
       </SceneOverlay>}
@@ -264,7 +274,7 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
         <input id="camera-height" type="range" min={-8} max={8} step={.1} value={cameraHeight} onChange={event=>setCameraHeight(Number(event.target.value))}/>
         <div className="actions"><button onClick={()=>setCameraHeight(v=>Math.min(8,v+.5))}>Move up</button><button onClick={()=>setCameraHeight(v=>Math.max(-8,v-.5))}>Move down</button></div>
       </div>
-      <div className="actions"><button id="spin" aria-pressed={rotating} onClick={() => setRotating(value => !value)}>{rotating ? 'Pause rotation' : 'Resume rotation'}</button><button id="reset" onClick={() => {setCameraHeight(0);if(bankaiCinematic)setEffect('off');setResetVersion(value => value + 1)}}>Reset view</button></div>
+      <div className="actions"><button id="spin" aria-pressed={rotating} onClick={() => setRotating(value => !value)}>{rotating ? 'Pause rotation' : 'Resume rotation'}</button><button id="reset" onClick={resetSwordView}>Reset sword &amp; camera</button></div>
       <details className="sword-info"><summary>About this sword &amp; controls</summary>
         <h3>{sword.name}</h3><p>{sword.description}</p>
         <p>Left-drag follows your selected mode · Arrow keys to move · Right-drag or two-finger drag to pan · Pinch or scroll to zoom</p>
