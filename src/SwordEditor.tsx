@@ -20,7 +20,6 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
   const [invalidShare,setInvalidShare]=useState(initialShare.invalid);
   const [shareUrl,setShareUrl]=useState(''),[shareMessage,setShareMessage]=useState('');
   const viewerScene=useRef<SwordScene|null>(null);
-  const [voiceEnabled,setVoiceEnabled]=useState(true);
   const [effectPaused,setEffectPaused]=useState(initial.paused);
   const [glowStrength,setGlowStrength]=useState(initial.glowStrength);
   const [glowSpread,setGlowSpread]=useState(initial.glowSpread);
@@ -71,7 +70,7 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
   const tensaActive=clothWrapped&&bankaiActive;
   const bankaiCinematic=bankaiActive&&!clothWrapped;
   const hasSheath=!tensaActive;
-  const armBankaiVoice=useBankaiVoice(viewerScene,{active:active&&sword.model==='senbonzakura'&&bankaiActive,paused:effectPaused,speed:effectSpeed,enabled:voiceEnabled,seekRequest:effectSeek});
+  const armBankaiVoice=useBankaiVoice(viewerScene,{active:active&&sword.model==='senbonzakura'&&bankaiActive,paused:effectPaused,speed:effectSpeed,enabled:false,seekRequest:effectSeek});
 
 
   const importedHash=useRef(shareHash);
@@ -124,7 +123,7 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
   return <main className={`sword-experience ${editing?'is-editor':'is-replay'}`}>
     <header className="experience-header">
       <AppLink className="wordmark" href="/" aria-label="Aetherblade — collection">Aetherblade</AppLink>
-      <nav aria-label="Study navigation">{sword.model==='senbonzakura'&&<button aria-pressed={voiceEnabled} aria-label={voiceEnabled?'Mute Bankai voice':'Enable Bankai voice'} onClick={()=>setVoiceEnabled(value=>!value)}>{voiceEnabled?'Voice on':'Voice off'}</button>}<button onClick={openMode}>{editing?'View study':'Edit'}</button><button onClick={share} disabled={dropped} title={dropped?'Return the sword to display to share this study':undefined}>Share</button></nav>
+      <nav aria-label="Study navigation"><button onClick={openMode}>{editing?'View study':'Edit'}</button><button onClick={share} disabled={dropped} title={dropped?'Return the sword to display to share this study':undefined}>Share</button></nav>
     </header>
     <div className="experience-body">
       {!editing&&<section className="study-info">
