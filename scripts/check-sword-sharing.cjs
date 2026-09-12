@@ -9,7 +9,7 @@ function load(relative){
  cache.set(file,module.exports);return module.exports;
 }
 const {swords}=load('swordLibrary.ts');
-const {defaultSwordState,normalizeSwordState,readSwordShare,swordSharePath}=load('swordShare.ts');
+const {defaultSwordState,normalizeSwordState,readSwordShare,swordSharePath,readSwordPageState}=load('swordShare.ts');
 const encode=raw=>'#state='+Buffer.from(JSON.stringify(raw)).toString('base64url');
 for(const sword of swords){
  const state={...defaultSwordState(sword),effect:sword.model==='longsword'?'flame':'bankai',time:32.75,paused:true,
@@ -17,7 +17,7 @@ for(const sword of swords){
   lighting:{brightness:1.4,key:2,fill:3,rim:.3,ambient:.6},view:{camera:[2,5,22],target:[0,1,0],rotation:[0,.6,0,.8]}};
  for(const editing of [false,true]){
   const url=swordSharePath(sword,state,editing),hash=url.slice(url.indexOf('#'));
-  assert(url.startsWith('/swords/'+sword.id+(editing?'/edit#':'#')));
+  assert(url.startsWith('/swords/'+sword.id+(editing?'/edit#':sword.model==='longsword'?'#':'/bankai#')));
   const decoded=readSwordShare(sword,hash);
   assert.equal(decoded.invalid,false);assert.deepEqual(decoded.state,normalizeSwordState(sword,state));
   assert(hash.length<2500,'bounded ordinary URL size');
@@ -41,3 +41,16 @@ assert.equal(optional.invalid,false);assert.equal(optional.state.view,undefined)
 const normalized=normalizeSwordState(senbo,{view:{camera:[2,3,4],target:[0,0,0],rotation:[0,0,.5,.5]}});
 assert(Math.abs(Math.hypot(...normalized.view.rotation)-1)<1e-12);
 console.log('PASS: all sword URL round-trips, model-specific effects, late timeline snapshots, optional views, invalid/oversized links, finite bounds, colors, booleans and quaternion normalization.');
+
+for(const sword of swords){
+ for(const form of ['bankai','shikai']){
+  const state=readSwordPageState(sword,'',form).state;
+  const expected=sword.model==='senbonzakura'?form:sword.model==='zangetsu'?(form==='bankai'?'bankai':'off'):sword.effect;
+  assert.equal(state.effect,expected);assert.equal(state.time,0);assert.equal(state.paused,false);
+ }
+}
+const bankaiState={...defaultSwordState(senbo),effect:'bankai',time:7.2,paused:true};
+assert.equal(readSwordPageState(senbo,encode(bankaiState),'bankai').state.time,7.2);
+const shikaiState=readSwordPageState(senbo,encode(bankaiState),'shikai').state;
+assert.equal(shikaiState.effect,'shikai');assert.equal(shikaiState.time,0);assert.equal(shikaiState.paused,false);
+console.log('PASS: form defaults, unsupported forms, matching shared moments and route precedence.');

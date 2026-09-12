@@ -1,6 +1,6 @@
 # Rendering optimization guide
 
-Aetherblade asset editor · September 10, 2026
+BladeX asset editor · September 10, 2026
 
 This guide records the first optimization pass and the rules for extending it as the editor becomes a game. The aim is to remove repeated work while preserving the current appearance.
 

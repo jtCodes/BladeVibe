@@ -1,7 +1,7 @@
 import {useBankaiVoice} from './useBankaiVoice';
 import {BankaiTitle} from './BankaiTitle';
 import {SwordReplayControls} from './SwordReplayControls';
-import {readSwordShare,swordSharePath,normalizeSwordState,type SwordShareState} from './swordShare';
+import {readSwordPageState,swordSharePath,normalizeSwordState,type SwordShareState} from './swordShare';
 import type {SwordViewRequest} from './scene/swordViewState';
 import {EffectTimelineControls} from './EffectTimelineControls';
 import type {SwordScene,EffectSeekRequest,TimelineEffect} from './scene/createSwordScene';
@@ -10,11 +10,11 @@ import { useEffect, useRef, useState, type SetStateAction } from 'react';
 import { SwordViewer } from './SwordViewer';
 import type { MotionStatus } from './scene/swordPhysics';
 
-import type { SwordAsset } from './swordLibrary';
+import {swordUrl,swordFormEffect,type SwordForm,type SwordAsset} from './swordLibrary';
 import { AppLink,navigate } from './navigation';
 
-export default function SwordEditor({sword,active=true,editing=true,shareHash=''}:{sword:SwordAsset;active?:boolean;editing?:boolean;shareHash?:string}) {
-  const [initialShare]=useState(()=>readSwordShare(sword,shareHash));
+export default function SwordEditor({sword,active=true,editing=true,shareHash='',routeForm}:{sword:SwordAsset;active?:boolean;editing?:boolean;shareHash?:string;routeForm?:SwordForm}) {
+  const [initialShare]=useState(()=>readSwordPageState(sword,shareHash,routeForm));
   const initial=initialShare.state;
   const [viewState,setViewState]=useState<SwordViewRequest|undefined>(initial.view);
   const [invalidShare,setInvalidShare]=useState(initialShare.invalid);
@@ -73,13 +73,37 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
   const armBankaiVoice=useBankaiVoice(viewerScene,{active:active&&sword.model==='senbonzakura'&&bankaiActive,paused:effectPaused,speed:effectSpeed,enabled:false,seekRequest:effectSeek});
 
 
-  const importedHash=useRef(shareHash);
+  // Dedicated form pages repeat; paused shared moments and editor inspection stay still.
   useEffect(()=>{
-    if(importedHash.current===shareHash)return;
-    importedHash.current=shareHash;
+    if(!active||editing||!routeForm||sword.model!=='senbonzakura'||effect!==routeForm||effectPaused||effectSpeed<=0)return;
+    const timer=window.setInterval(()=>{
+      const timeline=viewerScene.current?.getEffectTimeline(routeForm);
+      if(timeline&&timeline.time>=timeline.cycleDuration){
+        setEffectSeek({effect:routeForm,time:0,paused:false});
+      }
+    },100);
+    return ()=>window.clearInterval(timer);
+  },[active,editing,routeForm,sword.model,effect,effectPaused,effectSpeed]);
+
+  const importedHash=useRef(`${routeForm??''}|${shareHash}`);
+  useEffect(()=>{
+    const routeKey=`${routeForm??''}|${shareHash}`;
+    if(importedHash.current===routeKey)return;
+    importedHash.current=routeKey;
     // A plain collection link resumes the cached study. Explicit snapshots replace it.
-    if(!shareHash){setInvalidShare(false);return;}
-    const result=readSwordShare(sword,shareHash),state=result.state;
+    if(!shareHash){
+      setInvalidShare(false);
+      const next=routeForm?swordFormEffect(sword,routeForm):undefined;
+      if(next!==undefined){
+        if(sword.model==='zangetsu'&&(next==='bankai')!==(effect==='bankai'))setViewState(viewerScene.current?.getViewState());
+        setEffectState(next);setDraw(100);setRotating(false);setEffectPaused(false);
+        if(effectSpeed===0)setEffectSpeed(1);
+        if(routeForm)setTimelineEffect(routeForm);
+        setEffectSeek(sword.model==='senbonzakura'&&routeForm?{effect:routeForm,time:0,paused:false}:undefined);
+      }
+      return;
+    }
+    const result=readSwordPageState(sword,shareHash,routeForm),state=result.state;
     setInvalidShare(result.invalid);setViewState(state.view??{reset:true});setEffectState(state.effect);setEffectPaused(state.paused);
     setEffectIntensity(state.effectIntensity*100);setEffectSpeed(state.effectSpeed);setDraw(state.draw);setShowSheath(state.showSheath);
     setSwordRotation(state.swordRotation);setRotating(state.rotating);setCameraHeight(state.cameraHeight);setLightAngle(state.lightAngle);
@@ -87,7 +111,7 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
     setGlowStrength(state.glowStrength);setGlowSpread(state.glowSpread);setPetalGlow(state.petalGlow);
     if(state.effect==='shikai'||state.effect==='bankai')setTimelineEffect(state.effect);
     setEffectSeek(sword.model==='senbonzakura'&&(state.effect==='shikai'||state.effect==='bankai')?{effect:state.effect,time:state.time,paused:state.paused}:undefined);
-  },[shareHash,sword]);
+  },[shareHash,routeForm,sword]);
   function snapshot(freeze=false):SwordShareState{
     const time=sword.model==='senbonzakura'&&(effect==='shikai'||effect==='bankai')?viewerScene.current?.getEffectTimeline(effect)?.time??effectSeek?.time??0:0;
     return normalizeSwordState(sword,{version:1,sword:sword.id,effect,effectIntensity:effectIntensity/100,effectSpeed,time,
@@ -96,7 +120,8 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
   }
   function openMode(){
     const path=swordSharePath(sword,snapshot(),!editing);
-    importedHash.current=path.slice(path.indexOf('#'));navigate(path);
+    const form=/\/(bankai|shikai)#/.exec(path)?.[1]??'';
+    importedHash.current=`${form}|${path.slice(path.indexOf('#'))}`;navigate(path);
   }
   async function share(){
     const url=new URL(swordSharePath(sword,snapshot(true)),window.location.href).href;
@@ -104,11 +129,18 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
     try{if(!navigator.clipboard)throw new Error('Clipboard unavailable');await navigator.clipboard.writeText(url);setShareMessage('Link copied.');}
     catch{setShareMessage('Copy the link below.');}
   }
+  function navigateForm(form?:SwordForm){
+    if(editing)return;
+    // The selection already applies the live state; avoid importing it a second time.
+    importedHash.current=`${form??''}|`;
+    if(routeForm!==form||shareHash)navigate(swordUrl(sword)+(form?`/${form}`:''));
+  }
   function play(mode:TimelineEffect=timelineEffect){
     if(sword.model==='senbonzakura'&&mode==='bankai')armBankaiVoice();
     if(sword.model==='zangetsu'&&effect!==mode)setViewState(viewerScene.current?.getViewState());
     setDraw(100);setRotating(false);setEffectPaused(false);if(effectSpeed===0)setEffectSpeed(1);if(effectIntensity===0)setEffectIntensity(100);
     setTimelineEffect(mode);setEffectState(mode);
+    navigateForm(mode);
     setEffectSeek(sword.model==='senbonzakura'?{effect:mode,time:0,paused:false}:undefined);
   }
   function togglePlayback(){
@@ -118,11 +150,11 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
     else setEffectPaused(!effectPaused&&effectSpeed!==0);
     if(effectSpeed===0)setEffectSpeed(1);if(effectIntensity===0)setEffectIntensity(100);
   }
-  function originalForm(){setEffect('off');setDraw(100);}
+  function originalForm(){setEffect('off');setDraw(100);navigateForm(sword.model==='zangetsu'?'shikai':undefined);}
 
   return <main className={`sword-experience ${editing?'is-editor':'is-replay'}`}>
     <header className="experience-header">
-      <AppLink className="wordmark" href="/" aria-label="Aetherblade — collection">Aetherblade</AppLink>
+      <AppLink className="wordmark" href="/" aria-label="BladeX — collection">BladeX</AppLink>
       <nav aria-label="Study navigation"><button onClick={openMode}>{editing?'View study':'Edit'}</button><button onClick={share} disabled={dropped} title={dropped?'Return the sword to display to share this study':undefined}>Share</button></nav>
     </header>
     <div className="experience-body">
@@ -226,7 +258,7 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
       <details className="sword-info"><summary>About this sword &amp; controls</summary>
         <h3>{sword.name}</h3><p>{sword.description}</p>
         <p>Left-drag follows your selected mode · Arrow keys to move · Right-drag or two-finger drag to pan · Pinch or scroll to zoom</p>
-        <p className="study-credit">AETHERBLADE / {sword.name.toUpperCase()}</p>
+        <p className="study-credit">BLADEX / {sword.name.toUpperCase()}</p>
       </details>
     </aside>}
     </>}

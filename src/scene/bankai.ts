@@ -145,7 +145,7 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
   }
  }
  return {get formationOrigin(){return {x:endPosition.x,z:endPosition.z};},get active(){return active;},get glowing(){return formation.glowing;},get pinkGlow(){return formation.pinkGlow;},
-  get time(){return time;},get duration(){return active?Math.max(contactTime+2.6+formation.duration,furthestTime):releasePose(sword.position,sword.quaternion).contactTime+2.6+formation.duration;},start,cancel,warmup,
+  get time(){return time;},get cycleDuration(){return contactTime+2.6+formation.duration;},get duration(){return active?Math.max(contactTime+2.6+formation.duration,furthestTime):releasePose(sword.position,sword.quaternion).contactTime+2.6+formation.duration;},start,cancel,warmup,
   seek(seconds:number){
    if(!Number.isFinite(seconds))return;
    if(!active)start();

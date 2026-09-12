@@ -1,4 +1,4 @@
-# Aetherblade — local development
+# BladeX — local development
 
 Includes the latest steel longsword, broad off-camera lighting, matte floor,
 vertical camera controls, mouse/touch panning, and sheathing/drop physics.
@@ -111,3 +111,13 @@ the current page session. Render quality, performance metering and drag-control
 preferences remain local to the current editor session.
 
 Run `node scripts/check-sword-sharing.cjs` for share-format regression checks.
+
+### Form URLs
+
+Senbonzakura supports `/swords/senbonzakura/shikai` and
+`/swords/senbonzakura/bankai`; each plain URL starts that release.
+Zangetsu supports `/swords/zangetsu/shikai` (the original unwrapped form) and
+`/swords/zangetsu/bankai` (Tensa Zangetsu). Unsupported form URLs redirect to
+that sword's main page using history replacement. Editor URLs remain `/edit`.
+Share links use the applicable form suffix; a matching saved state retains its
+time and camera, while a different form suffix starts the requested form at zero.

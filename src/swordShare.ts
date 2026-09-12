@@ -1,5 +1,5 @@
 import type {SwordAsset} from './swordLibrary';
-import {swordUrl} from './swordLibrary';
+import {swordUrl,swordFormEffect,type SwordForm} from './swordLibrary';
 import type {EffectMode} from './scene/aura';
 import type {LightingSettings} from './scene/createSwordScene';
 import type {SwordViewState} from './scene/swordViewState';
@@ -50,9 +50,16 @@ export function readSwordShare(sword:SwordAsset,hash:string):{state:SwordShareSt
   return {state:normalizeSwordState(sword,raw),invalid:false};
  }catch{return {state:defaultSwordState(sword),invalid:true};}
 }
+export function readSwordPageState(sword:SwordAsset,hash:string,form?:SwordForm){
+ const result=readSwordShare(sword,hash),effect=form?swordFormEffect(sword,form):undefined;
+ if(effect===undefined)return result;
+ const same=result.state.effect===effect;
+ return {...result,state:{...result.state,effect,draw:100,rotating:false,time:same?result.state.time:0,paused:same?result.state.paused:false}};
+}
 export function swordSharePath(sword:SwordAsset,state:SwordShareState,editing=false){
  const safe=normalizeSwordState(sword,state);
  const json=JSON.stringify(safe,(_key,value)=>typeof value==='number'?Math.round(value*100000)/100000:value);
  const token=btoa(json).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
- return `${swordUrl(sword)}${editing?'/edit':''}#state=${token}`;
+ const form=safe.effect==='bankai'?'bankai':safe.effect==='shikai'||sword.model==='zangetsu'?'shikai':undefined;
+ return `${swordUrl(sword)}${editing?'/edit':form?`/${form}`:''}#state=${token}`;
 }

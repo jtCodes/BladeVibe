@@ -23,7 +23,7 @@ export function Gallery({swords,active=true}:{swords:readonly SwordAsset[];activ
  const page=useRef<HTMLElement>(null),scrollTop=useRef(0);
  useLayoutEffect(()=>{if(active&&page.current)page.current.scrollTop=scrollTop.current;},[active]);
  return <main ref={page} className="gallery-page" onScroll={event=>{if(active)scrollTop.current=event.currentTarget.scrollTop;}}>
-  <header className="collection-header"><AppLink href="/" className="wordmark">Aetherblade</AppLink><h1 className="sr-only">Sword collection</h1></header>
+  <header className="collection-header"><AppLink href="/" className="wordmark">BladeX</AppLink><h1 className="sr-only">Sword collection</h1></header>
   <div className="live-sword-grid">{swords.map(sword=><SwordCard sword={sword} key={sword.id} active={active}/>)}</div>
  </main>;
 }

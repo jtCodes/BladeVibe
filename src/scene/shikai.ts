@@ -55,6 +55,7 @@ export function createShikai(sword:THREE.Group){
   get visible(){return clock.value>0;},
   get pinkGlow(){return sakuraPinkBuild((clock.value-DISSOLVE_AT)/DISSOLVE_DURATION);},
   get time(){return clock.value;},
+  get cycleDuration(){return DISSOLVE_AT+DISSOLVE_DURATION+6;},
   get duration(){return Math.max(DISSOLVE_AT+DISSOLVE_DURATION+6,furthestTime);},
   setPetalGlow(value:number){emission=value;},
   configure(mode:EffectMode,nextSpeed:number,nextIntensity:number){

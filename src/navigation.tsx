@@ -1,5 +1,5 @@
 import {useEffect,useState,type ComponentProps} from 'react';
-export function navigate(href:string){window.history.pushState(null,'',href);window.dispatchEvent(new Event('app:navigate'));}
+export function navigate(href:string,replace=false){window.history[replace?'replaceState':'pushState'](null,'',href);window.dispatchEvent(new Event('app:navigate'));}
 const locationState=()=>({path:window.location.pathname.replace(/\/+$/,'')||'/',hash:window.location.hash});
 export function useLocation(){
  const [location,setLocation]=useState(locationState);

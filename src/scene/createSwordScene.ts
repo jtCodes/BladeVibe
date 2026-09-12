@@ -27,7 +27,7 @@ export interface LightingSettings { brightness:number; key:number; fill:number; 
 export type TimelineEffect='bankai'|'shikai';
 export interface EffectSeekRequest { effect:TimelineEffect; time:number; paused:boolean }
 export interface ViewerSettings { viewState?:SwordViewRequest; effectSeek?:EffectSeekRequest; effectPaused?:boolean; glowStrength?:number; glowSpread?:number; petalGlow?:number; upscaling?:'native'|'ultra'|'quality'; dragTarget?:'sword'|'camera'; antiAliasing?:'standard'|'smooth'|'high'; showPerformance?:boolean; lighting?: LightingSettings; rotating: boolean; draw: number; reflections: boolean; lightAngle: number; floorColor?: string; backgroundColor?: string; cameraHeight: number; showSheath?: boolean; swordRotation?: number; effect: EffectMode; effectSpeed: number; effectIntensity: number }
-export interface EffectTimeline { time:number; duration:number }
+export interface EffectTimeline { time:number; duration:number; cycleDuration:number }
 export interface SwordScene { getViewState():SwordViewState; setActive(active:boolean):void; getEffectTimeline(effect?:TimelineEffect):EffectTimeline|null; seekEffect(time:number,paused?:boolean):void; update(settings: ViewerSettings): void; reset(): void; release(): boolean; dispose(): void }
 export async function createSwordScene(container: HTMLDivElement, onError: (message: string) => void, onStatus: (status: MotionStatus) => void, signal: AbortSignal, options:{preview?:boolean;model?:SwordModel;active?:boolean;waitUntilActive?:()=>Promise<void>}={}): Promise<SwordScene> {
 signal.throwIfAborted();
@@ -213,6 +213,7 @@ let glowStrength=.42,glowSpread=.8,petalGlow=4,performanceRequested=false;
 function update(settings: ViewerSettings){
  const seekRequest=settings.effectSeek!==lastSeek&&settings.effectSeek?.effect===settings.effect?settings.effectSeek:undefined;
  lastSeek=settings.effectSeek;
+ const poseChanged=physics.setGroundedUpright(isKatana&&settings.effect==='shikai');
  const view=settings.viewState!==lastView?settings.viewState:undefined;lastView=settings.viewState;
  if(view){
   bankai?.cancel();shikai?.update(0,0);physics.restore();
@@ -239,11 +240,19 @@ function update(settings: ViewerSettings){
  glowStrength=THREE.MathUtils.clamp(settings.glowStrength??.42,0,1.5);glowSpread=THREE.MathUtils.clamp(settings.glowSpread??.8,0,1);petalGlow=THREE.MathUtils.clamp(settings.petalGlow??4,0,8);
  if(bankai?.active&&settings.effect!=='bankai'){bankai.cancel();physics.setDraw(settings.draw/100);physics.restore();}
  if(isZangetsu)scabbard.userData.setUnwrapped(settings.draw/100);
- const showSheath=!options.preview&&settings.effect!=='bankai'&&(settings.showSheath??true);
+ const showSheath=!options.preview&&settings.effect!=='bankai'&&settings.effect!=='shikai'&&(settings.showSheath??true);
  if(scabbard.visible!==showSheath){scabbard.visible=showSheath;renderer.shadowMap.needsUpdate=true;}
  physics.setRotation(settings.swordRotation??0);
  const lift=settings.cameraHeight-cameraHeight;camera.position.y+=lift;controls.target.y+=lift;cameraHeight=settings.cameraHeight;
  physics.setDraw(settings.draw/100);
+ if(poseChanged){
+  physics.restore();
+  if(settings.effect==='shikai'&&!options.preview&&(!view||'reset' in view)){
+   const center=FLOOR_Y+3.4+cameraHeight;
+   const distance=Math.max(14,4/(Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*Math.min(1,camera.aspect)));
+   applyCameraView({camera:[1.1,center+.3,distance],target:[0,center,0]});
+  }
+ }
  aura.configure(settings.effect,settings.effectSpeed,settings.effectIntensity);
  if(bankai&&!bankai.active&&settings.effect==='bankai'){
   physics.setDraw(1);physics.restore();shikai?.update(0,0);bankai.start();
@@ -276,7 +285,7 @@ function timelineController(effect:EffectMode=effectMode){return effect==='banka
 function getEffectTimeline(effect?:TimelineEffect):EffectTimeline|null {
  const controller=timelineController(effect);
  const running=(effect??effectMode)===effectMode&&(effectMode!=='bankai'||!!bankai?.active);
- return controller?{time:running?controller.time:0,duration:controller.duration}:null;
+ return controller?{time:running?controller.time:0,duration:controller.duration,cycleDuration:controller.cycleDuration}:null;
 }
 function seekEffect(time:number,paused=true){
  const controller=timelineController();if(!controller||!Number.isFinite(time))return;
