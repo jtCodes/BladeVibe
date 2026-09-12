@@ -26,8 +26,8 @@ export function createSakuraParticles(data:SakuraParticleData,clock:THREE.IUnifo
  for(const [name,array,size] of [['petalOrigin',origins,3],['petalVelocity',velocities,3],['petalSpin',spins,3],['petalRelease',releases,1],['petalSize',sizes,1],['petalPhase',phases,1]] as const){
   petalGeometry.setAttribute(name,new THREE.InstancedBufferAttribute(array,size));
  }
- const petalMaterial=new THREE.MeshStandardMaterial({color:0xffa8d1,metalness:.08,roughness:.45,
-  emissive:0xff5baf,emissiveIntensity:4,side:THREE.DoubleSide});
+ const petalMaterial=new THREE.MeshStandardMaterial({color:0xffc6e6,metalness:.08,roughness:.45,
+  emissive:0xff91d3,emissiveIntensity:4,side:THREE.DoubleSide});
  petalMaterial.onBeforeCompile=shader=>{
   shader.uniforms.formationTime=clock;
   shader.vertexShader=`uniform float formationTime;
@@ -80,7 +80,7 @@ export function createSakuraParticles(data:SakuraParticleData,clock:THREE.IUnifo
   fragmentShader:`varying float glow;
    void main(){float r=length(gl_PointCoord-.5)*2.;if(r>1.||glow<.001)discard;
     float core=exp(-r*r*8.);
-    gl_FragColor=vec4(mix(vec3(1.,.25,.65),vec3(2.,1.2,1.6),core),core*glow*.8);
+    gl_FragColor=vec4(mix(vec3(1.,.38,.78),vec3(2.,1.65,1.9),core),core*glow*.8);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
    }`});

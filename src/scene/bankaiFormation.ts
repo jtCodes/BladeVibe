@@ -65,7 +65,7 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
    totalEmissiveRadiance+=sakuraBladeEmission(bladeWidth,colorShift,riseLight,glowDistance,dissolve,pink)*formationPower*rootBlend;
   `);
  };
- material.customProgramCacheKey=()=>baseKey+'-bankai-progress-glow-v16';
+ material.customProgramCacheKey=()=>baseKey+'-bankai-progress-glow-v17';
  }
  const blades=new THREE.InstancedMesh(geometry,materials,BLADES);blades.frustumCulled=false;
  blades.instanceMatrix.setUsage(THREE.DynamicDrawUsage);group.add(blades);
@@ -102,7 +102,7 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
  group.add(particles.petals,particles.dust);
  // Overlapping omnidirectional emitters approximate spill from each section of the rows.
  // No emitter plane or distance cutoff can stamp a straight boundary onto the floor.
- const spillPink=new THREE.Color(0xff7ac4);
+ const spillPink=new THREE.Color(0xff94d6);
  const glowLights=[3,11,19].flatMap(row=>[-1,1].map(side=>{
   const z=BANKAI_FRONT_Z-row*BANKAI_ROW_SPACING,light=new THREE.PointLight(0xffffff,0,0,2);
   light.position.set(side*4.05,FLOOR_Y+5,z);light.castShadow=false;group.add(light);

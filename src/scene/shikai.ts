@@ -37,7 +37,7 @@ export function createShikai(sword:THREE.Group){
  const depth=new THREE.MeshDepthMaterial({depthPacking:THREE.RGBADepthPacking});depth.onBeforeCompile=inject;depth.customProgramCacheKey=()=> 'shikai-bankai-depth-v1';blade.customDepthMaterial=depth;
  const particles=createSakuraParticles(getSakuraData('shikai'),clock);
  sword.add(particles.petals,particles.dust);
- const light=new THREE.PointLight(0xff7ac4,0,0,2);light.position.set(0,2,.5);sword.add(light);
+ const light=new THREE.PointLight(0xff94d6,0,0,2);light.position.set(0,2,.5);sword.add(light);
  let emission=4;
  let active=false,speed=1,intensity=1,returnStart=0,returnElapsed=0,returning=false;
  let furthestTime=0,manualTimeline=false;
