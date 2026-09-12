@@ -6,6 +6,8 @@ export function bend(x:number,y:number,z:number){const a=y/KATANA_RADIUS;return 
 const cross=[[-.105,-.022],[-.12,0],[-.105,.022],[-.018,.040],[.135,0],[-.018,-.040]];
 export function createKatanaBladeGeometry(options:{straight?:boolean;length?:number}={}){
  const length=options.length??LENGTH;
+ // The curved blade uses the shorter bevel at negative x as its edge.
+ const tipX=options.straight?.135:-.12;
  const positions:number[]=[],uv:number[]=[],indices:number[]=[],rows=100;
  const geometry=new THREE.BufferGeometry();
  for(let face=0;face<cross.length;face++){
@@ -14,12 +16,12 @@ export function createKatanaBladeGeometry(options:{straight?:boolean;length?:num
    const y=-.08+(length+.08)*row/rows,taper=1.-.22*Math.max(0,y)/length;
    const tip=THREE.MathUtils.clamp((y-(length-.42))/.42,0,1);
    for(const [x,z] of [cross[face],cross[(face+1)%cross.length]]){
-    const bladeX=(x*(1-tip)+.135*tip)*taper,bladeZ=z*taper*(1-tip);
+    const bladeX=(x*(1-tip)+tipX*tip)*taper,bladeZ=z*taper*(1-tip);
     const p=options.straight?new THREE.Vector3(bladeX,y,bladeZ):bend(bladeX,y,bladeZ);positions.push(p.x,p.y,p.z);uv.push((x+.12)/.255,y/length);
    }
   }
   for(let row=0;row<rows;row++){const a=base+row*2;indices.push(a,a+1,a+2,a+1,a+3,a+2);}
-  geometry.addGroup(start,indices.length-start,face===3||face===4?0:1);
+  geometry.addGroup(start,indices.length-start,options.straight?(face===3||face===4?0:1):(face===3||face===4?1:0));
  }
  geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));geometry.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));geometry.setIndex(indices);geometry.computeVertexNormals();return geometry;
 }

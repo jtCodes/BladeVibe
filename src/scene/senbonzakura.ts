@@ -38,18 +38,20 @@ export function createSenbonzakura(renderer:THREE.WebGLRenderer,sword:THREE.Grou
   shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nkatanaUv=uv;');
   shader.fragmentShader='varying vec2 katanaUv;\n'+shader.fragmentShader;
   shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
-   float boundary=.68+.025*sin(katanaUv.y*280.)+.008*sin(katanaUv.y*611.);
-   float line=exp(-pow((katanaUv.x-boundary)*110.,2.));
-   diffuseColor.rgb=mix(diffuseColor.rgb*.87,vec3(.78,.80,.82),line*.4);
+   // UV x=0 is the short cutting bevel; the broad opposite face is dark.
+   float boundary=.20+.028*sin(katanaUv.y*160.)+.006*sin(katanaUv.y*320.);
+   float edgeAA=max(fwidth(katanaUv.x)*1.2,.003);
+   float cuttingSteel=1.-smoothstep(boundary-edgeAA,boundary+edgeAA,katanaUv.x);
+   float line=1.-smoothstep(.003,.003+edgeAA,abs(katanaUv.x-boundary));
+   diffuseColor.rgb*=mix(.26,1.,cuttingSteel);
+   diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.72,.75,.79),line*.45);
   `);
   shader.fragmentShader=shader.fragmentShader.replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
-   float wave=.68+.025*sin(katanaUv.y*280.)+.009*sin(katanaUv.y*611.);
-   float hamon=smoothstep(wave-.012,wave+.012,katanaUv.x);
-   roughnessFactor=mix(roughnessFactor,.16,hamon*.8);
-   roughnessFactor+=exp(-pow((katanaUv.x-wave)*130.,2.))*.14;`);
+   roughnessFactor=mix(.30,.17,cuttingSteel)+roughnessFactor*.12;
+   roughnessFactor+=line*.045;`);
  };
- metal.customProgramCacheKey=()=> 'senbonzakura-hamon-v2';
- const spine=new THREE.MeshStandardMaterial({color:0x89949f,metalness:1,roughness:.21});
+ metal.customProgramCacheKey=()=> 'senbonzakura-short-edge-hamon-v4';
+ const spine=new THREE.MeshStandardMaterial({color:0x454d58,metalness:1,roughness:.30});
  const bronze=createSatinMetal(renderer,{color:0x777c65});
  const guardMetal=createSatinMetal(renderer,{color:0x686f60,roughnessScale:1});
  // Soft fiber sheen and fine lengthwise yarn relief match the wrapping reference.

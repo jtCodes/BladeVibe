@@ -64,7 +64,7 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
  };
  rippleMaterial.customProgramCacheKey=()=> 'bankai-floor-ripples-v1';
  const startPosition=new THREE.Vector3(),startRotation=new THREE.Quaternion();
- const endPosition=new THREE.Vector3(),tip=bend(.135*.78,SENBONZAKURA_BLADE_LENGTH,0);
+ const endPosition=new THREE.Vector3(),tip=bend(-.12*.78,SENBONZAKURA_BLADE_LENGTH,0);
  // Align the straight handle axis vertically; the curved tip remains naturally offset.
  const downRotation=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1),Math.PI);
  const pivot=new THREE.Vector3(0,1.5,0),center=new THREE.Vector3(),temp=new THREE.Vector3();
