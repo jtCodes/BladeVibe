@@ -50,7 +50,7 @@ canvas { display: block; touch-action: none; }
 .live-sword-caption h2 { font-size: clamp(1.3rem,2vw,1.8rem); line-height: 1.2; letter-spacing: -.02em; overflow-wrap: anywhere; }
 .live-sword-card > a:hover h2 { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px; }
 
-/* The retained canvas fills the space above a compact playback strip. */
+/* Shared scene layout; the public view overlays its controls below. */
 .sword-experience { background: var(--surface); }
 .experience-header { position: relative; z-index: 5; display: flex; align-items: center; justify-content: space-between; height: calc(56px + env(safe-area-inset-top)); padding: env(safe-area-inset-top) 24px 0; gap: 24px; border-bottom: 1px solid var(--line); background: var(--surface); }
 .experience-header nav { display: flex; align-items: center; gap: 24px; }
@@ -74,6 +74,28 @@ canvas { display: block; touch-action: none; }
 .replay-progress { display: block; min-width: 0; }
 .replay-progress input[type=range] { width: 100%; min-height: 32px; margin: 0; }
 .replay-caption, .share-notice { grid-column: 1/-1; font-size: .8125rem; line-height: 1.5; color: var(--muted); }
+
+/* Public playback fills the viewport; empty overlay space still accepts scene gestures. */
+.is-replay .experience-body { position: absolute; inset: 0; height: 100%; grid-template-rows: minmax(0,1fr); }
+.is-replay .experience-header {
+  position: absolute; top: 0; left: 0; right: 0; border: 0;
+  background: linear-gradient(to bottom, #000b, transparent);
+  pointer-events: none; text-shadow: 0 1px 5px #000;
+}
+.is-replay .study-info {
+  position: absolute; grid-area: auto; left: 0; right: 0; bottom: 0; z-index: 3;
+  border: 0; padding-top: 32px;
+  background: linear-gradient(to top, #000c, #0007 65%, transparent);
+  pointer-events: none; text-shadow: 0 1px 5px #000;
+}
+.is-replay .experience-header a, .is-replay .experience-header button,
+.is-replay .study-info button, .is-replay .replay-progress { pointer-events: auto; }
+.is-replay .experience-header nav button, .is-replay .text-link,
+.is-replay .form-selector button { color: #c4c1ba; }
+.is-replay .experience-header nav button:hover, .is-replay .text-link:hover,
+.is-replay .form-selector button[aria-pressed=true] { color: #fff; }
+.is-replay .primary-action { background: #10101066; border-color: #88877f; }
+.is-replay .primary-action:hover { background: #242423cc; }
 
 /* Detailed tools appear only when the editor inspector is opened. */
 .settings-toggle { position: absolute; z-index: 4; top: calc(72px + env(safe-area-inset-top)); right: 24px; display: flex; align-items: center; gap: 9px; padding: 0 13px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font-size: .8125rem; }
