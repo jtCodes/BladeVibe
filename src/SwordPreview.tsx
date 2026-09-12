@@ -1,3 +1,4 @@
+import {SceneLoader} from './SceneLoader';
 import {createSceneActivity} from './scene/sceneActivity';
 import {useEffect,useLayoutEffect,useRef,useState} from 'react';
 import {createSwordScene,type SwordScene} from './scene/createSwordScene';
@@ -22,5 +23,5 @@ export default function SwordPreview({sword,active=true}:{sword:SwordAsset;activ
   }).catch(()=>{if(!controller.signal.aborted)setError(true);});
   return ()=>{controller.abort();owned?.dispose();if(sceneRef.current===owned)sceneRef.current=null;};
  },[sword,started,activity]);
- return <><div className="live-sword-stage" ref={container} aria-hidden="true"/>{(!ready||error)&&<span className="preview-status">{error?'Preview unavailable · Open sword':'Loading sword…'}</span>}</>;
+ return <><div className="live-sword-stage" ref={container} aria-hidden="true"/>{error?<span className="preview-status">Preview unavailable · Open sword</span>:!ready&&<SceneLoader/>}</>;
 }

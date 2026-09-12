@@ -1,3 +1,4 @@
+import {yieldScenePreparation} from './yieldScenePreparation';
 import {SENBONZAKURA_POMMEL_TIP_Y,SENBONZAKURA_BLADE_LENGTH} from './senbonzakuraDimensions';
 import {getBankaiCameraView} from './bankaiCamera';
 import type {SwordViewState,SwordViewRequest} from './swordViewState';
@@ -33,6 +34,7 @@ export interface EffectTimeline { time:number; duration:number; cycleDuration:nu
 export interface SwordScene { getViewState():SwordViewState; setActive(active:boolean):void; getEffectTimeline(effect?:TimelineEffect):EffectTimeline|null; seekEffect(time:number,paused?:boolean):void; update(settings: ViewerSettings): void; reset(): void; release(): boolean; dispose(): void }
 export async function createSwordScene(container: HTMLDivElement, onError: (message: string) => void, onStatus: (status: MotionStatus) => void, signal: AbortSignal, options:{preview?:boolean;model?:SwordModel;active?:boolean;waitUntilActive?:()=>Promise<void>}={}): Promise<SwordScene> {
 signal.throwIfAborted();
+await yieldScenePreparation(signal);
 const modelId=options.model??'longsword';
 await Promise.all([initializePhysics(),prepareSurfaceAssets(modelId==='senbonzakura'||modelId==='zangetsu'?['steel']:['steel','leather']),modelId==='senbonzakura'?prepareSakuraAssets():Promise.resolve()]);
 signal.throwIfAborted();
@@ -104,6 +106,7 @@ cleanups.push(()=>{
  stopControlDrag();renderer.domElement.removeEventListener('pointerdown',trackControlPointer);
  renderer.domElement.removeEventListener('pointerup',forgetControlPointer);renderer.domElement.removeEventListener('pointercancel',forgetControlPointer);
 });
+await yieldScenePreparation(signal);
 const environment=createStudioEnvironment(renderer,options.model==='senbonzakura');scene.environment=environment.texture;scene.environmentRotation.set(0,.35,0);cleanups.push(()=>environment.dispose());scene.environmentIntensity=.8;
 const ambientLight=new THREE.HemisphereLight(0xb9d8ed,0x1b1312,.12);scene.add(ambientLight);
 function area(color: number,power: number,x: number,y: number,z: number,w: number,h: number){const l=new THREE.RectAreaLight(color,power,w,h);l.position.set(x,y,z);l.lookAt(0,1.5,0);scene.add(l);return l}
@@ -124,7 +127,9 @@ if(isKatana){
  if(scene.fog instanceof THREE.FogExp2)scene.fog.density=.022;
 }
 
+await yieldScenePreparation(signal);
 const scabbard=model.create(renderer,sword);
+await yieldScenePreparation(signal);
 const floorMaterial=new THREE.MeshStandardMaterial({color:0x141413,metalness:0,roughness:.9});
 const floor=new THREE.Mesh(new THREE.PlaneGeometry(1000,1000),floorMaterial);scene.add(floor);floor.rotation.x=-Math.PI/2;floor.position.y=FLOOR_Y;floor.castShadow=false;floor.receiveShadow=true;
 (model.sheathOnSword?sword:scene).add(scabbard);if(options.preview)scabbard.visible=false;
@@ -142,9 +147,11 @@ for(const root of [sword,scabbard])root.traverse(object=>{
  if(object instanceof THREE.Mesh){object.updateMatrix();object.matrixAutoUpdate=false;}
 });
 const physics=createSwordPhysics(sword,onStatus,model.physics);cleanups.push(()=>physics.dispose());
+await yieldScenePreparation(signal);
 const shikai=isKatana?createShikai(sword):null;
 if(shikai)cleanups.push(()=>shikai.dispose());
 const aura=shikai??createBladeAura(sword,renderer.getPixelRatio());
+await yieldScenePreparation(signal);
 const bankai=isKatana?createBankai(sword,floor,scene):null;
 if(bankai)cleanups.push(()=>bankai.dispose());
 let dragTarget:'sword'|'camera'='sword',spinRequested=false,dragPointer:number|null=null,dragX=0,dragY=0;
@@ -187,6 +194,7 @@ const gl=renderer.getContext();
 const supportedSamples='getInternalformatParameter' in gl ? Array.from(gl.getInternalformatParameter(gl.RENDERBUFFER,gl.RGBA16F,gl.SAMPLES) as Int32Array) : [];
 const samples=Math.max(0,...supportedSamples.filter(value=>value<=4));
 const target=new THREE.WebGLRenderTarget(1,1,{type:THREE.HalfFloatType,samples});
+await yieldScenePreparation(signal);
 const composer=new EffectComposer(renderer,target);
 const reflectiveMeshes: THREE.Mesh[]=[];
 sword.traverse(object=>{if(object instanceof THREE.Mesh){const materials=Array.isArray(object.material)?object.material:[object.material];if(materials.some(material=>material instanceof THREE.MeshStandardMaterial&&material.metalness>.8))reflectiveMeshes.push(object)}});
@@ -326,9 +334,12 @@ function resize(){
  lastWidth=w;lastHeight=h;lastPixelRatio=pixelRatio;lastRenderScale=renderScale;
  renderer.setPixelRatio(pixelRatio);composer.setPixelRatio(pixelRatio*renderScale);renderer.setSize(w,h);camera.aspect=w/h;camera.fov=options.preview?34:w<700?44:34;camera.updateProjectionMatrix();composer.setSize(w,h);const renderWidth=Math.max(1,Math.floor(composer.renderTarget1.width)),renderHeight=Math.max(1,Math.floor(composer.renderTarget1.height));edgeAA.uniforms.resolution.value.set(1/renderWidth,1/renderHeight);upscale.uniforms.inputSize.value.set(renderWidth,renderHeight);meter.setRenderSize(renderWidth,renderHeight)}
 function assertContextAvailable(){if(renderer.getContext().isContextLost())throw new Error('The 3D renderer was interrupted. Reload this page to restore the sword.');}
+await yieldScenePreparation(signal);
+await renderer.compileAsync(scene,camera);
+signal.throwIfAborted();
 if(active&&bankai&&shikai&&!options.preview){
  reset();
- await warmupSwordEffects(scene,composer,bankai,shikai,()=>{assertContextAvailable();updateShadowCache();updateReflectionPath();},signal,options.waitUntilActive);
+ await warmupSwordEffects(scene,composer,renderer,camera,bankai,shikai,()=>{assertContextAvailable();updateShadowCache();updateReflectionPath();},signal,options.waitUntilActive);
  renderer.shadowMap.needsUpdate=true;
 }
 await options.waitUntilActive?.();

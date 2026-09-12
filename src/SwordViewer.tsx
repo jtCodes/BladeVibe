@@ -1,3 +1,4 @@
+import {SceneLoader} from './SceneLoader';
 import {createSceneActivity} from './scene/sceneActivity';
 import type {SwordModel} from './scene/swordModels';
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
@@ -29,5 +30,5 @@ export function SwordViewer({ viewState, active=true, sceneRef, effectSeek, effe
  useEffect(()=>{scene.current?.update({viewState,effectSeek,effectPaused,glowStrength,glowSpread,petalGlow,upscaling,dragTarget,antiAliasing,showPerformance,lighting,rotating,draw,reflections,lightAngle,floorColor,backgroundColor,cameraHeight,showSheath,swordRotation,effect,effectSpeed,effectIntensity})},[viewState,effectSeek,effectPaused,glowStrength,glowSpread,petalGlow,upscaling,dragTarget,antiAliasing,showPerformance,lighting,rotating,draw,reflections,lightAngle,floorColor,backgroundColor,cameraHeight,showSheath,swordRotation,effect,effectSpeed,effectIntensity]);
  useEffect(()=>{scene.current?.reset()},[resetVersion]);
  useEffect(()=>{if(dropVersion>0)scene.current?.release()},[dropVersion]);
- return <><div id="stage" ref={container} aria-label="Interactive 3D sword. Use the selected drag mode to rotate the sword or camera; scroll to zoom." />{!ready&&!error&&<div id="loading" role="status">Preparing sword…</div>}{error&&<div id="error" role="alert">{error}</div>}</>;
+ return <><div id="stage" ref={container} aria-label="Interactive 3D sword. Use the selected drag mode to rotate the sword or camera; scroll to zoom." />{!ready&&!error&&<SceneLoader/>}{error&&<div id="error" role="alert">{error}</div>}</>;
 }

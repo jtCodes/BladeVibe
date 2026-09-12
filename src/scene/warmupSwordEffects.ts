@@ -1,3 +1,4 @@
+import {yieldScenePreparation} from './yieldScenePreparation';
 import type * as THREE from 'three';
 import type {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
 import type {createBankai} from './bankai';
@@ -7,7 +8,7 @@ import type {createShikai} from './shikai';
 // A tiny offscreen target prepares shader variants and geometry uploads without
 // paying for extra inactive lights or drawing the warmup states on the canvas.
 export async function warmupSwordEffects(
- scene:THREE.Scene,composer:EffectComposer,
+ scene:THREE.Scene,composer:EffectComposer,renderer:THREE.WebGLRenderer,camera:THREE.Camera,
  bankai:ReturnType<typeof createBankai>,shikai:ReturnType<typeof createShikai>,
  beforeRender:()=>void,signal:AbortSignal,waitUntilActive?:()=>Promise<void>,
 ){
@@ -21,10 +22,13 @@ export async function warmupSwordEffects(
  for(const [pass] of passStates)pass.enabled=true;
  async function renderFrame(){
   signal.throwIfAborted();
-  await new Promise<void>(resolve=>setTimeout(resolve,0));
+  await yieldScenePreparation(signal);
   signal.throwIfAborted();
   await waitUntilActive?.();
-  signal.throwIfAborted();beforeRender();composer.render(0);
+  signal.throwIfAborted();beforeRender();
+  await renderer.compileAsync(scene,camera);
+  await yieldScenePreparation(signal);
+  composer.render(0);
  }
  try {
   await renderFrame();

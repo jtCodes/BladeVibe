@@ -1,3 +1,4 @@
+import {SceneLoader} from './SceneLoader';
 import {lazy,Suspense,useEffect,useLayoutEffect,useRef,useState} from 'react';
 import {AppLink} from './navigation';
 import {swordUrl,type SwordAsset} from './swordLibrary';
@@ -16,7 +17,7 @@ function SwordCard({sword,active}:{sword:SwordAsset;active:boolean}){
  },[active]);
  const Preview=previews[sword.model];
  return <div ref={card} className="live-sword-card"><AppLink href={swordUrl(sword)} aria-label={`Open ${sword.name}`}>
-  <div className="live-sword-art">{visited&&<Suspense fallback={<span className="preview-status">Loading sword…</span>}><Preview sword={sword} active={active&&visible}/></Suspense>}</div>
+  <div className="live-sword-art">{visited&&<Suspense fallback={<SceneLoader/>}><Preview sword={sword} active={active&&visible}/></Suspense>}</div>
   <div className="live-sword-caption"><h2>{sword.name}</h2></div>
  </AppLink></div>;
 }
@@ -28,8 +29,8 @@ function SharinganCard({active}:{active:boolean}){
   const observer=new IntersectionObserver(([entry])=>{setVisible(entry.isIntersecting);if(entry.isIntersecting)setVisited(true);},{rootMargin:'100px'});
   observer.observe(card.current);return()=>observer.disconnect();
  },[active]);
- return <div ref={card} className="live-sword-card"><AppLink href="/studies/sharingan" aria-label="Open Sharingan">
-  <div className="live-sword-art">{visited&&<Suspense fallback={<span className="preview-status">Opening the eye…</span>}><Sharingan preview active={active&&visible}/></Suspense>}</div>
+ return <div ref={card} className="live-sword-card"><AppLink href="/sharingan" aria-label="Open Sharingan">
+  <div className="live-sword-art">{visited&&<Suspense fallback={<SceneLoader/>}><Sharingan preview active={active&&visible}/></Suspense>}</div>
   <div className="live-sword-caption"><h2>Sharingan</h2></div>
  </AppLink></div>;
 }

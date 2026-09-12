@@ -156,20 +156,20 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
   return <main className={`sword-experience ${editing?'is-editor':'is-replay'}`}>
     <header className="experience-header">
       <AppLink className="wordmark" href="/" aria-label="BladeX — collection">BladeX</AppLink>
-      <nav aria-label="Study navigation"><button className="study-icon-button" onClick={openMode} aria-label={editing?'View study':'Edit study'} title={editing?'View study':'Edit study'}><StudyIcon name={editing?'view':'edit'}/></button><button className="study-icon-button" onClick={share} disabled={dropped} aria-label="Share study" title={dropped?'Return the sword to display to share this study':'Share study'}><StudyIcon name="share"/></button></nav>
+      <nav aria-label="Sword navigation"><button className="study-icon-button" onClick={openMode} aria-label={editing?'View sword':'Edit sword'} title={editing?'View sword':'Edit sword'}><StudyIcon name={editing?'view':'edit'}/></button><button className="study-icon-button" onClick={share} disabled={dropped} aria-label="Share sword" title={dropped?'Return the sword to display to share this sword':'Share sword'}><StudyIcon name="share"/></button></nav>
     </header>
     <div className="experience-body">
       {!editing&&<section className="study-info">
         <h1 className="study-title">{sword.name}</h1>
         <SwordReplayControls sword={sword} sceneRef={viewerScene} visible={active} effect={effect} selected={timelineEffect} paused={effectPaused} speed={effectSpeed} intensity={effectIntensity} onSelect={play} onReplay={()=>play()} onPause={togglePlayback} onSeek={time=>inspectEffect(time,true)} onOriginal={originalForm}/>
-        {invalidShare&&<p className="share-notice" role="status">This link could not be read. Showing the original study.</p>}
+        {invalidShare&&<p className="share-notice" role="status">This link could not be read. Showing the original sword.</p>}
       </section>}
       <section className="sword-canvas" aria-label={`${sword.name} interactive view`}>
     <SwordViewer viewState={viewState} active={active} sceneRef={viewerScene} effectSeek={effectSeek} effectPaused={effectPaused} glowStrength={glowStrength} glowSpread={glowSpread} petalGlow={petalGlow} upscaling={upscaling} dragTarget={dragTarget} antiAliasing={antiAliasing} showPerformance={editing&&showPerformance} model={tensaActive?'tensa-zangetsu':sword.model} floorColor={floorColor} backgroundColor={backgroundColor} effect={tensaActive?'off':effect} effectSpeed={effectSpeed} effectIntensity={effectIntensity/100} cameraHeight={cameraHeight} showSheath={showSheath} swordRotation={swordRotation} rotating={rotating} resetVersion={resetVersion} draw={draw} reflections={reflections} lightAngle={lightAngle} lighting={lighting} dropVersion={dropVersion} onStatus={setStatus} />
         <BankaiTitle active={active&&sword.model==='senbonzakura'&&bankaiActive} sceneRef={viewerScene} seekRequest={effectSeek}/>
       </section>
     </div>
-    {shareUrl&&<section className="share-popover" aria-label="Share this study"><div><p role="status">{shareMessage}</p><button aria-label="Close share link" onClick={()=>setShareUrl('')}>×</button></div><input readOnly aria-label="Shareable study link" value={shareUrl} onFocus={event=>event.target.select()}/></section>}
+    {shareUrl&&<section className="share-popover" aria-label="Share this sword"><div><p role="status">{shareMessage}</p><button aria-label="Close share link" onClick={()=>setShareUrl('')}>×</button></div><input readOnly aria-label="Shareable sword link" value={shareUrl} onFocus={event=>event.target.select()}/></section>}
     {editing&&<>
     <button ref={settingsButton} className="settings-toggle" aria-label={settingsOpen?'Close settings':'Open settings'} aria-expanded={settingsOpen} aria-controls="sword-settings" onClick={()=>setSettingsOpen(open=>!open)}>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">

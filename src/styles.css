@@ -129,7 +129,7 @@ input[type=color] { width: 40px; height: 30px; padding: 0; border: 1px solid var
 .share-popover p { font-size: .8125rem; }
 .share-popover button { font-size: 1.5rem; width: 44px; }
 .share-popover input { display: block; width: 100%; min-height: 44px; padding: 10px; border: 1px solid #535350; background: var(--surface); color: var(--text); font-size: .8125rem; }
-#loading, #error { position: absolute; z-index: 2; left: 50%; top: 50%; transform: translate(-50%,-50%); width: max-content; max-width: calc(100% - 40px); padding: 14px 20px; color: var(--text); background: var(--surface); font-size: .8125rem; line-height: 1.6; text-align: center; }
+#error { position: absolute; z-index: 2; left: 50%; top: 50%; transform: translate(-50%,-50%); width: max-content; max-width: calc(100% - 40px); padding: 14px 20px; color: var(--text); background: var(--surface); font-size: .8125rem; line-height: 1.6; text-align: center; }
 .missing-sword, .opening-page { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; padding: 30px; background: var(--surface); text-align: center; }
 .missing-sword h1 { font-size: clamp(2rem,5vw,4rem); letter-spacing: -.035em; }
 
@@ -236,3 +236,10 @@ button, summary, .text-link { letter-spacing:.08em; }
  .replay-progress input[type=range]:hover::-webkit-slider-thumb,.replay-progress input[type=range]:focus-visible::-webkit-slider-thumb { transform:none; }
  .replay-progress input[type=range]:hover::-moz-range-thumb,.replay-progress input[type=range]:focus-visible::-moz-range-thumb { transform:none; }
 }
+
+/* The loader uses the same SVG sizing and linework as playback controls. */
+.scene-loading { position:absolute; z-index:2; inset:0; display:grid; place-items:center; pointer-events:none; color:var(--text); }
+.scene-loading-spinner { width:44px; height:44px; display:grid; place-items:center; }
+.scene-loading-spinner svg { display:block; will-change:transform; animation:scene-loading-spin 1.2s linear infinite; }
+@keyframes scene-loading-spin { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion:reduce) { .scene-loading-spinner svg { animation:none; } }
