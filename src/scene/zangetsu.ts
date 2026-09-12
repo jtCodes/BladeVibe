@@ -1,3 +1,4 @@
+import {MATTE_COTTON_FINISH} from './clothMaterials';
 import {createMetalMaterial} from './metalMaterials';
 import {createClothPhysics} from './clothPhysics';
 import * as THREE from 'three';
@@ -26,7 +27,8 @@ export function createZangetsuBladeGeometry(){
 }
 
 export function createZangetsu(renderer:THREE.WebGLRenderer,sword:THREE.Group){
- const dark=createMetalMaterial(renderer,{color:0x161c22,finish:'blade'});
+ // The broad face is blackened steel; only the cutting bevel is polished.
+ const dark=createMetalMaterial(renderer,{color:0x16191c,finish:'matteBlackened'});
  const edge=createMetalMaterial(renderer,{color:0xe4e9ee,finish:'edge'});
  function add(g:THREE.BufferGeometry,m:THREE.Material|THREE.Material[]){const mesh=new THREE.Mesh(g,m);mesh.castShadow=true;mesh.receiveShadow=true;sword.add(mesh);return mesh;}
  add(createZangetsuBladeGeometry(),[dark,edge]).name='zangetsu-blade';
@@ -54,7 +56,7 @@ export function createZangetsu(renderer:THREE.WebGLRenderer,sword:THREE.Group){
   texture.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());texture.needsUpdate=true;return texture;
  }
  const wear=fabricTexture(wearPixels),wearRoughness=fabricTexture(roughPixels);
- const cloth=new THREE.MeshPhysicalMaterial({color:0xeeeDEA,roughness:1,roughnessMap:wearRoughness,sheen:.22,sheenRoughness:.9,sheenColor:0xffffff,bumpMap:wear,bumpScale:.004,side:THREE.DoubleSide});
+ const cloth=new THREE.MeshPhysicalMaterial({color:0x898780,...MATTE_COTTON_FINISH,roughnessMap:wearRoughness,sheenColor:0xffffff,bumpMap:wear,bumpScale:.004,side:THREE.DoubleSide});
 
  // A flattened, waisted grip with a gently swept, flared butt.
  function gripSurface(y:number,angle:number,lift=0){
@@ -199,7 +201,7 @@ export function createZangetsu(renderer:THREE.WebGLRenderer,sword:THREE.Group){
  const bandAttribute=new THREE.BufferAttribute(animatedPositions,3).setUsage(THREE.DynamicDrawUsage);
  const uvAttribute=new THREE.BufferAttribute(animatedUV,2).setUsage(THREE.DynamicDrawUsage);
  bandGeometry.setAttribute('position',bandAttribute);bandGeometry.setAttribute('uv',uvAttribute);bandGeometry.setIndex(bandIdx);
- const bandCloth=cloth.clone();bandCloth.color.set(0xe8e6e1);bandCloth.bumpScale=.003;
+ const bandCloth=cloth.clone();bandCloth.color.set(0x827f78);bandCloth.bumpScale=.003;
  // Shade overlap seams in the strip's own UVs, so they follow the winding
  // and its moving loose end instead of looking painted across the blade.
  bandCloth.onBeforeCompile=shader=>{

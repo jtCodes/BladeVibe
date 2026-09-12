@@ -63,3 +63,6 @@ export function createClothMaterial(renderer:THREE.WebGLRenderer,{color,fiberSca
   ...clothMaps(renderer,fiberScale),normalScale:new THREE.Vector2(normalStrength,normalStrength),
  });
 }
+
+/** Low-gloss cotton response; callers can retain their own weave and wear maps. */
+export const MATTE_COTTON_FINISH={metalness:0,roughness:1,specularIntensity:0,sheen:0,sheenRoughness:1} as const;

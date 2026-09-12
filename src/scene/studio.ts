@@ -1,9 +1,11 @@
 import * as THREE from 'three';
 
 /** A static photographic light tent, captured once for specular reflections. */
-export function createStudioEnvironment(renderer: THREE.WebGLRenderer, neutral=false) {
+export function createStudioEnvironment(renderer: THREE.WebGLRenderer, neutral=false, baseRadiance=.22) {
   const studio = new THREE.Scene();
-  studio.background = new THREE.Color(neutral?0x040404:0x030405);
+  // This is reflection-only illumination, independent of the visible black backdrop.
+  // A neutral base prevents metal faces from disappearing between bright panels.
+  studio.background = new THREE.Color().setRGB(baseRadiance,baseRadiance,baseRadiance);
   const geometries: THREE.BufferGeometry[] = [];
   const materials: THREE.Material[] = [];
   function panel(x: number, y: number, z: number, width: number, height: number, intensity: number, color: number) {
