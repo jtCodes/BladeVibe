@@ -34,7 +34,7 @@ const hostile=normalizeSwordState(senbo,{effect:'bankai',time:Infinity,effectInt
  backgroundColor:'url(javascript:alert(1))',lighting:{key:NaN,fill:Infinity,ambient:-3},view:{camera:[0,0,0],target:[0,0,0],rotation:[0,0,0,0]}});
 assert.equal(hostile.effectIntensity,2);assert.equal(hostile.effectSpeed,0);assert.equal(hostile.time,0);
 assert.equal(hostile.draw,100);assert.equal(hostile.paused,false);assert.equal(hostile.showSheath,true);
-assert.equal(hostile.backgroundColor,'#141413');assert.deepEqual(hostile.lighting,{brightness:1,key:1,fill:1,rim:1,ambient:0});assert.equal(hostile.view,undefined);
+assert.equal(hostile.backgroundColor,'#03050d');assert.deepEqual(hostile.lighting,{brightness:1,key:1,fill:1,rim:1,ambient:0});assert.equal(hostile.view,undefined);
 assert.equal(normalizeSwordState(senbo,{effect:'bankai',time:1000}).time,120);
 const optional=readSwordShare(senbo,encode({version:1,sword:senbo.id,effect:'shikai',time:9,unexpected:'ignored'}));
 assert.equal(optional.invalid,false);assert.equal(optional.state.view,undefined);assert.equal(optional.state.time,9);assert(!('unexpected' in optional.state));

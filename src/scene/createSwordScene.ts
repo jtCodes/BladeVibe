@@ -111,6 +111,15 @@ const key=new THREE.DirectionalLight(0xfff1df,1.8);key.position.set(-12,18,10);k
 const sword=new THREE.Group();scene.add(sword);sword.rotation.z=Math.PI-.16;
 const model=swordModels[options.model??'longsword'];
 const isKatana=options.model==='senbonzakura',isZangetsu=options.model==='zangetsu';
+// Cool, restrained illumination lets Senbonzakura's release become the dominant light.
+// Reuse the studio emitters: no extra lights, passes, or shadow maps.
+if(isKatana){
+ key.color.set(0xdde6ff);mainLight.color.set(0xe3eaff);
+ fillLight.color.set(0x879fc9);rimLight.color.set(0xb3c3f0);
+ ambientLight.color.set(0x8a9bc3);ambientLight.groundColor.set(0x080914);
+ if(scene.fog instanceof THREE.FogExp2)scene.fog.density=.022;
+}
+
 const scabbard=model.create(renderer,sword);
 const floorMaterial=new THREE.MeshStandardMaterial({color:0x141413,metalness:0,roughness:.9});
 const floor=new THREE.Mesh(new THREE.PlaneGeometry(1000,1000),floorMaterial);scene.add(floor);floor.rotation.x=-Math.PI/2;floor.position.y=FLOOR_Y;floor.castShadow=false;floor.receiveShadow=true;
@@ -230,12 +239,12 @@ function update(settings: ViewerSettings){
  performanceRequested=!options.preview&&!!settings.showPerformance;meter.setEnabled(active&&performanceRequested);
  const lighting=settings.lighting??{brightness:1,key:1,fill:1,rim:1,ambient:1};
  renderer.toneMappingExposure=.85*lighting.brightness;
- key.intensity=1.8*lighting.key;mainLight.intensity=5*lighting.key;
- fillLight.intensity=3*lighting.fill;rimLight.intensity=4*lighting.rim;
- ambientLight.intensity=.12*lighting.ambient;scene.environmentIntensity=.8*lighting.ambient;
- floorMaterial.color.set(settings.floorColor??'#141413');
- if(scene.background instanceof THREE.Color)scene.background.set(settings.backgroundColor??'#141413');
- if(scene.fog)scene.fog.color.set(settings.backgroundColor??'#141413');
+ key.intensity=(isKatana?.9:1.8)*lighting.key;mainLight.intensity=(isKatana?3:5)*lighting.key;
+ fillLight.intensity=(isKatana?.8:3)*lighting.fill;rimLight.intensity=(isKatana?4.5:4)*lighting.rim;
+ ambientLight.intensity=(isKatana?.055:.12)*lighting.ambient;scene.environmentIntensity=(isKatana?.28:.8)*lighting.ambient;
+ floorMaterial.color.set(settings.floorColor??(isKatana?'#090b14':'#141413'));
+ if(scene.background instanceof THREE.Color)scene.background.set(settings.backgroundColor??(isKatana?'#03050d':'#141413'));
+ if(scene.fog)scene.fog.color.set(settings.backgroundColor??(isKatana?'#03050d':'#141413'));
  effectSpeed=settings.effectSpeed;effectIntensity=settings.effectIntensity;effectPaused=settings.effectPaused??false;effectMode=settings.effect;
  glowStrength=THREE.MathUtils.clamp(settings.glowStrength??.42,0,1.5);glowSpread=THREE.MathUtils.clamp(settings.glowSpread??.8,0,1);petalGlow=THREE.MathUtils.clamp(settings.petalGlow??4,0,8);
  if(bankai?.active&&settings.effect!=='bankai'){bankai.cancel();physics.setDraw(settings.draw/100);physics.restore();}

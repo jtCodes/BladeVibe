@@ -13,7 +13,8 @@ export interface SwordShareState {
 export function defaultSwordState(sword:SwordAsset):SwordShareState{
  return {version:1,sword:sword.id,effect:sword.effect,effectIntensity:sword.effectIntensity/100,effectSpeed:sword.effectSpeed,
   time:0,paused:false,draw:100,showSheath:true,swordRotation:0,rotating:false,cameraHeight:0,lightAngle:sword.lightAngle,
-  lighting:{brightness:1,key:1,fill:1,rim:1,ambient:1},backgroundColor:'#141413',floorColor:'#141413',
+  lighting:{brightness:1,key:1,fill:1,rim:1,ambient:1},
+  backgroundColor:sword.model==='senbonzakura'?'#03050d':'#141413',floorColor:sword.model==='senbonzakura'?'#090b14':'#141413',
   glowStrength:.42,glowSpread:.8,petalGlow:4,reflections:sword.reflections};
 }
 function record(value:unknown):Record<string,unknown>{return value!==null&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};}
