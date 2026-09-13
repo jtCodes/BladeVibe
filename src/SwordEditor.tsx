@@ -2,7 +2,7 @@ import {IconButton,SceneHeader,SceneOverlay} from './SceneControls';
 import {useBankaiVoice} from './useBankaiVoice';
 import {BankaiTitle} from './BankaiTitle';
 import {SwordReplayControls} from './SwordReplayControls';
-import {SwordSheathToggle,SwordEffectSelect,SwordDrawSlider} from './SwordDisplayOptions';
+import {SwordSheathToggle,SwordEffectSelect,SwordDrawSlider,BankaiVariantSelect} from './SwordDisplayOptions';
 import {SceneOptions} from './SceneOptions';
 import {StudyIcon} from './StudyIcon';
 import {readSwordPageState,swordSharePath,normalizeSwordState,type SwordShareState} from './swordShare';
@@ -182,6 +182,7 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
       {!editing&&<SceneOverlay title={sword.name}>
         <SwordReplayControls sword={sword} sceneRef={viewerScene} visible={active} effect={effect} selected={timelineEffect} paused={effectPaused} speed={effectSpeed} intensity={effectIntensity} onSelect={play} onResetView={resetSwordView} onReplay={()=>play()} onPause={togglePlayback} onSeek={time=>inspectEffect(time,true)} onOriginal={originalForm} options={<SceneOptions>
           {sword.model==='longsword'&&<SwordEffectSelect compact value={effect} onChange={selectSwordEffect}/>}
+          {sword.model==='senbonzakura'&&bankaiActive&&<BankaiVariantSelect compact value={bankaiPetalMotion} onChange={setBankaiPetalMotion}/>}
           {hasSheath&&!bankaiCinematic&&effect!=='shikai'&&<><SwordSheathToggle compact visible={showSheath} onChange={changeSheathVisibility} wrapping={clothWrapped}/><SwordDrawSlider compact value={draw} onChange={changeDraw} disabled={!showSheath||dropped} wrapping={clothWrapped}/></>}
           {sword.model==='senbonzakura'&&<button type="button" className="scene-option-action" onClick={()=>play()}><StudyIcon name="replay"/><span>Replay effect</span></button>}
         </SceneOptions>}/>
@@ -230,10 +231,7 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
           <input id="glow-strength" type="range" min={0} max={1.5} step={.01} value={glowStrength} onChange={event=>setGlowStrength(Number(event.target.value))}/>
           <label className="range-label" htmlFor="glow-spread">Glow spread <output>{Math.round(glowSpread*100)}%</output></label>
           <input id="glow-spread" type="range" min={0} max={1} step={.01} value={glowSpread} onChange={event=>setGlowSpread(Number(event.target.value))}/>
-          <label className="range-label" htmlFor="bankai-petal-motion">Bankai petal motion</label>
-          <select id="bankai-petal-motion" value={bankaiPetalMotion} onChange={event=>setBankaiPetalMotion(event.target.value==='storm'?'storm':'drift')}>
-            <option value="drift">Original drift</option><option value="storm">Camera storm</option>
-          </select>
+          <BankaiVariantSelect value={bankaiPetalMotion} onChange={setBankaiPetalMotion}/>
           <label className="range-label" htmlFor="petal-glow">Petal glow <output>{petalGlow.toFixed(1)}×</output></label>
           <input id="petal-glow" type="range" min={0} max={8} step={.1} value={petalGlow} onChange={event=>setPetalGlow(Number(event.target.value))}/>
         </>}

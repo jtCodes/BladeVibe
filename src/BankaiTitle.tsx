@@ -2,6 +2,8 @@ import {BANKAI_VOICE_CUES} from './bankaiVoiceCues';
 import {useEffect,useRef,type RefObject} from 'react';
 import type {EffectSeekRequest,SwordScene} from './scene/createSwordScene';
 
+// Leave a clean handoff between phrases that occupy the same position.
+const NAME_HANDOFF=(BANKAI_VOICE_CUES.name.end+BANKAI_VOICE_CUES.subtitle.start)/2;
 const TITLE_END=BANKAI_VOICE_CUES.subtitle.end+1.1;
 function ease(time:number,start:number,end:number){
  const t=Math.max(0,Math.min(1,(time-start)/(end-start)));
@@ -13,8 +15,8 @@ function fade(time:number,start:number,shown:number,leave:number,end:number){
 export function bankaiTitleFrame(time:number){
  return {
   label:fade(time,.08,.8,BANKAI_VOICE_CUES.label.end+.25,BANKAI_VOICE_CUES.label.end+1.05),
-  name:fade(time,BANKAI_VOICE_CUES.name.start-.25,BANKAI_VOICE_CUES.name.start+.55,BANKAI_VOICE_CUES.name.end+.15,BANKAI_VOICE_CUES.name.end+1),
-  subtitle:fade(time,BANKAI_VOICE_CUES.subtitle.start-.25,BANKAI_VOICE_CUES.subtitle.start+.55,BANKAI_VOICE_CUES.subtitle.end+.25,TITLE_END),
+  name:fade(time,BANKAI_VOICE_CUES.name.start-.25,BANKAI_VOICE_CUES.name.start+.55,BANKAI_VOICE_CUES.name.end-.15,NAME_HANDOFF),
+  subtitle:fade(time,NAME_HANDOFF,BANKAI_VOICE_CUES.subtitle.start+.55,BANKAI_VOICE_CUES.subtitle.end+.25,TITLE_END),
  };
 }
 
