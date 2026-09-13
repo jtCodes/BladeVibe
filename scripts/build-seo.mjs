@@ -8,7 +8,7 @@ const configured=env.SITE_URL||(env.VERCEL_PROJECT_PRODUCTION_URL?`https://${env
 let origin='';
 if(configured){
  const url=new URL(configured);
- if(!['http:','https:'].includes(url.protocol)||url.pathname!=='/'||url.search||url.hash||url.username||url.password)throw new Error('SITE_URL must be a site origin, such as https://bladex.example.com');
+ if(!['http:','https:'].includes(url.protocol)||url.pathname!=='/'||url.search||url.hash||url.username||url.password)throw new Error('SITE_URL must be a site origin, such as https://bladevibe.example.com');
  origin=url.origin;
 }
 const image=env.SOCIAL_IMAGE_URL||'';
@@ -19,9 +19,9 @@ const template=fs.readFileSync(path.join(output,'index.html'),'utf8');
 function render(page){
  const url=origin?new URL(page.path,origin).href:'';
  const meta=(name,value,property=false)=>`<meta ${property?'property':'name'}="${name}" content="${escape(value)}">`;
- const head=[`<title>${escape(page.title)}</title>`,meta('description',page.description),meta('robots',page.index?'index, follow':'noindex, follow'),meta('og:type','website',true),meta('og:site_name','BladeX',true),meta('og:title',page.title,true),meta('og:description',page.description,true),meta('twitter:card',image?'summary_large_image':'summary'),meta('twitter:title',page.title),meta('twitter:description',page.description)];
- if(url)head.push(meta('bladex-site-url',origin),`<link rel="canonical" href="${escape(url)}">`,meta('og:url',url,true));
- if(image)head.push(meta('og:image',image,true),meta('og:image:alt','BladeX — interactive 3D sword collection',true),meta('twitter:image',image));
+ const head=[`<title>${escape(page.title)}</title>`,meta('description',page.description),meta('robots',page.index?'index, follow':'noindex, follow'),meta('og:type','website',true),meta('og:site_name','BladeVibe',true),meta('og:title',page.title,true),meta('og:description',page.description,true),meta('twitter:card',image?'summary_large_image':'summary'),meta('twitter:title',page.title),meta('twitter:description',page.description)];
+ if(url)head.push(meta('bladevibe-site-url',origin),`<link rel="canonical" href="${escape(url)}">`,meta('og:url',url,true));
+ if(image)head.push(meta('og:image',image,true),meta('og:image:alt','BladeVibe — interactive 3D sword collection',true),meta('twitter:image',image));
  return template.replace(/<!-- page-metadata:start -->[\s\S]*?<!-- page-metadata:end -->/,`<!-- page-metadata:start -->${head.join('\n')}<!-- page-metadata:end -->`);
 }
 const routes=[...publicPages.map(page=>page.path),...publicPages.filter(page=>/^\/swords\/[^/]+$/.test(page.path)).map(page=>`${page.path}/edit`)];

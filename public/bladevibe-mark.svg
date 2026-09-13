@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" class="bladevibe-mark" color="#292927" fill="currentColor" role="img" aria-labelledby="bladevibe-mark-title">
+  <title id="bladevibe-mark-title">BladeVibe B/V monogram</title>
+  <style>@media (prefers-color-scheme: dark) { .bladevibe-mark { color: #e4e2dc; } }</style>
+  <path fill-rule="evenodd" d="M8 10H21C31 10 36 14 36 21C36 26 33 29 29 31C36 32 40 36 40 42C40 50 33 54 22 54H8ZM13 14V29H20C27 29 31 26 31 21C31 16 27 14 20 14ZM13 33V50H21C30 50 35 47 35 42C35 36 30 33 21 33Z"/>
+  <path d="M33 10H39L47 43L55 10H61L49 54H45Z"/>
+</svg>

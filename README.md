@@ -1,8 +1,8 @@
-# BladeX
+# BladeVibe
 
 **Legendary blades. High-quality 3D rendering. Every angle yours.**
 
-BladeX brings legendary swords to life with high-quality, real-time 3D rendering: detailed materials, carefully shaped studio lighting, reflections, and cinematic particle effects. Turn polished steel under the light, release Senbonzakura into a storm of petals, or reveal Tensa Zangetsu. Then pause the moment, shape the scene, and share your view.
+BladeVibe brings legendary swords to life with high-quality, real-time 3D rendering: detailed materials, carefully shaped studio lighting, reflections, and cinematic particle effects. Turn polished steel under the light, release Senbonzakura into a storm of petals, or reveal Tensa Zangetsu. Then pause the moment, shape the scene, and share your view.
 
 Built for the browser, with live 3D scenes, hands-on controls, and an editor for getting every detail just right. No account required.
 

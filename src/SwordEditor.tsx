@@ -289,7 +289,7 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
       <details className="sword-info"><summary>About this sword &amp; controls</summary>
         <h3>{sword.name}</h3><p>{sword.description}</p>
         <p>Left-drag follows your selected mode · Arrow keys to move · Right-drag or two-finger drag to pan · Pinch or scroll to zoom</p>
-        <p className="study-credit">BladeX / {sword.name}</p>
+        <p className="study-credit">BladeVibe / {sword.name}</p>
       </details>
     </aside>}
     </>}
