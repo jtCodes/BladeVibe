@@ -1,41 +1,109 @@
-# BladeX — local development
+# BladeX
 
-Includes the latest steel longsword, broad off-camera lighting, matte floor,
-vertical camera controls, mouse/touch panning, and sheathing/drop physics.
-Source snapshot: ddeb163d7dd809689d792f76389fb597ecf6c80a (saved version 10).
+**Legendary blades. High-quality 3D rendering. Every angle yours.**
 
-## Start
+BladeX brings legendary swords to life with high-quality, real-time 3D rendering: detailed materials, carefully shaped studio lighting, reflections, and cinematic particle effects. Turn polished steel under the light, release Senbonzakura into a storm of petals, or reveal Tensa Zangetsu. Then pause the moment, shape the scene, and share your view.
 
-Install Node.js 22.12 or newer, then open a terminal in this folder:
+Built for the browser, with live 3D scenes, hands-on controls, and an editor for getting every detail just right. No account or API keys required.
+
+## Meet the collection
+
+| Sword | The experience |
+| --- | --- |
+| **Senbonzakura** | Explore the lavender-wrapped katana, scatter its blade with Shikai, and unleash Bankai. Camera storm sends petals toward your viewpoint by default; Original drift offers another way to watch the release. |
+| **Zangetsu** | Inspect the oversized black blade and white cloth binding, then switch to its Bankai form, Tensa Zangetsu. |
+| **Steel longsword** | Get close to tempered steel and wrapped leather, or add glow and sparks, flame, ice, and electric effects. |
+
+## Make the moment yours
+
+- **Look closer.** Polished steel, textured leather, silk wrapping, and lacquered surfaces give each blade its own character. Studio lighting and reflections reveal the materials as you move, while glowing petals and atmospheric effects bring the releases to life.
+- **Direct the reveal.** Replay, pause, and scrub Senbonzakura’s release timeline to explore the transformation at your own pace.
+- **Find your angle.** Rotate the sword, orbit the camera, pan, and zoom to frame the details that catch your eye.
+- **Set the atmosphere.** Adjust lighting, reflections, background, floor, effect speed, and intensity. Tune Senbonzakura’s glow and petals in the editor.
+- **Feel the weight.** Draw and sheathe supported swords, unwrap Zangetsu, and drop eligible drawn blades into a physics simulation.
+- **Share your composition.** Copy a link that carries your sword, appearance, camera, and effect settings. Senbonzakura links can preserve a paused release moment.
+
+Start with **Senbonzakura → Bankai**, open the sword options to try both variants, then choose **Edit** to shape the scene. Use **Share** when you find a moment worth keeping.
+
+## Run it locally
+
+Install Node.js 22.12 or newer, then run:
 
 ```sh
 npm ci
 npm run dev -- --open
 ```
 
-Vite prints the local address (usually http://localhost:5173).
-Keep the terminal running. Save changes in src/ to update the browser immediately.
-Stop the server with Ctrl+C. Next time, only run npm run dev -- --open.
+Open the local address printed by Vite. Keep the terminal running while you explore; press Ctrl+C to stop. On later visits, just run `npm run dev -- --open`.
 
-Open this folder in your local editor or Codex local workspace to make changes.
-Changes made in the hosted chat workspace do not automatically sync to this copy.
+For the quickest path to the spectacle, open `/swords/senbonzakura/bankai` on your local server.
 
 ## Controls
 
-Left-drag turns the sword by default; the editor can switch it to camera orbit.
-Right-drag / two-finger drag pans. Pinch or scroll zooms.
-Use Move up / Move down or the camera slider for vertical translation.
-Reset view restores framing. Draw/Sheathe animates the scabbard interaction.
-Drop sword enables rigid-body physics after drawing fully.
+| Action | Control |
+| --- | --- |
+| Turn the sword | Left-drag; switch the drag target in the editor to orbit the camera |
+| Pan | Right-drag or two-finger drag |
+| Zoom | Scroll or pinch |
+| Adjust camera height | Move up / Move down or the editor’s camera slider |
+| Restore framing | Reset view |
+| Explore a release | Form buttons, playback controls, and Senbonzakura’s timeline |
+| Draw, sheathe, or drop | Sword & sheath controls in the editor, when available |
 
-## Verify or build
+## Public studies, editor and sharing
 
+- `/` is the editorial collection.
+- `/swords/<id>` is the public study, with simple form and replay controls.
+- `/swords/<id>/edit` opens the full editor and its Settings inspector.
+
+Current IDs are `steel-longsword`, `senbonzakura`, and `zangetsu`. **Edit** and **View study** switch modes
+without rebuilding the current scene or resetting its live animation/camera.
+
+**Share** copies a public URL with a versioned `#state=` snapshot. It includes
+appearance, lighting, background/floor, sheath/draw state, effect settings, camera
+position/target, and the sword's display rotation. Senbonzakura links restore a
+paused Shikai/Bankai moment (up to two minutes) with Continue, Replay, and scrubbing.
+Zangetsu links restore the selected form. Longsword aura effects start playing;
+their evolving particle simulation is not a frozen snapshot. Share becomes
+available after a dropped sword returns to display.
+
+The URL is the saved state; there is no account, database or server-side save.
+Links use the current origin, so a localhost link is only useful on that machine.
+For remote sharing, serve the app at a reachable URL with an SPA fallback to
+`index.html` for `/swords/*` routes.
+
+Imported state is size-limited, version checked, restricted to the sword's valid
+effects, and sanitized to finite values/known settings. Invalid links show a
+notice and load default settings. A plain route resumes the cached study within
+the current page session. Render quality, performance metering and drag-control
+preferences remain local to the current editor session.
+
+Run `node scripts/check-sword-sharing.cjs` for share-format regression checks.
+
+### Form URLs
+
+Senbonzakura supports `/swords/senbonzakura/shikai` and
+`/swords/senbonzakura/bankai`; each plain URL starts that release.
+Zangetsu supports `/swords/zangetsu/shikai` (the original unwrapped form) and
+`/swords/zangetsu/bankai` (Tensa Zangetsu). Unsupported form URLs redirect to
+that sword's main page using history replacement. Editor URLs remain `/edit`.
+Share links use the applicable form suffix; a matching saved state retains its
+time and camera, while a different form suffix starts the requested form at zero.
+
+## Development
+
+Built with **React, TypeScript, Three.js, Rapier physics, and Vite**. Save changes in `src/` to update the running development view.
+
+```sh
 npm run typecheck
 npm run build
 npm run preview
+```
 
-Dependencies download on the first npm ci. No API keys or accounts are needed.
-This export excludes hosted deployment configuration and repository credentials.
+The production build is written to `dist/`. Configure your host to serve `index.html` for app routes so direct sword and share links work.
+
+<details>
+<summary>Rendering, baked assets, and session caching</summary>
 
 ## Performance
 
@@ -81,43 +149,5 @@ This cache retains GPU resources in memory for the current page lifetime. A full
 refresh starts a new session; the lossless asset files use the separate HTTP cache.
 First visits and newly selected swords still need renderer initialization.
 
-## Public studies, editor and sharing
 
-- `/` is the editorial collection.
-- `/swords/<id>` is the public study, with simple form and replay controls.
-- `/swords/<id>/edit` opens the full editor and its Settings inspector.
-
-Current IDs are `steel-longsword`, `senbonzakura`, and `zangetsu`. Existing bare
-sword routes now open the public study. **Edit** and **View study** switch modes
-without rebuilding the current scene or resetting its live animation/camera.
-
-**Share** copies a public URL with a versioned `#state=` snapshot. It includes
-appearance, lighting, background/floor, sheath/draw state, effect settings, camera
-position/target, and the sword's display rotation. Senbonzakura links restore a
-paused Shikai/Bankai moment (up to two minutes) with Continue, Replay, and scrubbing.
-Zangetsu links restore the selected form. Longsword aura effects start playing;
-their evolving particle simulation is not a frozen snapshot. Share becomes
-available after a dropped sword returns to display.
-
-The URL is the saved state; there is no account, database or server-side save.
-Links use the current origin, so a localhost link is only useful on that machine.
-For remote sharing, serve the app at a reachable URL with an SPA fallback to
-`index.html` for `/swords/*` routes. This change does not deploy the app.
-
-Imported state is size-limited, version checked, restricted to the sword's valid
-effects, and sanitized to finite values/known settings. Invalid links show a
-notice and load default settings. A plain route resumes the cached study within
-the current page session. Render quality, performance metering and drag-control
-preferences remain local to the current editor session.
-
-Run `node scripts/check-sword-sharing.cjs` for share-format regression checks.
-
-### Form URLs
-
-Senbonzakura supports `/swords/senbonzakura/shikai` and
-`/swords/senbonzakura/bankai`; each plain URL starts that release.
-Zangetsu supports `/swords/zangetsu/shikai` (the original unwrapped form) and
-`/swords/zangetsu/bankai` (Tensa Zangetsu). Unsupported form URLs redirect to
-that sword's main page using history replacement. Editor URLs remain `/edit`.
-Share links use the applicable form suffix; a matching saved state retains its
-time and camera, while a different form suffix starts the requested form at zero.
+</details>
