@@ -249,7 +249,7 @@ function update(settings: ViewerSettings){
  edgeAA.enabled=aaMode!=='standard';
  performanceRequested=!options.preview&&!!settings.showPerformance;meter.setEnabled(active&&performanceRequested);
  displayBrightness.value=environment.update({lighting:settings.lighting,backgroundColor:settings.backgroundColor,floorColor:settings.floorColor,floor:floorMaterial,lightAngle:settings.lightAngle,fogDensity:isKatana&&settings.effect==='bankai'?SENBONZAKURA_BANKAI_FOG:environmentPreset.fogDensity});
- bankai?.setPetalMotion(settings.bankaiPetalMotion??'drift');
+ bankai?.setPetalMotion(settings.bankaiPetalMotion??'storm');
  effectSpeed=settings.effectSpeed;effectIntensity=settings.effectIntensity;effectPaused=settings.effectPaused??false;effectMode=settings.effect;
  glowStrength=THREE.MathUtils.clamp(settings.glowStrength??.42,0,1.5);glowSpread=THREE.MathUtils.clamp(settings.glowSpread??.8,0,1);petalGlow=THREE.MathUtils.clamp(settings.petalGlow??4,0,8);
  if(bankai?.active&&settings.effect!=='bankai'){bankai.cancel();physics.setDraw(settings.draw/100);physics.restore();}
