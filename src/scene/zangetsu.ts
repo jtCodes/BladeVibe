@@ -28,7 +28,7 @@ export function createZangetsuBladeGeometry(){
 
 export function createZangetsu(renderer:THREE.WebGLRenderer,sword:THREE.Group){
  // The broad face is blackened steel; only the cutting bevel is polished.
- const dark=createMetalMaterial(renderer,{color:0x16191c,finish:'matteBlackened'});
+ const dark=createMetalMaterial(renderer,{color:0x36393b,finish:'matteBlackened'});
  const edge=createMetalMaterial(renderer,{color:0xe4e9ee,finish:'edge'});
  function add(g:THREE.BufferGeometry,m:THREE.Material|THREE.Material[]){const mesh=new THREE.Mesh(g,m);mesh.castShadow=true;mesh.receiveShadow=true;sword.add(mesh);return mesh;}
  add(createZangetsuBladeGeometry(),[dark,edge]).name='zangetsu-blade';

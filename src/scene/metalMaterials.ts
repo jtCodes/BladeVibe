@@ -11,7 +11,8 @@ export const METAL_FINISHES={
  satinFittings:{roughness:.95,bumpScale:.00009,anisotropy:0,repeat:[2,.2] as [number,number],envMapIntensity:.6},
  fittings:{roughness:.3,bumpScale:.00009,anisotropy:0,repeat:[2,.2] as [number,number]},
  recessed:{roughness:.56,bumpScale:0,anisotropy:0,repeat:[1,1] as [number,number]},
- matteBlackened:{roughness:.92,bumpScale:.00008,anisotropy:0,repeat:[1,1] as [number,number],metalness:.55,envMapIntensity:.08},
+ // Rough blackened iron: suppress the white dielectric sheen on the dark face.
+ matteBlackened:{roughness:.98,bumpScale:.00065,anisotropy:0,repeat:[1,1] as [number,number],metalness:.65,specularIntensity:.2,envMapIntensity:.22},
  blackenedBlade:{roughness:.58,bumpScale:.00008,anisotropy:0,repeat:[1,1] as [number,number],metalness:.55,envMapIntensity:.3},
  blackenedEdge:{roughness:.42,bumpScale:0,anisotropy:0,repeat:[1,1] as [number,number],metalness:.55,envMapIntensity:.35},
  blackenedFittings:{roughness:.62,bumpScale:0,anisotropy:0,repeat:[1,1] as [number,number],metalness:.4,envMapIntensity:.3},
@@ -23,6 +24,7 @@ export function createMetalMaterial(renderer:THREE.WebGLRenderer,{color,finish,c
  const maps=textured?surfaceMaps('steel',renderer,profile.repeat):{};
  const blackened=finish.startsWith('blackened')||finish==='matteBlackened';
  const material=new THREE.MeshPhysicalMaterial({color,metalness:'metalness' in profile?profile.metalness:1,envMapIntensity:'envMapIntensity' in profile?profile.envMapIntensity:1,roughness:profile.roughness,bumpScale:profile.bumpScale,anisotropy:profile.anisotropy,anisotropyRotation:Math.PI/2,...maps,...(blackened?{roughnessMap:null}:{})});
+ material.specularIntensity='specularIntensity' in profile?profile.specularIntensity:1;
  if(finish==='blade'||finish==='blackenedBlade'||finish==='matteBlackened'){
   material.onBeforeCompile=shader=>applyBladeSurfaceFinish(shader,cuttingMask);
   material.customProgramCacheKey=()=>`blade-surface-finish-v2-${cuttingMask??'body'}`;
