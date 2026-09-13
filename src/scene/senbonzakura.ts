@@ -32,8 +32,10 @@ function gripWoodMaps(renderer:THREE.WebGLRenderer){
  return {map:texture(color,true),bumpMap:texture(bump),roughnessMap:texture(roughness)};
 }
 export function createSenbonzakura(renderer:THREE.WebGLRenderer,sword:THREE.Group){
- const metal=createMetalMaterial(renderer,{color:0xd3d3d3,finish:'blade'});
- metal.onBeforeCompile=shader=>{
+ const metal=createMetalMaterial(renderer,{color:0xd3d3d3,finish:'blade',cuttingMask:'cuttingSteel'});
+ const bladeFinish=metal.onBeforeCompile.bind(metal);
+ metal.onBeforeCompile=(shader,renderer)=>{
+  bladeFinish(shader,renderer);
   shader.vertexShader='varying vec2 katanaUv;\n'+shader.vertexShader;
   shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nkatanaUv=uv;');
   shader.fragmentShader='varying vec2 katanaUv;\n'+shader.fragmentShader;
@@ -50,7 +52,7 @@ export function createSenbonzakura(renderer:THREE.WebGLRenderer,sword:THREE.Grou
    roughnessFactor=mix(roughnessFactor,${METAL_FINISHES.edge.roughness},cuttingSteel);
    roughnessFactor+=line*.045;`);
  };
- metal.customProgramCacheKey=()=> 'senbonzakura-shared-steel-hamon-v7';
+ metal.customProgramCacheKey=()=> 'senbonzakura-shared-steel-hamon-v9';
  const spine=createMetalMaterial(renderer,{color:0x3d4044,finish:'blade'});
  const bronze=createMetalMaterial(renderer,{color:0xb39a64,finish:'satinFittings'});
  const guardMetal=createMetalMaterial(renderer,{color:0x947d50,finish:'satinFittings'});

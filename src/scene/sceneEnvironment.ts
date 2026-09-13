@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import {RectAreaLightUniformsLib} from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import {createStudioEnvironment} from './studio';
 
-export interface LightingSettings { brightness:number;key:number;fill:number;rim:number;ambient:number }
+import {DEFAULT_LIGHTING,normalizeLightingSettings,type LightingSettings} from './lightingSettings';
+export {DEFAULT_LIGHTING,type LightingSettings} from './lightingSettings';
 type Position=[number,number,number];
 export interface SceneEnvironmentPreset {
  cameraFill?:{color:number;intensity:number;rimIntensity?:number;rimColors?:[number,number];rimWidth?:number};
@@ -11,7 +12,6 @@ export interface SceneEnvironmentPreset {
  studio?:{neutral:boolean;intensity:number;rotation:number;baseRadiance?:number};
  lights:Array<{kind:'area'|'directional';channel:'key'|'fill'|'rim';color:number;intensity:number;position:Position;target?:Position;size?:[number,number];shadow?:boolean}>;
 }
-export const DEFAULT_LIGHTING:Readonly<LightingSettings>={brightness:1,key:1,fill:1,rim:1,ambient:1};
 export function createSceneEnvironment(scene:THREE.Scene,renderer:THREE.WebGLRenderer,preset:SceneEnvironmentPreset){
  const previous={background:scene.background,fog:scene.fog,environment:scene.environment,intensity:scene.environmentIntensity,rotation:scene.environmentRotation.clone()};
  const studio=preset.studio?createStudioEnvironment(renderer,preset.studio.neutral,preset.studio.baseRadiance):null;
@@ -37,18 +37,19 @@ export function createSceneEnvironment(scene:THREE.Scene,renderer:THREE.WebGLRen
   scene.add(light);return {light,spec};
  });
  function update({lighting=DEFAULT_LIGHTING,backgroundColor=preset.background,floorColor=preset.floor,floor,fogDensity=preset.fogDensity,lightAngle}:{lighting?:LightingSettings;backgroundColor?:string;floorColor?:string;floor?:THREE.MeshStandardMaterial;fogDensity?:number;lightAngle?:number}={}){
+  const balance=normalizeLightingSettings(lighting);
   renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=preset.exposure;
-  for(const {light,spec} of lights)light.intensity=spec.intensity*lighting[spec.channel];
-  ambient.intensity=preset.ambient.intensity*lighting.ambient;
-  if(cameraFill)cameraFill.intensity=preset.cameraFill!.intensity*lighting.fill;
-  cameraRims.forEach((light,i)=>{light.intensity=preset.cameraFill!.rimIntensity!*(i?.7:1)*lighting.rim;});
-  if(preset.studio)scene.environmentIntensity=preset.studio.intensity*lighting.ambient;
+  for(const {light,spec} of lights)light.intensity=spec.intensity*balance[spec.channel];
+  ambient.intensity=preset.ambient.intensity*balance.ambient;
+  if(cameraFill)cameraFill.intensity=preset.cameraFill!.intensity*balance.cameraFill;
+  cameraRims.forEach((light,i)=>{light.intensity=preset.cameraFill!.rimIntensity!*(i?.7:1)*balance.cameraRim;});
+  if(preset.studio)scene.environmentIntensity=preset.studio.intensity*balance.environment;
   if(lightAngle!==undefined)scene.environmentRotation.y=THREE.MathUtils.degToRad(lightAngle);
   (scene.background as THREE.Color).set(backgroundColor);
   if(scene.fog instanceof THREE.FogExp2){scene.fog.color.set(backgroundColor);scene.fog.density=fogDensity??0;}
   if(floor&&floorColor)floor.color.set(floorColor);
   // Consumers apply this after tone mapping, never as exposure.
-  return THREE.MathUtils.clamp(lighting.brightness,.25,2.5);
+  return balance.brightness;
  }
  update();
  function updateView(camera:THREE.Camera,target:THREE.Vector3){

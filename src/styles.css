@@ -5,13 +5,16 @@
   color-scheme: dark;
   font-synthesis: none;
   --surface: #101010;
-  --gallery-background: #181818;
+  --gallery-background: var(--surface);
   --sword-background: #000000;
   --panel: #181818;
   --text: #e4e2dc;
   --muted: #a29f99;
   --line: #30302e;
   --study-font: Arial, Helvetica, sans-serif;
+  --nav-inset: 24px;
+  --nav-height: 56px;
+  --gallery-gutter: var(--nav-inset);
 }
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; width: 100%; height: 100%; height: 100dvh; }
@@ -34,37 +37,49 @@ h1, h2, h3 { font-family: var(--study-font); font-weight: 400; }
 canvas { display: block; touch-action: none; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .eyebrow { font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
-.wordmark { display: inline-flex; align-items: center; min-height: 44px; font-family: var(--study-font); font-size: 1.4rem; letter-spacing: -.035em; white-space: nowrap; }
+.wordmark { display:inline-flex; align-items:center; min-height:44px; flex:none; color:var(--text); }
+.wordmark-lettering { display:block; font-family:"Avenir Next", Avenir, "Segoe UI", "Helvetica Neue", sans-serif; font-size:24px; font-weight:300; line-height:1; letter-spacing:.075em; font-kerning:normal; text-shadow:none; }
 .text-link { display: inline-flex; align-items: center; min-height: 44px; padding: 0; font-size: .8125rem; color: var(--muted); }
 .text-link:hover { color: var(--text); }
 
-/* Quiet collection plates, with only the sword names. */
-.gallery-page { overflow-y: auto; padding: 0 clamp(18px,3vw,48px) 28px; touch-action: pan-y; overscroll-behavior: contain; background: var(--gallery-background); }
-.collection-header { display: flex; align-items: center; min-height: 68px; }
-.live-sword-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: clamp(16px,2vw,32px); }
+/* Shared navigation geometry keeps the wordmark fixed across page changes. */
+.collection-header, .experience-header { display: flex; align-items: center; height: calc(var(--nav-height) + env(safe-area-inset-top)); padding: env(safe-area-inset-top) max(var(--nav-inset),env(safe-area-inset-right)) 0 max(var(--nav-inset),env(safe-area-inset-left)); }
+
+/* Collection presentations carry the viewer's dark surface and quiet lower labels. */
+.gallery-page { display: flex; flex-direction: column; overflow-y: auto; padding: 0 var(--gallery-gutter) max(24px,env(safe-area-inset-bottom)); touch-action: pan-y; overscroll-behavior: contain; background: var(--gallery-background); }
+.collection-header { flex-shrink: 0; margin-inline: calc(-1 * var(--gallery-gutter)); margin-bottom: 12px; }
+.live-sword-grid { flex-shrink: 0; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: var(--nav-inset); }
+/* Auto margins center a single row and fall back to zero when scrolling is needed. */
+.live-sword-grid:has(> :only-child) { margin-block: auto; }
+@media (min-width: 701px) {
+  .live-sword-grid:not(:has(> :nth-child(4))) { margin-block: auto; }
+}
 .live-sword-card { min-width: 0; }
-.live-sword-card > a { display: block; }
+.live-sword-card > a { display: block; background: var(--sword-background); }
+.live-sword-card > a:focus-visible { outline-offset: -2px; }
 .live-sword-art { position: relative; height: clamp(370px,74dvh,900px); overflow: hidden; background: var(--sword-background); pointer-events: none; }
 .live-sword-stage { position: absolute; inset: 0; pointer-events: none; }
 .live-sword-stage canvas { width: 100%; height: 100%; touch-action: pan-y; pointer-events: none; }
 .preview-status { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 24px; text-align: center; color: var(--muted); font-size: .8125rem; }
-.live-sword-caption { padding: 17px 0; }
-.live-sword-caption h2 { font-size: clamp(1.3rem,2vw,1.8rem); line-height: 1.2; letter-spacing: -.02em; overflow-wrap: anywhere; }
-.live-sword-card > a:hover h2 { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px; }
+.live-sword-caption { padding: 18px var(--nav-inset) 24px; color: var(--text); }
+.live-sword-caption h2 { position: relative; width: fit-content; max-width: 100%; overflow-wrap: anywhere; }
+.live-sword-caption h2::after { content: ""; position: absolute; left: 0; right: 0; bottom: -6px; height: 1px; background: #fff; transform: scaleX(0); transform-origin: left; transition: transform .8s cubic-bezier(.65,0,.25,1); }
+.live-sword-card > a:is(:hover,:focus-visible) h2 { color: #fff; }
+.live-sword-card > a:is(:hover,:focus-visible) h2::after { transform: scaleX(1); }
+@media (prefers-reduced-motion: reduce) { .live-sword-caption h2::after { transition: none; } }
 
-/* Shared scene layout; the public view overlays its controls below. */
+/* Preview and editor share one viewport; navigation and settings overlay the scene. */
 .sword-experience { background: var(--surface); }
-.experience-header { position: relative; z-index: 5; display: flex; align-items: center; justify-content: space-between; height: calc(56px + env(safe-area-inset-top)); padding: env(safe-area-inset-top) 24px 0; gap: 24px; border-bottom: 1px solid var(--line); background: var(--surface); }
+.experience-header { position: absolute; top: 0; left: 0; right: 0; z-index: 5; justify-content: space-between; gap: 24px; border: 0; background: linear-gradient(to bottom, #000b, transparent); pointer-events: none; text-shadow: 0 1px 5px #000; }
 .experience-header nav { display: flex; align-items: center; gap: 24px; }
 .experience-header nav button { padding: 0; font-size: .8125rem; color: var(--muted); }
 .experience-header nav button:hover { color: var(--text); }
-.experience-body { height: calc(100% - 56px - env(safe-area-inset-top)); display: grid; grid-template-columns: minmax(0,1fr); grid-template-rows: minmax(0,1fr) auto; }
+.experience-body { position: absolute; inset: 0; height: 100%; display: grid; grid-template-columns: minmax(0,1fr); grid-template-rows: minmax(0,1fr); }
 .sword-canvas { position: relative; grid-column: 1; grid-row: 1; min-width: 0; min-height: 0; overflow: hidden; background: var(--sword-background); }
 #stage { position: absolute; inset: 0; }
 #stage, #stage canvas { touch-action: none; overscroll-behavior: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .study-info { grid-column: 1; grid-row: 2; display: grid; grid-template-columns: minmax(160px,1fr) minmax(0,3fr); align-items: center; gap: 12px 32px; padding: 12px 24px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); }
 .study-title { font-size: 1.65rem; line-height: 1.2; letter-spacing: -.025em; overflow-wrap: anywhere; }
-.is-editor .experience-body { grid-template-rows: minmax(0,1fr); }
 .replay-controls { display: grid; grid-template-columns: auto auto minmax(100px,1fr); align-items: center; gap: 24px; min-width: 0; }
 .replay-controls.simple-controls { display: flex; justify-content: flex-end; }
 .form-selector, .replay-actions { display: flex; align-items: center; gap: 16px; }
@@ -78,23 +93,17 @@ canvas { display: block; touch-action: none; }
 .replay-caption, .share-notice { grid-column: 1/-1; font-size: .8125rem; line-height: 1.5; color: var(--muted); }
 
 /* Public playback fills the viewport; empty overlay space still accepts scene gestures. */
-.is-replay .experience-body { position: absolute; inset: 0; height: 100%; grid-template-rows: minmax(0,1fr); }
-.is-replay .experience-header {
-  position: absolute; top: 0; left: 0; right: 0; border: 0;
-  background: linear-gradient(to bottom, #000b, transparent);
-  pointer-events: none; text-shadow: 0 1px 5px #000;
-}
 .is-replay .study-info {
   position: absolute; grid-area: auto; left: 0; right: 0; bottom: 0; z-index: 3;
   border: 0; padding-top: 32px;
   background: linear-gradient(to top, #000c, #0007 65%, transparent);
   pointer-events: none; text-shadow: 0 1px 5px #000;
 }
-.is-replay .experience-header a, .is-replay .experience-header button,
+.experience-header a, .experience-header button,
 .is-replay .study-info :is(button, a, input, select, textarea, label), .is-replay .replay-progress { pointer-events: auto; }
-.is-replay .experience-header nav button, .is-replay .text-link,
+.experience-header nav button, .is-replay .text-link,
 .is-replay .form-selector button { color: #c4c1ba; }
-.is-replay .experience-header nav button:hover, .is-replay .text-link:hover,
+.experience-header nav button:hover, .is-replay .text-link:hover,
 .is-replay .form-selector button[aria-pressed=true] { color: #fff; }
 .is-replay .primary-action { background: #10101066; border-color: #88877f; }
 .is-replay .primary-action:hover { background: #242423cc; }
@@ -141,14 +150,12 @@ input[type=color] { width: 40px; height: 30px; padding: 0; border: 1px solid var
   .replay-controls.simple-controls { justify-content: flex-start; }
 }
 @media (max-width: 700px) {
-  .collection-header { min-height: calc(60px + env(safe-area-inset-top)); padding-top: env(safe-area-inset-top); }
+  :root { --nav-inset: 18px; }
+  .collection-header { margin-bottom: 4px; }
   .live-sword-grid { grid-template-columns: minmax(0,1fr); gap: 14px; }
   .live-sword-art { height: 65dvh; min-height: 300px; }
-  .live-sword-caption { padding: 14px 0 20px; }
-  .live-sword-caption h2 { font-size: 1.6rem; }
-  .experience-header { padding-left: 18px; padding-right: 18px; }
   .experience-header nav { gap: 20px; }
-  .wordmark { font-size: 1.25rem; }
+  .wordmark-lettering { font-size:22px; }
   .study-info { padding-left: 18px; padding-right: 18px; }
   .replay-controls { grid-template-columns: auto auto minmax(60px,1fr); gap: 12px; }
   .form-selector, .replay-actions { gap: 12px; }
@@ -190,25 +197,26 @@ input[type=color] { width: 40px; height: 30px; padding: 0; border: 1px solid var
 .sharingan-stage { position:absolute; inset:0; }
 .sharingan-stage canvas { display:block; width:100%; height:100%; touch-action:none; }
 
-/* Carry the FORM STUDY typography through every interface. */
+/* Shared interface typography; scene labels use the quieter treatment below. */
 body { letter-spacing:.035em; }
-h1, h2, h3, .wordmark, .study-title, .live-sword-caption h2, .missing-sword h1 { letter-spacing:.12em; }
+h1, h2, h3, .study-title, .live-sword-caption h2, .missing-sword h1 { letter-spacing:.12em; }
 button, summary, .text-link { letter-spacing:.08em; }
 
 /* View controls live beside the title, leaving the scene unobstructed. */
 .is-replay .study-info { left:clamp(24px,5vw,80px); right:auto; bottom:calc(clamp(24px,5vh,64px) + env(safe-area-inset-bottom)); width:min(440px,calc(100% - 48px)); padding:0; display:flex; flex-direction:column; align-items:flex-start; gap:10px; background:none; }
-.is-replay .study-title { font-size:clamp(26px,3.6vw,52px); line-height:1.2; letter-spacing:.055em; }
+.is-replay .study-title, .live-sword-caption h2 { font-size:clamp(16px,1.6vw,20px); font-weight:400; line-height:1.4; letter-spacing:.035em; }
 .is-replay .replay-controls { width:100%; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px 16px; }
 .is-replay .replay-controls.simple-controls { display:flex; justify-content:flex-start; gap:20px; }
 .is-replay .form-selector { gap:20px; grid-column:auto; }
-.is-replay .form-selector button { font-size:.75rem; }
+.is-replay .form-selector button { font-size:.75rem; font-weight:400; color:var(--muted); }
+.is-replay .form-selector button[aria-pressed=true] { font-weight:500; color:var(--text); }
 .is-replay .replay-actions { gap:2px; }
 .is-replay .replay-progress { grid-column:1/-1; width:100%; opacity:.65; }
 .is-replay .replay-progress:hover, .is-replay .replay-progress:focus-within { opacity:1; }
 .study-icon-button { display:inline-flex; align-items:center; justify-content:center; width:44px; min-width:44px; height:44px; padding:0; border:0; background:transparent; color:var(--text); }
 .study-icon-button:hover { background:#ffffff0b; }
-@media(max-width:540px){.is-replay .study-title { font-size:26px; }.is-replay .form-selector { gap:14px; }.is-replay .replay-controls { gap:4px 8px; }}
-@media(max-height:500px){.is-replay .study-info { bottom:16px; gap:4px; }.is-replay .study-title { font-size:24px; }}
+@media(max-width:540px){.is-replay .study-title, .live-sword-caption h2 { font-size:16px; }.is-replay .form-selector { gap:14px; }.is-replay .replay-controls { gap:4px 8px; }}
+@media(max-height:500px){.is-replay .study-info { bottom:16px; gap:4px; }.is-replay .study-title, .live-sword-caption h2 { font-size:16px; }}
 
 /* A quiet playback line; retain a generous pointer and touch target. */
 .replay-progress input[type=range] { appearance:none; -webkit-appearance:none; display:block; height:44px; min-height:44px; padding:0; margin:0; border:0; background:transparent; accent-color:auto; }
@@ -265,3 +273,31 @@ button, summary, .text-link { letter-spacing:.08em; }
 
 .scene-option-action { justify-content:flex-start; gap:10px; margin-top:6px; border-top:1px solid #ffffff18; }
 .scene-option-action svg { flex:none; }
+
+/* Editor navigation is organized by task; secondary groups start collapsed. */
+.editor-settings-section { margin:0 0 16px; border:1px solid #ffffff20; background:#141414; }
+.editor-settings-section > summary { position:sticky; top:0; z-index:1; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:13px 12px; min-height:64px; background:#242424; cursor:pointer; list-style:none; }
+.editor-settings-section[open] > summary { border-bottom:1px solid #ffffff24; box-shadow:inset 2px 0 #b5b2ab; }
+.editor-settings-section > summary:focus-visible { outline-offset:-3px; }
+.editor-settings-section > summary::-webkit-details-marker { display:none; }
+.editor-settings-section > summary::after { content:""; width:6px; height:6px; flex:none; margin-right:3px; border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor; transform:rotate(45deg); color:var(--muted); }
+.editor-settings-section[open] > summary::after { transform:rotate(225deg); }
+.editor-settings-title { display:block; font-size:.8125rem; font-weight:600; color:var(--text); letter-spacing:.06em; }
+.editor-settings-description { display:block; margin-top:5px; color:var(--muted); font-size:.6875rem; line-height:1.5; letter-spacing:.02em; }
+.editor-settings-section > summary:hover .editor-settings-title { color:#fff; }
+.editor-settings-content { padding:18px 12px 20px; }
+.settings-block + .settings-block { margin-top:18px; }
+.settings-block > button { padding:9px 11px; border:1px solid #535350; color:var(--text); font-size:.8125rem; }
+.settings-block > button:hover { background:#292927; }
+.settings-subheading { padding-top:16px; margin:10px 0 16px; border-top:1px solid var(--line); font-size:.6875rem; font-weight:500; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+.editor-settings-content > .actions:last-child,.editor-settings-content .settings-block > :last-child { margin-bottom:0; }
+.settings-panel .actions { flex-wrap:wrap; }
+
+/* Keep content widths stable when expanding settings or overflowing a collection. */
+.settings-panel, .scene-options-panel, .gallery-page { scrollbar-gutter:stable; overflow-x:hidden; }
+
+.precision-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.precision-heading > label { font-size:.8125rem; line-height:1.4; }
+.precision-value { display:flex; align-items:center; gap:4px; flex:none; font-size:.6875rem; color:var(--muted); }
+.precision-value input { width:76px; min-height:36px; padding:6px 4px 6px 6px; background:var(--surface); border:1px solid var(--line); color:var(--text); font-size:.75rem; font-variant-numeric:tabular-nums; text-align:right; }
+.precision-control > input[type=range] { margin:4px 0 16px; }

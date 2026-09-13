@@ -1,8 +1,10 @@
 import {SceneLoader} from './SceneLoader';
 import {lazy,Suspense,useEffect,useLayoutEffect,useRef,useState} from 'react';
 import {AppLink} from './navigation';
+import {AppWordmark} from './AppWordmark';
 import {swordUrl,type SwordAsset} from './swordLibrary';
 const Sharingan=lazy(()=>import('./SharinganStudy'));
+const SHOW_SHARINGAN_CARD=false;
 const previews={longsword:lazy(()=>import('./SwordPreview')),senbonzakura:lazy(()=>import('./SwordPreview')),zangetsu:lazy(()=>import('./SwordPreview'))};
 
 function SwordCard({sword,active}:{sword:SwordAsset;active:boolean}){
@@ -38,7 +40,7 @@ export function Gallery({swords,active=true}:{swords:readonly SwordAsset[];activ
  const page=useRef<HTMLElement>(null),scrollTop=useRef(0);
  useLayoutEffect(()=>{if(active&&page.current)page.current.scrollTop=scrollTop.current;},[active]);
  return <main ref={page} className="gallery-page" onScroll={event=>{if(active)scrollTop.current=event.currentTarget.scrollTop;}}>
-  <header className="collection-header"><AppLink href="/" className="wordmark">BladeX</AppLink><h1 className="sr-only">The collection</h1></header>
-  <div className="live-sword-grid">{swords.map(sword=><SwordCard sword={sword} key={sword.id} active={active}/>)}<SharinganCard active={active}/></div>
+  <header className="collection-header"><AppWordmark/><h1 className="sr-only">The collection</h1></header>
+  <div className="live-sword-grid">{swords.map(sword=><SwordCard sword={sword} key={sword.id} active={active}/>)}{SHOW_SHARINGAN_CARD&&<SharinganCard active={active}/>}</div>
  </main>;
 }
