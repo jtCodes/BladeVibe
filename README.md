@@ -148,6 +148,26 @@ physics initialization still happen for a new viewer. GPU shader warmup remains
 in place to reduce first-use Bankai stalls. Asset baking does not persist a WebGL
 context or make every refresh instantaneous.
 
+## Reusable metal wear
+
+All swords use the wear layer in `src/scene/metalMaterials.ts`. Finish-based presets add sparse scratches, cloudy scuffs, and pitting; blackened finishes expose brighter metal beneath scratches. The layer changes physical color, roughness, and metalness without adding glow. Existing grain, bump maps, and Senbonzakura’s hamon remain in place.
+
+Override a material’s wear when creating it:
+
+```ts
+createMetalMaterial(renderer, {
+  color: 0x16191c,
+  finish: 'matteBlackened',
+  wear: { amount: 0.75, scratches: 1, blemishes: 0.5, pitting: 0.35, exposedMetal: 0.8 },
+});
+```
+
+Use `wear: false` for an unworn material. `scale` controls how often the detail map repeats in model space; higher values make smaller marks. Other wear controls normally range from 0 to 1. Defaults live in `src/scene/metalWearShader.ts`.
+
+The tileable mask is baked by `scripts/bake-metal-wear.mjs` and included in `npm run assets:bake` / `npm run assets:check`. Its three channels share one 1024×1024 texture per renderer, with mipmaps and anisotropic filtering. Object-space triplanar mapping avoids dependence on each model’s UV layout. CPU pixels are shared across viewers; the renderer’s uniform texture is explicitly disposed with the scene. New scene integrations must call `prepareMetalWear()` before creating metal materials and `disposeMetalWear(renderer)` during cleanup.
+
+Run `node scripts/check-metal-wear.mjs` to check deterministic masks, sparse coverage, and shader composition. GPU appearance still needs browser inspection.
+
 ## Live navigation session
 
 The gallery keeps previews after their first visit, and the app retains the most

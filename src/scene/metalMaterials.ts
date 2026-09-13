@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import {surfaceMaps} from './craft';
 import {applyBladeSurfaceFinish} from './bladeSurfaceFinish';
+import {metalWearTexture} from './metalWear';
+import {applyMetalWear,METAL_WEAR_PRESETS,type MetalWearOptions} from './metalWearShader';
 
 // Shared polished steel response. Models choose a finish and tint, not new lighting coefficients.
 export const METAL_FINISHES={
@@ -15,7 +17,7 @@ export const METAL_FINISHES={
  blackenedFittings:{roughness:.62,bumpScale:0,anisotropy:0,repeat:[1,1] as [number,number],metalness:.4,envMapIntensity:.3},
  blackenedGuard:{roughness:.68,bumpScale:0,anisotropy:0,repeat:[1,1] as [number,number],metalness:.25,envMapIntensity:.25},
 } as const;
-export function createMetalMaterial(renderer:THREE.WebGLRenderer,{color,finish,cuttingMask}:{color:THREE.ColorRepresentation;finish:keyof typeof METAL_FINISHES;cuttingMask?:string}){
+export function createMetalMaterial(renderer:THREE.WebGLRenderer,{color,finish,cuttingMask,wear}:{color:THREE.ColorRepresentation;finish:keyof typeof METAL_FINISHES;cuttingMask?:string;wear?:false|Partial<MetalWearOptions>}){
  const profile=METAL_FINISHES[finish];
  const textured=profile.bumpScale>0;
  const maps=textured?surfaceMaps('steel',renderer,profile.repeat):{};
@@ -30,6 +32,13 @@ export function createMetalMaterial(renderer:THREE.WebGLRenderer,{color,finish,c
    gl_FragColor.rgb=vec3(dot(gl_FragColor.rgb,vec3(.2126,.7152,.0722)));
   `);};
   material.customProgramCacheKey=()=> 'neutral-blackened-metal-v1';
+ }
+ if(wear!==false){
+  const preset=blackened?METAL_WEAR_PRESETS.blackened:finish==='edge'?METAL_WEAR_PRESETS.polished:finish==='blade'?METAL_WEAR_PRESETS.worn:METAL_WEAR_PRESETS.fittings;
+  const options={...preset,...wear},texture=metalWearTexture(renderer);
+  const inherited=material.onBeforeCompile.bind(material),baseKey=material.customProgramCacheKey();
+  material.onBeforeCompile=(shader,renderer)=>{inherited(shader,renderer);applyMetalWear(shader,texture,options);};
+  material.customProgramCacheKey=()=>`${baseKey}-metal-wear-v1`;
  }
  return material;
 }

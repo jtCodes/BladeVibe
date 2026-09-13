@@ -24,6 +24,7 @@ import {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
 import {SSRPass} from 'three/addons/postprocessing/SSRPass.js';
 import {OutputPass} from 'three/addons/postprocessing/OutputPass.js';
 import {UnrealBloomPass} from 'three/addons/postprocessing/UnrealBloomPass.js';
+import {prepareMetalWear,disposeMetalWear} from './metalWear';
 import {SMAAPass} from 'three/addons/postprocessing/SMAAPass.js';
 import {clearSurfaceMapCache} from './craft';
 import {clearClothMaterialCache} from './clothMaterials';
@@ -38,7 +39,7 @@ export async function createSwordScene(container: HTMLDivElement, onError: (mess
 signal.throwIfAborted();
 await yieldScenePreparation(signal);
 const modelId=options.model??'longsword';
-await Promise.all([initializePhysics(),prepareSurfaceAssets(modelId==='senbonzakura'||modelId==='zangetsu'?['steel']:['steel','leather']),modelId==='senbonzakura'?prepareSakuraAssets():Promise.resolve()]);
+await Promise.all([initializePhysics(),prepareMetalWear(),prepareSurfaceAssets(modelId==='senbonzakura'||modelId==='zangetsu'?['steel']:['steel','leather']),modelId==='senbonzakura'?prepareSakuraAssets():Promise.resolve()]);
 signal.throwIfAborted();
 await options.waitUntilActive?.();
 signal.throwIfAborted();
@@ -46,7 +47,7 @@ const cleanups: Array<() => void> = [];
 let active=options.active??true;
 try {
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x141413);scene.fog=new THREE.FogExp2(0x141413,.032);
-const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.85;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.localClippingEnabled=true;container.appendChild(renderer.domElement);cleanups.push(()=>{clearSurfaceMapCache(renderer);clearClothMaterialCache(renderer);renderer.dispose();renderer.domElement.remove()});
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.85;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.localClippingEnabled=true;container.appendChild(renderer.domElement);cleanups.push(()=>{clearSurfaceMapCache(renderer);clearClothMaterialCache(renderer);disposeMetalWear(renderer);renderer.dispose();renderer.domElement.remove()});
 cleanups.push(()=>{
  const geometries=new Set<THREE.BufferGeometry>(), materials=new Set<THREE.Material>(), textures=new Set<THREE.Texture>();
  scene.traverse(object=>{
