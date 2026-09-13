@@ -15,7 +15,7 @@ export interface SwordAsset {
 // The catalog is authored in code. Add completed sword implementations here.
 export const swords:readonly SwordAsset[]=[{
  id:'steel-longsword',name:'Steel longsword',model:'longsword',description:'Tempered steel. Wrapped leather. Simple fittings.',
- effect:'electric',effectIntensity:100,effectSpeed:1,lightAngle:20,reflections:true,
+ effect:'electric',effectIntensity:200,effectSpeed:3,lightAngle:20,reflections:true,
 },{id:'senbonzakura',name:'Senbonzakura',model:'senbonzakura',description:'Curved polished steel, lavender silk over ray skin, and a white lacquered saya.',effect:'off',effectIntensity:100,effectSpeed:1,lightAngle:270,reflections:true},{id:'zangetsu',name:'Zangetsu',model:'zangetsu',description:'Ichigo’s oversized black blade, broad silver cutting edge, and white cloth binding.',effect:'off',effectIntensity:100,effectSpeed:1,lightAngle:20,reflections:true}];
 export const effectNames:Record<EffectMode,string>={off:'Bare steel',glow:'Glow & sparks',flame:'Flame',ice:'Ice',electric:'Electric',shikai:'Shikai',bankai:'Bankai'};
 export const longswordEffects:readonly EffectMode[]=['off','glow','flame','ice','electric'];

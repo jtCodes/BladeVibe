@@ -280,7 +280,9 @@ function update(settings: ViewerSettings){
   else bankai?.update(0,effectSpeed,effectIntensity,petalGlow);
   seekEffect(seekRequest.time,seekRequest.paused);
  }
- bloom.enabled=(settings.effect==='shikai'||settings.effect==='flame'||settings.effect==='electric')&&settings.effectIntensity>0;
+ // Longsword effects supply their own additive glow. Full-scene bloom also
+ // catches polished steel reflections, creating angle-dependent glowing blobs.
+ bloom.enabled=isKatana&&settings.effect==='shikai'&&settings.effectIntensity>0;
  bloom.threshold=isKatana?1.1:3.;
  bloom.strength=isKatana?.24:.14;
  reflectionsRequested=settings.reflections;reflections.output=SSRPass.OUTPUT.Default;updateReflectionPath();

@@ -149,8 +149,9 @@ export function createBladeAura(sword:THREE.Group, pixelRatio:number) {
   uniforms.time.value+=dt;uniforms.exposed.value=draw*DRAW_DISTANCE+.05;group.visible=draw>.001&&mode!=='off'&&uniforms.intensity.value>0;
   for(const light of fireLights){
    const revealed=1.-THREE.MathUtils.smoothstep(light.position.y,uniforms.exposed.value-.12,uniforms.exposed.value);
-   light.color.setHex(mode==='electric'?0xffefcf:0xff6820);
-   light.intensity=mode==='electric'?uniforms.intensity.value*revealed*.25:mode==='flame'?uniforms.intensity.value*revealed*(.45+.08*Math.sin(uniforms.time.value*7.+light.position.y*5.)+.04*Math.sin(uniforms.time.value*13.)):0;
+   // These stationary lights approximate continuous fire, not moving arcs.
+   // Electric mode otherwise produces three fixed specular hotspots on steel.
+   light.intensity=mode==='flame'?uniforms.intensity.value*revealed*(.45+.08*Math.sin(uniforms.time.value*7.+light.position.y*5.)+.04*Math.sin(uniforms.time.value*13.)):0;
   }
   sword.updateWorldMatrix(true,false);sword.getWorldQuaternion(rotation);
   for(let i=0;i<count;i++){
