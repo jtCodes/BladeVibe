@@ -69,8 +69,7 @@ available after a dropped sword returns to display.
 
 The URL is the saved state; there is no account, database or server-side save.
 Links use the current origin, so a localhost link is only useful on that machine.
-For remote sharing, serve the app at a reachable URL with an SPA fallback to
-`index.html` for `/swords/*` routes.
+For remote sharing, deploy the app to a reachable URL. The included Vercel configuration serves each supported route with its own metadata.
 
 Imported state is size-limited, version checked, restricted to the sword's valid
 effects, and sanitized to finite values/known settings. Invalid links show a
@@ -100,7 +99,23 @@ npm run build
 npm run preview
 ```
 
-The production build is written to `dist/`. Configure your host to serve `index.html` for app routes so direct sword and share links work.
+The production build is written to `dist/`.
+
+### Vercel, search, and link previews
+
+Import the repository into Vercel. The included `vercel.json` builds the app and serves clean URLs from the generated HTML files. Each sword, Shikai, and Bankai page includes its own title, description, canonical URL, and Open Graph/Twitter metadata before JavaScript runs. In-app navigation updates the metadata too. Editor pages are marked `noindex`; unknown routes receive a custom 404 page.
+
+The build uses Vercel’s production domain for canonical URLs and `sitemap.xml`. Set **`SITE_URL`** in Vercel’s environment variables to choose a specific primary domain, such as `https://your-domain.com`. This also works for local production builds. Keep the value to the origin, without a path, query, or fragment.
+
+Set **`SOCIAL_IMAGE_URL`** to the absolute HTTPS URL of a publicly accessible PNG or JPEG to add a shared preview image. Without it, the app emits text metadata only; it does not invent a screenshot. Saved `#state=` fragments restore the scene in the browser, but are not sent to preview crawlers, so previews describe the corresponding sword/form rather than the exact saved frame.
+
+`robots.txt` points crawlers to the sitemap, which lists public pages and excludes editors and saved-state fragments. Submit `/sitemap.xml` in Google Search Console after deploying. The 3D app still renders in the browser; these generated files provide metadata, not a server-rendered version of the scene.
+
+```sh
+node scripts/check-seo.mjs
+```
+
+On other hosts, map clean URLs to their matching generated `.html` files and serve `404.html` with a 404 status for unknown routes. A blanket rewrite to the homepage would discard the page-specific metadata. Vite’s development server is for app development; verify production routing and link previews on Vercel after deployment.
 
 <details>
 <summary>Rendering, baked assets, and session caching</summary>

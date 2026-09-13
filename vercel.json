@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "cleanUrls": true,
+  "redirects": [
+    {"source": "/studies/sharingan", "destination": "/sharingan", "permanent": true},
+    {"source": "/swords/steel-longsword/:form(shikai|bankai)", "destination": "/swords/steel-longsword", "permanent": true}
+  ]
+}

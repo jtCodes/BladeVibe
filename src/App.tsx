@@ -1,3 +1,4 @@
+import {updatePageMetadata} from './pageMetadata';
 import {SceneLoader} from './SceneLoader';
 import {lazy,Suspense,useEffect,useState} from 'react';
 import {Gallery} from './Gallery';
@@ -22,7 +23,7 @@ export default function App(){
  const [lastRoute,setLastRoute]=useState(route);
  useEffect(()=>{if(home)setVisitedHome(true);if(sword)setLastRoute({sword,editing,form,hash});},[home,sword,path,hash]);
  const retained=route??lastRoute;
- useEffect(()=>{document.title=ocular?'Sharingan — BladeX':home?'BladeX':sword?`${sword.name}${editing?' · Editor':form?` · ${form==='bankai'?'Bankai':'Shikai'}`:''} — BladeX`:'Page not found — BladeX';},[home,sword,path]);
+ useEffect(()=>{updatePageMetadata(path);},[path]);
  return <>
   <div className="session-page" hidden={!home} inert={!home}>{(home||visitedHome)&&<Gallery swords={swords} active={home}/>}</div>
   <div className="session-page" hidden={!sword} inert={!sword}>{retained&&<Suspense fallback={<main className="opening-page"><SceneLoader/></main>}><Experience key={retained.sword.id} sword={retained.sword} active={!!sword} editing={retained.editing} routeForm={retained.form} shareHash={retained.hash}/></Suspense>}</div>
