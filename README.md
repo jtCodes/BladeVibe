@@ -2,6 +2,10 @@
 
 **Legendary blades. High-quality 3D rendering. Every angle yours.**
 
+[![Watch BladeVibe in action — Senbonzakura Bankai and interactive sword effects](https://img.youtube.com/vi/rDJaMCNve3I/hqdefault.jpg)](https://www.youtube.com/watch?v=rDJaMCNve3I)
+
+**[Watch the showcase](https://www.youtube.com/watch?v=rDJaMCNve3I)** · **[Try BladeVibe](https://bladevibe.xyz)**
+
 BladeVibe brings legendary swords to life with high-quality, real-time 3D rendering: detailed materials, carefully shaped studio lighting, reflections, and cinematic particle effects. Turn polished steel under the light, release Senbonzakura into a storm of petals, or reveal Tensa Zangetsu. Then pause the moment, shape the scene, and share your view.
 
 Built for the browser, with live 3D scenes, hands-on controls, and an editor for getting every detail just right. No account required.

@@ -40,7 +40,7 @@ export function Gallery({swords,active=true}:{swords:readonly SwordAsset[];activ
  const page=useRef<HTMLElement>(null),scrollTop=useRef(0);
  useLayoutEffect(()=>{if(active&&page.current)page.current.scrollTop=scrollTop.current;},[active]);
  return <main ref={page} className="gallery-page" onScroll={event=>{if(active)scrollTop.current=event.currentTarget.scrollTop;}}>
-  <header className="collection-header"><AppWordmark/><h1 className="sr-only">The collection</h1><a className="text-link collection-github" href="https://github.com/jtCodes" target="_blank" rel="noopener noreferrer" aria-label="jtCodes on GitHub (opens in a new tab)">GitHub <span aria-hidden="true">↗</span></a></header>
+  <header className="collection-header"><AppWordmark/><h1 className="sr-only">The collection</h1><a className="text-link collection-github" href="https://github.com/jtCodes/BladeVibe" target="_blank" rel="noopener noreferrer" aria-label="BladeVibe on GitHub (opens in a new tab)">GitHub <span aria-hidden="true">↗</span></a></header>
   <div className="live-sword-grid">{swords.map(sword=><SwordCard sword={sword} key={sword.id} active={active}/>)}{SHOW_SHARINGAN_CARD&&<SharinganCard active={active}/>}</div>
  </main>;
 }
