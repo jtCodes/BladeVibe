@@ -48,6 +48,7 @@ canvas { display: block; touch-action: none; }
 /* Collection presentations carry the viewer's dark surface and quiet lower labels. */
 .gallery-page { display: flex; flex-direction: column; overflow-y: auto; padding: 0 var(--gallery-gutter) max(24px,env(safe-area-inset-bottom)); touch-action: pan-y; overscroll-behavior: contain; background: var(--gallery-background); }
 .collection-header { flex-shrink: 0; margin-inline: calc(-1 * var(--gallery-gutter)); margin-bottom: 12px; }
+.collection-github { margin-left: auto; gap: 6px; }
 .live-sword-grid { flex-shrink: 0; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: var(--nav-inset); }
 /* Auto margins center a single row and fall back to zero when scrolling is needed. */
 .live-sword-grid:has(> :only-child) { margin-block: auto; }
