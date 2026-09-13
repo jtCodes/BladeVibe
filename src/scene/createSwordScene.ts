@@ -1,3 +1,5 @@
+import {CopyShader} from 'three/addons/shaders/CopyShader.js';
+import {createProjectedSceneBounds} from './projectedSceneBounds';
 import {swordDisplayCenter,centeredSwordView} from './swordFraming';
 import type {BankaiPetalMotion} from './bankaiPetalMotion';
 import {createSceneEnvironment,type LightingSettings} from './sceneEnvironment';
@@ -177,11 +179,11 @@ function updateShadowCache(){
   renderer.shadowMap.needsUpdate=true;shadowPosition.copy(sword.position);shadowRotation.copy(sword.quaternion);
  }
 }
-// Canvas AA does not cover offscreen postprocessing. Multisample the HDR buffer.
+// Multisample scene geometry once; full-screen filters use resolved HDR textures.
 const gl=renderer.getContext();
 const supportedSamples='getInternalformatParameter' in gl ? Array.from(gl.getInternalformatParameter(gl.RENDERBUFFER,gl.RGBA16F,gl.SAMPLES) as Int32Array) : [];
 const samples=Math.max(0,...supportedSamples.filter(value=>value<=4));
-const target=new THREE.WebGLRenderTarget(1,1,{type:THREE.HalfFloatType,samples});
+const target=new THREE.WebGLRenderTarget(1,1,{type:THREE.HalfFloatType,depthBuffer:false});
 await yieldScenePreparation(signal);
 const composer=new EffectComposer(renderer,target);
 const reflectiveMeshes: THREE.Mesh[]=[];
@@ -191,6 +193,15 @@ const reflections=new SSRPass({renderer,scene,camera,width:1,height:1,selects:re
 reflections.resolutionScale=.5;reflections.opacity=.38;reflections.maxDistance=9;reflections.thickness=.035;reflections.blur=true;
 reflections.beautyRenderTarget.samples=samples;
 const directRender=new RenderPass(scene,camera);directRender.enabled=false;
+// Reuse the SSR beauty target for the direct path so disabling reflections
+// retains geometry MSAA without multisampling every post-processing buffer.
+const resolveScene=new ShaderPass(CopyShader);
+const renderScene=directRender.render.bind(directRender);
+directRender.render=(renderer,writeBuffer,readBuffer,dt,mask)=>{
+ renderScene(renderer,writeBuffer,reflections.beautyRenderTarget,dt,mask);
+ resolveScene.render(renderer,readBuffer,reflections.beautyRenderTarget,dt,mask);
+};
+cleanups.push(()=>resolveScene.dispose());
 composer.addPass(directRender);composer.addPass(reflections);
 let reflectionsRequested=true;
 function updateReflectionPath(){
@@ -207,7 +218,7 @@ function updateReflectionPath(){
  reflections.enabled=visibleReflector;directRender.enabled=!visibleReflector;
 }
 // This Three.js version expects SMAA in linear color space, before OutputPass.
-composer.addPass(new SMAAPass());
+const smaa=new SMAAPass();composer.addPass(smaa);
 const bloom=new UnrealBloomPass(new THREE.Vector2(1,1),.14,0,3.);composer.addPass(bloom);
 // Apply display brightness after the fixed filmic curve, preserving tone ratios.
 const output=new OutputPass();
@@ -220,9 +231,34 @@ composer.addPass(output);
 // Smooth the final display-space edges, including postprocessing and shader cutouts.
 const edgeAA=new ShaderPass(FXAAShader);composer.addPass(edgeAA);
 const upscale=createSpatialUpscale();composer.addPass(upscale);
+const projectSceneBounds=createProjectedSceneBounds();
+function updateUpscaleBounds(){
+ if(!upscale.enabled)return;
+ const bounds=upscale.uniforms.contentBounds.value as THREE.Vector4;
+ // The rigid longsword and its bounded electric/glow particles are supported.
+ // Floor, volume effects, and animated anime releases retain full-frame filtering.
+ if(isKatana||isZangetsu||floor.visible||!['off','electric','glow'].includes(effectMode)){bounds.set(0,0,1,1);return;}
+ scene.updateMatrixWorld();camera.updateMatrixWorld();
+ projectSceneBounds(scene,camera,composer.renderTarget1.width,composer.renderTarget1.height,160*Math.min(window.devicePixelRatio,2),bounds);
+}
 let renderScale=1;
 let aaMode:'standard'|'smooth'|'high'='standard';
 let lastWidth=0,lastHeight=0,lastPixelRatio=0,lastRenderScale=0;
+for(const [name,pass] of [['Scene',directRender],['Reflections',reflections],['SMAA',smaa],['Bloom',bloom],['Tone map',output],['FXAA',edgeAA],['Upscale',upscale]] as const)meter.watchPass(name,pass);
+meter.setDiagnostics(()=>{
+ const bounds=upscale.uniforms.contentBounds.value as THREE.Vector4;
+ const coverage=Math.max(0,bounds.z-bounds.x)*Math.max(0,bounds.w-bounds.y);
+ return [
+  `DPR          ${renderer.getPixelRatio().toFixed(2)}`,
+  `MSAA         scene ${samples}× / post ${composer.renderTarget1.samples}×`,
+  `AA / scale   ${aaMode} / ${Math.round(renderScale*100)}%`,
+  `Effect       ${effectMode} · ${effectSpeed.toFixed(1)}×`,
+  `SSR rays     ${reflections.ssrRenderTarget.width} × ${reflections.ssrRenderTarget.height}${reflections.enabled?'':' (off)'}`,
+  `SSR inputs   ${Math.floor(reflections.normalRenderTarget.width)} × ${Math.floor(reflections.normalRenderTarget.height)}`,
+  `SSR max step ${Math.ceil(Number(reflections.ssrMaterial.defines.MAX_STEP))}`,
+  `Upscale area ${upscale.enabled?(coverage*100).toFixed(1)+'% full filter':'off'}`,
+ ];
+});
 cleanups.push(()=>{for(const pass of composer.passes)pass.dispose();composer.dispose()});
 let cameraHeight=0,effectSpeed=1,effectIntensity=1,effectPaused=false;
 let effectMode:EffectMode='off';
@@ -343,7 +379,7 @@ active=options.active??true;controls.enabled=active&&!options.preview;
 const observer=new ResizeObserver(resize);cleanups.push(()=>observer.disconnect());
 if(active){observer.observe(container);resize();}reset();
 let frame:number|null=null,lastFrameTime:number|null=null,stopped=false;
-function animate(now:number){frame=null;if(stopped||!active)return;frame=requestAnimationFrame(animate);const dt=lastFrameTime===null?0:Math.min((now-lastFrameTime)/1000,.1);lastFrameTime=now;if(document.hidden)return;meter.begin();if(bankai?.active){bankai.update(effectPaused?0:dt,effectSpeed,effectIntensity,petalGlow);}else{if(!options.preview&&dragTarget==='sword'&&spinRequested&&dragPointer===null)physics.rotateBy(dragTurn.setFromAxisAngle(spinAxis,dt*.07));physics.step(dt);shikai?.setPetalGlow(petalGlow);aura.update(effectPaused?0:dt,physics.draw);}if(shikai){const bankaiGlow=!!bankai?.glowing;bloom.enabled=shikai.visible||bankaiGlow;const pink=bankaiGlow?(bankai?.pinkGlow??0):shikai.pinkGlow;bloom.strength=glowStrength*THREE.MathUtils.lerp(.6,1,pink);bloom.radius=glowSpread*THREE.MathUtils.lerp(.7,1,pink);}if(isZangetsu)scabbard.userData.updateCloth(dt);updateShadowCache();moveCamera(dt);controls.update(dt);environment.updateView(camera,controls.target);updateReflectionPath();composer.render(dt);meter.end();}
+function animate(now:number){frame=null;if(stopped||!active)return;frame=requestAnimationFrame(animate);const dt=lastFrameTime===null?0:Math.min((now-lastFrameTime)/1000,.1);lastFrameTime=now;if(document.hidden)return;meter.begin();if(bankai?.active){bankai.update(effectPaused?0:dt,effectSpeed,effectIntensity,petalGlow);}else{if(!options.preview&&dragTarget==='sword'&&spinRequested&&dragPointer===null)physics.rotateBy(dragTurn.setFromAxisAngle(spinAxis,dt*.07));physics.step(dt);shikai?.setPetalGlow(petalGlow);aura.update(effectPaused?0:dt,physics.draw);}if(shikai){const bankaiGlow=!!bankai?.glowing;bloom.enabled=shikai.visible||bankaiGlow;const pink=bankaiGlow?(bankai?.pinkGlow??0):shikai.pinkGlow;bloom.strength=glowStrength*THREE.MathUtils.lerp(.6,1,pink);bloom.radius=glowSpread*THREE.MathUtils.lerp(.7,1,pink);}if(isZangetsu)scabbard.userData.updateCloth(dt);updateShadowCache();moveCamera(dt);controls.update(dt);environment.updateView(camera,controls.target);updateReflectionPath();updateUpscaleBounds();composer.render(dt);meter.end();}
 function stopFrame(){if(frame!==null)cancelAnimationFrame(frame);frame=null;lastFrameTime=null;}
 function setActive(value:boolean){
  if(stopped||active===value)return;

@@ -1,18 +1,23 @@
-import {Vector2} from 'three';
+import {Vector2,Vector4} from 'three';
 import {ShaderPass} from 'three/addons/postprocessing/ShaderPass.js';
 
 // Spatial reconstruction at native output resolution; no temporal history or AI inference.
 export function createSpatialUpscale(){
  const pass=new ShaderPass({
-  uniforms:{tDiffuse:{value:null},inputSize:{value:new Vector2(1,1)},sharpness:{value:.12}},
+  uniforms:{tDiffuse:{value:null},inputSize:{value:new Vector2(1,1)},sharpness:{value:.12},contentBounds:{value:new Vector4(0,0,1,1)}},
   vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
   fragmentShader:`
-   uniform sampler2D tDiffuse;uniform vec2 inputSize;uniform float sharpness;varying vec2 vUv;
+   uniform sampler2D tDiffuse;uniform vec4 contentBounds;uniform vec2 inputSize;uniform float sharpness;varying vec2 vUv;
    vec4 weights(float t){
     float t2=t*t,t3=t2*t;
     return vec4(-.5*t+t2-.5*t3,1.-2.5*t2+1.5*t3,.5*t+2.*t2-1.5*t3,-.5*t2+.5*t3);
    }
    void main(){
+    // Uniform background needs one bilinear fetch, not a 16-tap reconstruction.
+    // Bounds include geometry, sparks, and a generous filter/point-size margin.
+    if(vUv.x<contentBounds.x||vUv.y<contentBounds.y||vUv.x>contentBounds.z||vUv.y>contentBounds.w){
+     gl_FragColor=vec4(texture2D(tDiffuse,vUv).rgb,1.);return;
+    }
     vec2 p=vUv*inputSize-.5,base=floor(p),f=fract(p);
     vec4 wx=weights(f.x),wy=weights(f.y);
     vec3 color=vec3(0.),lo=vec3(1.e10),hi=vec3(-1.e10);

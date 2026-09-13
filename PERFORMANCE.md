@@ -119,3 +119,38 @@ Use the same browser, viewport, pixel ratio, camera, effect settings, and hardwa
 Record median and slow-frame timings, CPU and GPU time where available, draw calls, triangles, geometry/texture counts, and allocation or garbage-collection activity. Record startup separately from steady-state rendering. A 60 FPS frame budget is about 16.7 ms; averages alone can conceal visible stalls.
 
 Profile screen-space reflections and the flame raymarcher next. Other candidates include instancing repeated ornaments, reducing arc-generation allocations, and rendering only on changes when both motion and effects are paused. Select the next change from measured costs, and validate its appearance and invalidation rules before keeping it.
+
+## Large-canvas upscaling
+
+The spatial upscaler normally reads 17 texture samples per output pixel. For the
+rigid longsword in bare, glow, and electric modes with the floor hidden, it now
+uses a single sample outside conservative projected content bounds. Reconstruction
+inside the bounds keeps the existing resolution, kernel, and sharpening.
+
+Bounds include visible meshes and particle positions, with padding for lightning
+thickness, point sprites, and screen-space filters. Dynamic position buffers are
+remeasured; hidden objects are excluded. Near-plane intersections and instanced
+geometry fall back to full-frame filtering. Anime releases, floor scenes, and
+volume effects do not use this optimization. Extend the bounds policy before
+allowing other shader-deformed effects through it.
+
+This reduces empty-background work in the upscaler only. It does not crop scene
+rendering, reflections, or antialiasing, and does not cap render resolution.
+The screenshot comparison showed 3.2M versus 11.2M render pixels with similar
+geometry counts; it does not establish individual pass costs. Build and projected
+bounds checks passed, but before/after browser FPS and visual parity are unmeasured.
+Run `node scripts/check-projected-scene-bounds.mjs` for bounds regression checks.
+
+## Post-processing MSAA and diagnostics
+
+The scene beauty target retains hardware MSAA, while composer ping-pong targets
+now use single-sample HDR color without depth buffers. Full-screen filters no
+longer allocate and resolve multisampled attachments. With reflections disabled,
+the direct scene pass renders into the same beauty target and copies its resolved
+color into the composer, preserving geometry antialiasing on both paths.
+
+The meter reports scene and post-processing sample counts separately. GPU timing
+rotates one query per sampled frame between the complete render and enabled
+passes; values come from different frames and should not be added together.
+Resize clears pending results. This change still needs before/after GPU and visual
+validation on the affected large display.
