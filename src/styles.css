@@ -271,6 +271,7 @@ button, summary, .text-link { letter-spacing:.08em; }
 .scene-option-draw:has(input:disabled) .range-label { opacity:.4; }
 
 .scene-option-action { justify-content:flex-start; gap:10px; margin-top:6px; border-top:1px solid #ffffff18; }
+.scene-option-effects + .scene-option-action { margin-top:0; border-top:0; }
 .scene-option-action svg { flex:none; }
 
 /* Editor navigation is organized by task; secondary groups start collapsed. */
