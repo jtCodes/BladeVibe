@@ -1,10 +1,10 @@
 import type * as THREE from 'three';
 export interface MetalWearOptions {amount:number;scale:number;scratches:number;blemishes:number;pitting:number;exposedMetal:number}
 export const METAL_WEAR_PRESETS={
- polished:{amount:.45,scale:.65,scratches:.65,blemishes:.35,pitting:.2,exposedMetal:.1},
- worn:{amount:.65,scale:.65,scratches:.85,blemishes:.65,pitting:.4,exposedMetal:.25},
- blackened:{amount:.75,scale:.65,scratches:1,blemishes:.5,pitting:.35,exposedMetal:.8},
- fittings:{amount:.5,scale:1.1,scratches:.65,blemishes:.7,pitting:.45,exposedMetal:.15},
+ polished:{amount:.15,scale:.65,scratches:.325,blemishes:.35,pitting:.2,exposedMetal:.1},
+ worn:{amount:.15,scale:.65,scratches:.425,blemishes:.65,pitting:.4,exposedMetal:.25},
+ blackened:{amount:.15,scale:.65,scratches:.5,blemishes:.5,pitting:.35,exposedMetal:.8},
+ fittings:{amount:.15,scale:1.1,scratches:.325,blemishes:.7,pitting:.45,exposedMetal:.15},
 } satisfies Record<string,MetalWearOptions>;
 type Shader=Parameters<THREE.Material['onBeforeCompile']>[0];
 /** Object-space mapping keeps the same scratch scale on differently UV-mapped swords. */
