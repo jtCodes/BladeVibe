@@ -33,6 +33,10 @@ export function createContinuousFire(shared:Record<string,THREE.IUniform>) {
      // depth-testing the far face of the volume (which cuts off grounded fire).
      if((volumeWorld*vec4(p,1.)).y<floorY+.003)break;
      if(p.y>.10&&p.y<5.02&&abs(p.x)<bladeWidth(p.y)&&abs(p.z)<.017)break;
+     // Moving wisps must disappear before the ray-march proxy ends. Measure
+     // this in the actual volume, before backtracing the flame's motion.
+     vec3 boundaryDistance=min(p-vec3(-1.2,-1.1,-1.1),vec3(1.2,5.5,1.1)-p);
+     float volumeFade=smoothstep(0.,.30,min(boundaryDistance.x,min(boundaryDistance.y,boundaryDistance.z)));
      // Backtrace outward wisps toward their source. Roots remain attached;
      // tips lean upward and trail the sword's smoothed translation/rotation.
      float actualBladeY=p.y;
@@ -46,7 +50,7 @@ export function createContinuousFire(shared:Record<string,THREE.IUniform>) {
      float crest=noise(vec3(p.x*5.,time*.7,p.z*5.))*.28;
      float guardFade=smoothstep(.38+crest*.35,1.05,p.y);
      float gripClearance=mix(smoothstep(.125,.21,length(p.xz)),1.,smoothstep(-.02,.12,p.y));
-     float ends=gripClearance*(1.-smoothstep(4.8,5.,p.y));
+     float ends=gripClearance*(1.-smoothstep(4.5+crest*.5,5.,p.y));
      float reveal=1.-smoothstep(exposed-.035,exposed,p.y);
      if(ends*reveal<.001)continue;
      float width=bladeWidth(p.y);
@@ -73,7 +77,7 @@ export function createContinuousFire(shared:Record<string,THREE.IUniform>) {
      // Intermittent flares leave open air between brighter burning sections.
      float flare=smoothstep(.38,.64,large);
      float reach=(.12+.48*flare)*taper;
-     float edge=1.-smoothstep(reach-.025,reach,radius);
+     float edge=1.-smoothstep(max(0.,reach-max(.06,reach*.4)),reach,radius);
      float distanceRatio=radius/max(reach,.001);
      float threshold=mix(.40,.66,pow(clamp(distanceRatio,0.,1.),.8));
      float tongues=smoothstep(threshold,threshold+.065,ribbons);
@@ -85,14 +89,13 @@ export function createContinuousFire(shared:Record<string,THREE.IUniform>) {
      float winding=.5+.5*sin(phase+radius*7.);
      float filament=pow(winding,18.);
      float filigree=filament*smoothstep(.025,.10,radius)*(1.-smoothstep(.28,.57,radius));
-     float density=edge*max(root*.55,tongues*flare*.52+filigree*.8)*ends*reveal;
+     float density=edge*max(root*.55,tongues*flare*.52+filigree*.8)*ends*reveal*volumeFade;
      float heat=clamp(root*.75+filament*.55+tongues*.16,0.,1.);
      vec3 color=mix(vec3(3.2,.008,.001),vec3(4.,.32,.006),smoothstep(.10,.65,heat));
      color=mix(color,vec3(5.5,3.3,.7),smoothstep(.65,1.,heat));
      float alpha=1.-exp(-density*stepSize*4.2);
      light+=(1.-opacity)*color*alpha;opacity+=(1.-opacity)*alpha;
     }
-    if(opacity<.002)discard;
     gl_FragColor=vec4(light/max(opacity,.001)*intensity,opacity*.70);
    }`});
  const mesh=new THREE.Mesh(geometry,material);
