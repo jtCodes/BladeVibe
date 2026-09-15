@@ -7,7 +7,7 @@ export type {LightingSettings} from './sceneEnvironment';
 import {swordEnvironmentPreset,SENBONZAKURA_BANKAI_FOG} from './sceneEnvironmentPresets';
 import {yieldScenePreparation} from './yieldScenePreparation';
 import {SENBONZAKURA_POMMEL_TIP_Y,SENBONZAKURA_BLADE_LENGTH} from './senbonzakuraDimensions';
-import {getBankaiCameraView} from './bankaiCamera';
+import {getBankaiOpeningView} from './bankaiCamera';
 import type {SwordViewState,SwordViewRequest} from './swordViewState';
 import {prepareSurfaceAssets} from './surfaceAssets';
 import {prepareSakuraAssets} from './sakuraAssets';
@@ -85,10 +85,22 @@ cleanups.push(()=>{
  document.removeEventListener('visibilitychange',clearArrows);document.removeEventListener('focusin',focusChanged);renderer.domElement.removeEventListener('pointerdown',focusCanvas);
 });
 }
+let bankaiCameraAuto=false,bankaiCameraSettled=false;
+const reducedCameraMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function stopBankaiCamera(){bankaiCameraAuto=false;}
+controls.addEventListener('start',stopBankaiCamera);
+cleanups.push(()=>controls.removeEventListener('start',stopBankaiCamera));
+function syncBankaiCamera(force=false){
+ if(!bankaiCameraAuto||!bankai?.active)return;
+ if(!force&&bankaiCameraSettled&&bankai.time>=bankai.cameraPullbackEnd)return;
+ applyCameraView(getBankaiOpeningView(bankai.formationOrigin,camera.aspect,camera.fov,reducedCameraMotion?bankai.cameraPullbackEnd:bankai.time,bankai.cameraPullbackEnd,bankai.cameraFollowDrop));
+ bankaiCameraSettled=bankai.time>=bankai.cameraPullbackEnd;
+}
 function moveCamera(dt:number){
  const x=Number(heldArrows.has('ArrowRight'))-Number(heldArrows.has('ArrowLeft'));
  const y=Number(heldArrows.has('ArrowUp'))-Number(heldArrows.has('ArrowDown'));
  if(!x&&!y)return;
+ stopBankaiCamera();
  camera.updateMatrix();cameraRight.setFromMatrixColumn(camera.matrix,0);cameraUp.setFromMatrixColumn(camera.matrix,1);
  cameraStep.copy(cameraRight).multiplyScalar(x).addScaledVector(cameraUp,y).normalize().multiplyScalar(camera.position.distanceTo(controls.target)*.35*dt);
  camera.position.add(cameraStep);controls.target.add(cameraStep);
@@ -307,9 +319,10 @@ function update(settings: ViewerSettings){
  }
  aura.configure(settings.effect,settings.effectSpeed,settings.effectIntensity);
  if(bankai&&!bankai.active&&settings.effect==='bankai'){
+  bankaiCameraAuto=false;
   physics.setDraw(1);physics.restore();shikai?.update(0,0);bankai.start();
   if(!options.preview&&(!view||'reset' in view)){
-   applyCameraView(getBankaiCameraView(bankai.formationOrigin,camera.aspect,camera.fov));
+   bankaiCameraAuto=true;bankaiCameraSettled=false;syncBankaiCamera(true);
   }
  }
  if(seekRequest){
@@ -325,7 +338,7 @@ function update(settings: ViewerSettings){
  reflectionsRequested=settings.reflections;reflections.output=SSRPass.OUTPUT.Default;updateReflectionPath();
  controls.autoRotate=settings.rotating&&settings.effect!=='bankai'&&(options.preview||dragTarget==='camera');
  if(!options.preview&&!showSheath&&settings.effect!=='shikai'&&settings.effect!=='bankai'&&(firstSettings||sheathChanged||(view&&'reset' in view))&&(!view||'reset' in view)){physics.restore();centerDefaultSwordView();}
- if(view&&!('reset' in view))applyCameraView(view);
+ if(view&&!('reset' in view)){bankaiCameraAuto=false;applyCameraView(view);}
 }
 function centerDefaultSwordView(){
  sword.updateWorldMatrix(true,false);
@@ -349,6 +362,7 @@ function getEffectTimeline(effect?:TimelineEffect):EffectTimeline|null {
 function seekEffect(time:number,paused=true){
  const controller=timelineController();if(!controller||!Number.isFinite(time))return;
  effectPaused=paused;controller.seek(THREE.MathUtils.clamp(time,0,Math.max(120,controller.duration)));
+ if(effectMode==='bankai')syncBankaiCamera(true);
 }
 function reset(){stopSwordDrag();physics.resetOrientation();clearArrows();bankai?.cancel();if(options.preview){
  physics.setDraw(1);physics.restore();
@@ -379,7 +393,7 @@ active=options.active??true;controls.enabled=active&&!options.preview;
 const observer=new ResizeObserver(resize);cleanups.push(()=>observer.disconnect());
 if(active){observer.observe(container);resize();}reset();
 let frame:number|null=null,lastFrameTime:number|null=null,stopped=false;
-function animate(now:number){frame=null;if(stopped||!active)return;frame=requestAnimationFrame(animate);const dt=lastFrameTime===null?0:Math.min((now-lastFrameTime)/1000,.1);lastFrameTime=now;if(document.hidden)return;meter.begin();if(bankai?.active){bankai.update(effectPaused?0:dt,effectSpeed,effectIntensity,petalGlow);}else{if(!options.preview&&dragTarget==='sword'&&spinRequested&&dragPointer===null)physics.rotateBy(dragTurn.setFromAxisAngle(spinAxis,dt*.07));physics.step(dt);shikai?.setPetalGlow(petalGlow);aura.update(effectPaused?0:dt,physics.draw);}if(shikai){const bankaiGlow=!!bankai?.glowing;bloom.enabled=shikai.visible||bankaiGlow;const pink=bankaiGlow?(bankai?.pinkGlow??0):shikai.pinkGlow;bloom.strength=glowStrength*THREE.MathUtils.lerp(.6,1,pink);bloom.radius=glowSpread*THREE.MathUtils.lerp(.7,1,pink);}if(isZangetsu)scabbard.userData.updateCloth(dt);updateShadowCache();moveCamera(dt);controls.update(dt);environment.updateView(camera,controls.target);updateReflectionPath();updateUpscaleBounds();composer.render(dt);meter.end();}
+function animate(now:number){frame=null;if(stopped||!active)return;frame=requestAnimationFrame(animate);const dt=lastFrameTime===null?0:Math.min((now-lastFrameTime)/1000,.1);lastFrameTime=now;if(document.hidden)return;meter.begin();if(bankai?.active){bankai.update(effectPaused?0:dt,effectSpeed,effectIntensity,petalGlow);}else{if(!options.preview&&dragTarget==='sword'&&spinRequested&&dragPointer===null)physics.rotateBy(dragTurn.setFromAxisAngle(spinAxis,dt*.07));physics.step(dt);shikai?.setPetalGlow(petalGlow);aura.update(effectPaused?0:dt,physics.draw);}if(shikai){const bankaiGlow=!!bankai?.glowing;bloom.enabled=shikai.visible||bankaiGlow;const pink=bankaiGlow?(bankai?.pinkGlow??0):shikai.pinkGlow;bloom.strength=glowStrength*THREE.MathUtils.lerp(.6,1,pink);bloom.radius=glowSpread*THREE.MathUtils.lerp(.7,1,pink);}if(isZangetsu)scabbard.userData.updateCloth(dt);updateShadowCache();syncBankaiCamera();moveCamera(dt);controls.update(dt);environment.updateView(camera,controls.target);updateReflectionPath();updateUpscaleBounds();composer.render(dt);meter.end();}
 function stopFrame(){if(frame!==null)cancelAnimationFrame(frame);frame=null;lastFrameTime=null;}
 function setActive(value:boolean){
  if(stopped||active===value)return;

@@ -1,3 +1,4 @@
+import {BANKAI_RELEASE_TIME} from './bankaiTiming';
 import * as THREE from 'three';
 import {createDarkAura,type AuraCapsule} from './effects/darkAura';
 import {FLOOR_Y} from './sceneDimensions';
@@ -24,7 +25,7 @@ export function createBankaiPresence(scene:THREE.Scene){
  const v=(x:number,y:number,z:number)=>new THREE.Vector3(x,y,z);
  const shape=(a:THREE.Vector3,b:THREE.Vector3,r:number,s=r):AuraCapsule=>({start:a,end:b,startRadius:r,endRadius:s});
  // Readable costume and pose cues, without anatomical limbs or surface detail.
- const releaseTip=v(.14,.73,.18),sleeveTip=v(.30,.43,.06);
+ const releaseTip=v(0,.73,.18),sleeveTip=v(-.30,.43,.06);
  const shapes=[
   shape(v(-.018,.88,0),v(-.055,1.00,-.01),.014,.003), // sparse rising trace, no closed head contour
   shape(v(-.095,.835,0),v(.095,.835,0),.029,.029), // high scarf/collar above the sloping shoulders
@@ -32,9 +33,9 @@ export function createBankaiPresence(scene:THREE.Scene){
   shape(v(0,.51,0),v(0,.12,0),.075,.155), // continuous full-length robe; no leg split or ghost tail
   shape(v(-.11,.79,-.025),v(-.17,.095,-.015),.036,.042), // haori edges retain the full character outline
   shape(v(.11,.79,-.025),v(.17,.095,-.035),.036,.042),
-  shape(v(.14,.80,0),sleeveTip,.070,.045), // one broad sleeve suggests the release pose
-  shape(v(.17,.70,.045),releaseTip,.040,.004), // independent flowing strand, not an articulated forearm
-  shape(v(-.14,.80,0),v(-.31,.40,.015),.070,.045), // opposite hanging sleeve
+  shape(v(-.14,.80,0),sleeveTip,.070,.045), // one broad sleeve suggests the release pose
+  shape(v(-.17,.70,.045),releaseTip,.040,.004), // independent flowing strand, not an articulated forearm
+  shape(v(.14,.80,0),v(.31,.40,.015),.070,.045), // opposite hanging sleeve
   shape(v(-.17,.13,0),v(-.24,.33,-.025),.035,.003), // flame tongues rise along the hem
   shape(v(-.06,.83,-.02),v(-.19,.76,-.08),.022,.002), // trailing scarf-like stroke
   shape(v(.17,.12,-.025),v(.24,.29,-.045),.035,.003),
@@ -53,15 +54,15 @@ export function createBankaiPresence(scene:THREE.Scene){
   update(time:number,gripWorld:THREE.Vector3,formationTime:number){
    // No release-triggered elbow/arm pose. Broad aura masses drift continuously.
    gripLocal.copy(gripWorld).applyMatrix4(inverse);
-   const release=THREE.MathUtils.smoothstep(time,.65,2.2);
-   sleeveTip.set(.30+Math.sin(time*.83)*.014,.43+Math.sin(time*.67+.4)*.016,.04+Math.sin(time*.61)*.012);
-   shapes[8].end.set(-.31+Math.sin(time*.71+1.3)*.014,.40+Math.sin(time*.89)*.018,.015);
+   const release=THREE.MathUtils.smoothstep(time,BANKAI_RELEASE_TIME,BANKAI_RELEASE_TIME+1.55);
+   sleeveTip.set(-.30+Math.sin(time*.83)*.014,.43+Math.sin(time*.67+.4)*.016,.04+Math.sin(time*.61)*.012);
+   shapes[8].end.set(.31+Math.sin(time*.71+1.3)*.014,.40+Math.sin(time*.89)*.018,.015);
    // After contact, the strand thins and rises away like smoke instead of lowering a hand.
-   releaseTip.copy(time<.65?gripLocal:held);
-   releaseTip.x+=release*(.025+Math.sin(time*1.3)*.025);
+   releaseTip.copy(time<BANKAI_RELEASE_TIME?gripLocal:held);
+   releaseTip.x-=release*(.025+Math.sin(time*1.3)*.025);
    releaseTip.y+=release*.18;
    releaseTip.z-=release*.045;
-   shapes[7].start.set(.17+Math.sin(time*.93+.7)*.015,.70+release*.055,.045);
+   shapes[7].start.set(-.17+Math.sin(time*.93+.7)*.015,.70+release*.055,.045);
    shapes[7].startRadius=THREE.MathUtils.lerp(.040,.009,release);
    shapes[7].endRadius=THREE.MathUtils.lerp(.004,.001,release);
    // A narrow drifting trace above the collar only suggests the head area.
@@ -77,7 +78,7 @@ export function createBankaiPresence(scene:THREE.Scene){
     const phase=i*1.73;
     flowing.start.x+=Math.sin(time*.91+phase)*.018;
     flowing.start.z+=Math.sin(time*.63+phase)*.012;
-    if(i!==7||time>=.65){
+    if(i!==7||time>=BANKAI_RELEASE_TIME){
      flowing.end.x+=Math.sin(time*1.07+phase+.8)*.025;
      flowing.end.y+=Math.sin(time*.79+phase)*.014;
     }

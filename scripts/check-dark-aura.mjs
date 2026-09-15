@@ -24,7 +24,7 @@ const scene=new THREE.Scene(),presence=createBankaiPresence(scene),grip=v(0,1,0)
 presence.configure({x:0,z:0},grip);
 const group=scene.children[0],mesh=group.children[0];
 const snapshot=()=>JSON.stringify({start:mesh.material.uniforms.shapeStart.value.map(x=>x.toArray()),end:mesh.material.uniforms.shapeEnd.value.map(x=>x.toArray()),time:mesh.material.uniforms.time.value,opacity:mesh.material.uniforms.opacity.value});
-presence.update(.5,grip,-3);
+presence.update(.1,grip,-3);
 const held=mesh.material.uniforms.shapeEnd.value[7];
 const actual=v(held.x,held.y,held.z).applyMatrix4(group.matrixWorld);
 assert.ok(actual.distanceTo(grip)<1e-8,'Release tendril must contact the actual sword grip');

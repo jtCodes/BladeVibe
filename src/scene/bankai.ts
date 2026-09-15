@@ -1,8 +1,9 @@
+import {BANKAI_RELEASE_TIME,BANKAI_SWORD_TIME_SCALE} from './bankaiTiming';
 import {bend} from './katanaGeometry';
 import {SENBONZAKURA_BLADE_LENGTH} from './senbonzakuraDimensions';
 import {createBankaiFormation} from './bankaiFormation';
 import {createBankaiPresence,BANKAI_PRESENCE_HEIGHT,BANKAI_PRESENCE_DEPTH} from './bankaiPresence';
-import {SENBONZAKURA_GRIP_TOP_Y,SENBONZAKURA_GRIP_BOTTOM_Y} from './senbonzakuraDimensions';
+import {SENBONZAKURA_GRIP_TOP_Y,SENBONZAKURA_GRIP_BOTTOM_Y,SENBONZAKURA_POMMEL_TIP_Y} from './senbonzakuraDimensions';
 import * as THREE from 'three';
 import {FLOOR_Y} from './swordPhysics';
 
@@ -70,22 +71,25 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
  const startPosition=new THREE.Vector3(),startRotation=new THREE.Quaternion();
  const savedPosition=new THREE.Vector3(),savedScale=new THREE.Vector3(1,1,1),formationOrigin=new THREE.Vector3();
  const cinematicScale=.3;
+ let cameraPullbackEnd=6.5,submersionDuration=4.5,formationDelay=5.1;
  const endPosition=new THREE.Vector3(),tip=bend(.095*.78,SENBONZAKURA_BLADE_LENGTH,0);
  // Align the straight handle axis vertically; the curved tip remains naturally offset.
  const downRotation=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1),Math.PI);
+ // Present the blunt spine toward the frontal camera; the cutting edge faces the figure.
+ downRotation.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),Math.PI/2));
  const pivot=new THREE.Vector3(0,1.5,0),center=new THREE.Vector3(),temp=new THREE.Vector3();
  let active=false,time=0,furthestTime=0,contactTime=0,fallDistance=0,fallDuration=1;
  let intensity=1,petalGlow=4,manualTimeline=false;
  const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
  function releasePose(position:THREE.Vector3,_rotation:THREE.Quaternion){
   // Stage the performer centrally inside the aisle; the sword shares that scale and depth.
-  const releasePosition=new THREE.Vector3(position.x+BANKAI_PRESENCE_HEIGHT*.14,
+  const releasePosition=new THREE.Vector3(position.x,
    waterY+BANKAI_PRESENCE_HEIGHT*.73+grip.y*cinematicScale,
    position.z-BANKAI_PRESENCE_DEPTH+BANKAI_PRESENCE_HEIGHT*.18);
   const releaseCenter=pivot.clone().multiplyScalar(cinematicScale).applyQuaternion(downRotation).add(releasePosition);
   const releaseTip=tip.clone().multiplyScalar(cinematicScale).applyQuaternion(downRotation).add(releasePosition);
-  const distance=Math.max(.1,releaseTip.y-waterY),duration=Math.sqrt(2*distance/9.8);
-  return {center:releaseCenter,position:releasePosition,distance,duration,contactTime:.65+duration};
+  const distance=Math.max(.1,releaseTip.y-waterY),duration=Math.sqrt(2*distance/9.8)/BANKAI_SWORD_TIME_SCALE;
+  return {center:releaseCenter,position:releasePosition,distance,duration,contactTime:BANKAI_RELEASE_TIME+duration};
  }
  function start(){
   active=true;time=0;furthestTime=0;manualTimeline=false;sword.visible=true;floor.geometry=rippleGeometry;floor.material=rippleMaterial;
@@ -95,6 +99,16 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
   center.copy(pose.center);endPosition.copy(pose.position);sword.scale.setScalar(cinematicScale);
   startPosition.copy(center).sub(temp.copy(pivot).multiply(sword.scale).applyQuaternion(startRotation));
   fallDistance=pose.distance;fallDuration=pose.duration;contactTime=pose.contactTime;
+  // Match the camera to the actual hilt sinking below the surface, not its visibility timer.
+  const sinkDepth=(SENBONZAKURA_BLADE_LENGTH-SENBONZAKURA_POMMEL_TIP_Y)*cinematicScale;
+  let low=0,high=3;
+  for(let i=0;i<24;i++){
+   const t=(low+high)/2,depth=2.7*t+(9.8*fallDuration*BANKAI_SWORD_TIME_SCALE-2.7)*(1-Math.exp(-3*t))/3;
+   if(depth<sinkDepth)low=t;else high=t;
+  }
+  submersionDuration=(low+high)/2/BANKAI_SWORD_TIME_SCALE;
+  formationDelay=submersionDuration+.6;
+  cameraPullbackEnd=contactTime+submersionDuration-.12;
   formation.start(formationOrigin.x,formationOrigin.z);
   gripWorld.copy(grip).multiply(sword.scale).applyQuaternion(downRotation).add(endPosition);
   presence.configure({x:formationOrigin.x,z:formationOrigin.z},gripWorld);
@@ -110,32 +124,32 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
  }
  // All phase state derives from one clock, so scrubbing never needs to replay the drop.
  function render(previousTime:number){
-   formation.update(time-contactTime-2.6,intensity,petalGlow);
+   formation.update(time-contactTime-formationDelay,intensity,petalGlow);
    uniforms.power.value=Math.min(2,Math.max(0,intensity));
    uniforms.age.value=time-contactTime;
    uniforms.reveal.value=THREE.MathUtils.smoothstep(time,.2,contactTime)*(1-THREE.MathUtils.smoothstep(time,contactTime+3,contactTime+5));
-   if(time<.65){
-    const turn=THREE.MathUtils.smoothstep(time,0,.65);
+   if(time<BANKAI_RELEASE_TIME){
+    const turn=THREE.MathUtils.smoothstep(time,0,BANKAI_RELEASE_TIME);
     sword.quaternion.slerpQuaternions(startRotation,downRotation,turn);
     sword.position.copy(center).sub(temp.copy(pivot).multiply(sword.scale).applyQuaternion(sword.quaternion));
    }else{
     sword.quaternion.copy(downRotation);sword.position.copy(endPosition);
-    const falling=Math.min(fallDuration,time-.65);
+    const falling=Math.min(fallDuration,time-BANKAI_RELEASE_TIME)*BANKAI_SWORD_TIME_SCALE;
     let depth=.5*9.8*falling*falling;
     if(time>=contactTime){
-     const t=Math.min(3,time-contactTime);
+     const t=Math.min(3,(time-contactTime)*BANKAI_SWORD_TIME_SCALE);
      // Water slows the fall continuously, then draws the entire hilt below the surface.
-     const entrySpeed=9.8*fallDuration;
+     const entrySpeed=9.8*fallDuration*BANKAI_SWORD_TIME_SCALE;
      depth=fallDistance+2.7*t+(entrySpeed-2.7)*(1-Math.exp(-3*t))/3;
     }
     sword.position.y-=depth;
    }
-   const visible=time<contactTime+2.9;
+   const visible=time<contactTime+submersionDuration+.1;
    if(sword.visible!==visible||(time!==previousTime&&Math.min(time,previousTime)<contactTime+5)){
     sword.userData.shadowRevision=(sword.userData.shadowRevision??0)+1;
    }
    sword.updateMatrixWorld(true);
-   presence.update(time,sword.localToWorld(gripWorld.copy(grip)),time-contactTime-2.6);
+   presence.update(time,sword.localToWorld(gripWorld.copy(grip)),time-contactTime-formationDelay);
    sword.visible=visible;furthestTime=Math.max(furthestTime,time);
  }
  async function warmup(renderFrame:()=>Promise<void>){
@@ -148,7 +162,7 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
   try{
    start();
    // Warm clipped drop, overlapping lights, complete rows, and released particles.
-   for(const sample of [0,contactTime+2.7,contactTime+2.6+4.5,contactTime+2.6+formation.duration]){
+   for(const sample of [0,contactTime+2.7,contactTime+formationDelay+4.5,contactTime+formationDelay+formation.duration]){
     const previous=time;time=sample;render(previous);await renderFrame();
    }
   }finally{
@@ -162,8 +176,8 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
    if(state.hadShadowRevision)sword.userData.shadowRevision=state.shadowRevision;else delete sword.userData.shadowRevision;
   }
  }
- return {get formationOrigin(){return {x:formationOrigin.x,z:formationOrigin.z};},get active(){return active;},get glowing(){return formation.glowing;},get pinkGlow(){return formation.pinkGlow;},
-  get time(){return time;},get cycleDuration(){return contactTime+2.6+formation.duration;},get duration(){return active?Math.max(contactTime+2.6+formation.duration,furthestTime):releasePose(sword.position,sword.quaternion).contactTime+2.6+formation.duration;},start,cancel,warmup,
+ return {get cameraPullbackEnd(){return cameraPullbackEnd;},get cameraFollowDrop(){return time<BANKAI_RELEASE_TIME?0:Math.max(0,endPosition.y-sword.position.y);},get formationOrigin(){return {x:formationOrigin.x,z:formationOrigin.z};},get active(){return active;},get glowing(){return formation.glowing;},get pinkGlow(){return formation.pinkGlow;},
+  get time(){return time;},get cycleDuration(){return contactTime+formationDelay+formation.duration;},get duration(){return active?Math.max(contactTime+formationDelay+formation.duration,furthestTime):releasePose(sword.position,sword.quaternion).contactTime+formationDelay+formation.duration;},start,cancel,warmup,
   setPetalMotion:formation.setPetalMotion,
   seek(seconds:number){
    if(!Number.isFinite(seconds))return;
