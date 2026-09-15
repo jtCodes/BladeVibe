@@ -1,19 +1,26 @@
-import {BANKAI_DISSOLVE_AT,BANKAI_RISE_END} from './sakuraLayout';
+import {BANKAI_DISSOLVE_AT,BANKAI_DISSOLVE_END,BANKAI_RISE_END} from './sakuraLayout';
 
 // The uncut reference releases first, sinks by ~3s, then says Bankai.
 export const BANKAI_RELEASE_TIME=.05;
 export const BANKAI_SWORD_CONTACT_TIME=1;
 export const BANKAI_SWORD_SUBMERGED_TIME=3;
-export const BANKAI_CAMERA_FOLLOW_END=1.7;
 
 // Keep the completed cage on screen before the final spoken name releases it.
 export const BANKAI_FORMATION_COMPLETE_TIME=9;
 export const BANKAI_FORMATION_START=BANKAI_FORMATION_COMPLETE_TIME-BANKAI_RISE_END;
-export const BANKAI_PETAL_RELEASE_TIME=12.9;
+export const BANKAI_CAMERA_FOLLOW_END=BANKAI_FORMATION_START;
+export const BANKAI_PETAL_RELEASE_TIME=13;
 export const BANKAI_PETAL_RUSH_TIME=21;
 export const BANKAI_CAGE_HOLD=BANKAI_PETAL_RELEASE_TIME-BANKAI_FORMATION_START-BANKAI_DISSOLVE_AT;
 export function bankaiFormationTime(elapsed:number){
- return elapsed<=BANKAI_RISE_END?elapsed:Math.max(BANKAI_RISE_END,elapsed-BANKAI_CAGE_HOLD);
+ const time=elapsed+BANKAI_FORMATION_START;
+ if(time<BANKAI_PETAL_RELEASE_TIME)return elapsed<=BANKAI_RISE_END?elapsed:Math.max(BANKAI_RISE_END,elapsed-BANKAI_CAGE_HOLD);
+ if(time>=BANKAI_PETAL_RUSH_TIME)return BANKAI_DISSOLVE_END+time-BANKAI_PETAL_RUSH_TIME;
+ // 45% of the authored breakup by 20s, then accelerate continuously through the rest.
+ const age=time-BANKAI_PETAL_RELEASE_TIME,slowRate=.45/7;
+ const fast=Math.max(0,age-7);
+ const progress=age<=7?age*slowRate:.45+slowRate*fast+(1-.45-slowRate)*fast*fast;
+ return BANKAI_DISSOLVE_AT+(BANKAI_DISSOLVE_END-BANKAI_DISSOLVE_AT)*progress;
 }
 
 /** Audio-clock motion: accelerating drop, then a continuous, decelerating sink. */

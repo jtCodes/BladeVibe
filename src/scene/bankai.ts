@@ -1,5 +1,5 @@
 import {BANKAI_AUDIO_DURATION} from '../bankaiVoiceCues';
-import {BANKAI_RELEASE_TIME,BANKAI_SWORD_CONTACT_TIME,BANKAI_SWORD_SUBMERGED_TIME,bankaiSwordDepth,BANKAI_FORMATION_START,BANKAI_CAGE_HOLD,bankaiFormationTime} from './bankaiTiming';
+import {BANKAI_RELEASE_TIME,BANKAI_SWORD_CONTACT_TIME,BANKAI_SWORD_SUBMERGED_TIME,bankaiSwordDepth,BANKAI_FORMATION_COMPLETE_TIME,BANKAI_FORMATION_START,BANKAI_CAGE_HOLD,bankaiFormationTime} from './bankaiTiming';
 import {bend} from './katanaGeometry';
 import {SENBONZAKURA_BLADE_LENGTH} from './senbonzakuraDimensions';
 import {createBankaiFormation} from './bankaiFormation';
@@ -124,7 +124,7 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
   fallDistance=pose.distance;fallDuration=pose.duration;contactTime=pose.contactTime;
   submersionDuration=BANKAI_SWORD_SUBMERGED_TIME-contactTime;
   formationDelay=Math.max(submersionDuration+.6,BANKAI_FORMATION_START-contactTime);
-  cameraPullbackEnd=contactTime+submersionDuration-.12;
+  cameraPullbackEnd=BANKAI_FORMATION_COMPLETE_TIME;
   formation.start(formationOrigin.x,formationOrigin.z);
   gripWorld.copy(grip).multiply(sword.scale).applyQuaternion(downRotation).add(endPosition);
   presence.configure({x:formationOrigin.x,z:formationOrigin.z},gripWorld);

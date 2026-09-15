@@ -42,7 +42,7 @@ export function createSakuraParticles(data:SakuraParticleData,clock:THREE.IUnifo
    }
   `+shader.vertexShader;
   shader.vertexShader=shader.vertexShader.replace('#include <beginnormal_vertex>',`#include <beginnormal_vertex>
-   float flight=max(0.,formationTime-petalRelease);
+   float flight=petalFlightAge(formationTime,petalRelease);
    vec3 angles=petalSpin*flight*mix(1.,2.4,petalStorm*smoothstep(0.,1.,petalRushAge))+vec3(petalPhase);
    angles+=petalWind*(sin(vec3(flight*.85,flight*1.1,flight*.7)+petalSpin)-sin(petalSpin))*.45;
    objectNormal=tumble(objectNormal,angles);
@@ -57,7 +57,7 @@ export function createSakuraParticles(data:SakuraParticleData,clock:THREE.IUnifo
    transformed=applyPetalStorm(petalOrigin,petalOrigin+drift,flight,petalPhase)+tumble(position*petalSize*birth,angles);
   `);
  };
- petalMaterial.customProgramCacheKey=()=> 'sakura-petals-motion-variants-v8';
+ petalMaterial.customProgramCacheKey=()=> 'sakura-petals-motion-variants-v9';
  const petals=new THREE.InstancedMesh(petalGeometry,petalMaterial,COUNT);petals.frustumCulled=false;petals.visible=false;
  // A separate fine layer gives depth between the larger, cupped petals.
  const DUST_COUNT=COUNT*2,{dustPositions,dustVelocity,dustRelease,dustPhase}=data;
@@ -69,7 +69,7 @@ export function createSakuraParticles(data:SakuraParticleData,clock:THREE.IUnifo
  const dustMaterial=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
   uniforms:{formationTime:clock,petalStorm,petalCamera,petalWind,petalRushAge},
   vertexShader:PETAL_STORM_GLSL+`uniform float formationTime;attribute vec3 drift;attribute float releaseAt;attribute float phase;varying float glow;
-   void main(){float age=max(0.,formationTime-releaseAt);
+   void main(){float age=petalFlightAge(formationTime,releaseAt);
     float coast=(1.-exp(-age*.46))/.2;
     vec3 p=position+drift*coast;
     p.x+=.45*(sin(age*.8+phase)-sin(phase));

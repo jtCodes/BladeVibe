@@ -78,7 +78,7 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
   const tensaActive=clothWrapped&&bankaiActive;
   const bankaiCinematic=bankaiActive&&!clothWrapped;
   const hasSheath=!tensaActive;
-  const [soundEnabled,setSoundEnabled]=useState(false);
+  const [soundEnabled,setSoundEnabled]=useState(true);
   const armBankaiVoice=useBankaiVoice(viewerScene,{active:active&&sword.model==='senbonzakura'&&bankaiActive,paused:effectPaused,speed:effectSpeed,enabled:soundEnabled,seekRequest:effectSeek});
 
 

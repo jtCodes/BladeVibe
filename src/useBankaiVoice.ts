@@ -3,7 +3,7 @@ import type {EffectSeekRequest,SwordScene} from './scene/createSwordScene';
 import voiceUrl from './assets/audio/senbonzakura-sequence.m4a?url';
 
 interface Options {active:boolean;paused:boolean;speed:number;enabled:boolean;seekRequest?:EffectSeekRequest}
-/** Audio is armed only by Play/Release, never by loading a link or scrubbing. */
+/** Attempt audible autoplay when enabled; Play and the sound toggle also unlock audio on a gesture. */
 export function useBankaiVoice(scene:RefObject<SwordScene|null>,{active,paused,speed,enabled,seekRequest}:Options){
  const lastSeek=useRef<EffectSeekRequest|undefined>(undefined);
  const context=useRef<AudioContext|null>(null),buffer=useRef<AudioBuffer|null>(null),loading=useRef<Promise<void>|null>(null);
@@ -28,6 +28,7 @@ export function useBankaiVoice(scene:RefObject<SwordScene|null>,{active,paused,s
   // Seeking is silent until the next explicit Play/Replay gesture.
   if(seekRequest!==lastSeek.current){if(seekRequest?.paused)armed.current=false;lastSeek.current=seekRequest;}
   if(!active||!enabled||paused||speed<=0)return;
+  arm();
   let sourceOffset=0,sourceStarted=0,timer:number|undefined;
   const sync=()=>{
    const ctx=context.current,clip=buffer.current,time=scene.current?.getEffectTimeline('bankai')?.time;
@@ -42,6 +43,6 @@ export function useBankaiVoice(scene:RefObject<SwordScene|null>,{active,paused,s
   };
   timer=window.setInterval(sync,50);sync();
   return()=>{window.clearInterval(timer);stop();};
- },[active,paused,speed,enabled,seekRequest,scene,stop]);
+ },[active,paused,speed,enabled,seekRequest,scene,stop,arm]);
  return arm;
 }

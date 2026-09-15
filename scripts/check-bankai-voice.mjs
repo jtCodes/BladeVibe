@@ -25,3 +25,7 @@ for(const distance of [.1,.5,1]){
  for(let t=0;t<5;t+=.01){const depth=bankaiSwordDepth(t,distance,sink);assert.ok(depth>=last-1e-10,'Drop and sink never reverse');last=depth;}
 }
 console.log('Sword sound sync: first-second drop, complete submersion at 3s, monotonic motion passed.');
+const {BANKAI_DISSOLVE_END:end}=loadSource('src/scene/sakuraLayout.ts');
+assert.ok(Math.abs(bankaiFormationTime(21-start)-end)<1e-8,'All blades dissolve at 21s');
+assert.ok(bankaiFormationTime(20-start)<end,'Blades remain at 20s');
+assert.ok(bankaiFormationTime(20.9-start)-bankaiFormationTime(20.8-start)>bankaiFormationTime(19.9-start)-bankaiFormationTime(19.8-start),'Breakup accelerates after 20s');

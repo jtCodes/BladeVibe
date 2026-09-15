@@ -15,7 +15,7 @@ export function getBankaiCameraView(origin:{x:number;z:number},aspect:number,fov
  return {camera:[origin.x,y,z],target:[origin.x,y+Math.tan(pitch)*24,z-24]};
 }
 
-/** Timeline-driven dolly: hold the figure close, then arrive at the aisle before submersion. */
+/** Timeline-driven dolly: hold the figure close, then reveal the aisle as the cage rises. */
 export function getBankaiOpeningView(origin:{x:number;z:number},aspect:number,fov:number,time:number,pullbackEnd:number,followDrop=0):Pick<SwordViewState,'camera'|'target'> {
  const wide=getBankaiCameraView(origin,aspect,fov);
  const t=Math.max(0,Math.min(1,(time-BANKAI_CAMERA_FOLLOW_END)/Math.max(.1,pullbackEnd-BANKAI_CAMERA_FOLLOW_END)));

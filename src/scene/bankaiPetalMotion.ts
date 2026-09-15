@@ -1,3 +1,4 @@
+import {BANKAI_DISSOLVE_AT,BANKAI_DISSOLVE_END} from './sakuraLayout';
 import {MathUtils} from 'three';
 import {BANKAI_PETAL_RUSH_TIME} from './bankaiTiming';
 export type BankaiPetalMotion='drift'|'storm';
@@ -13,6 +14,14 @@ export const PETAL_STORM_GLSL=`
  uniform float petalWind;
  uniform float petalRushAge;
  uniform vec3 petalCamera;
+ float petalFlightAge(float clock,float release){
+  if(petalWind<.5)return max(0.,clock-release);
+  // Invert the breakup curve so released petals drift in real seconds, not slow motion.
+  float p=clamp((release-${BANKAI_DISSOLVE_AT})/${BANKAI_DISSOLVE_END-BANKAI_DISSOLVE_AT},0.,1.);
+  float rate=.45/7.,acceleration=1.-.45-rate;
+  float birth=p<=.45?p/rate:7.+(-rate+sqrt(rate*rate+4.*acceleration*(p-.45)))/(2.*acceleration);
+  return max(0.,petalRushAge+${BANKAI_PETAL_RUSH_TIME.toFixed(1)}-13.-birth);
+ }
  vec3 petalRandom(vec3 p){
   p=fract(p*vec3(.1031,.1030,.0973));
   p+=dot(p,p.yxz+33.33);
