@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {RectAreaLightUniformsLib} from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import {createStudioEnvironment} from './studio';
+import {FLOOR_Y} from './sceneDimensions';
 
 import {DEFAULT_LIGHTING,normalizeLightingSettings,type LightingSettings} from './lightingSettings';
 export {DEFAULT_LIGHTING,type LightingSettings} from './lightingSettings';
@@ -25,6 +26,7 @@ export function createSceneEnvironment(scene:THREE.Scene,renderer:THREE.WebGLRen
  const cameraRims=preset.cameraFill?.rimIntensity?[new THREE.RectAreaLight(preset.cameraFill.rimColors?.[0]??0xffffff,preset.cameraFill.rimIntensity,preset.cameraFill.rimWidth??2,12),new THREE.RectAreaLight(preset.cameraFill.rimColors?.[1]??0xffffff,preset.cameraFill.rimIntensity*.7,preset.cameraFill.rimWidth??2,12)]:[];
  if(cameraRims.length){RectAreaLightUniformsLib.init();scene.add(...cameraRims);}
  const viewRotation=new THREE.Quaternion();
+ const rimUp=new THREE.Vector3(),rimRight=new THREE.Vector3(),rimCorner=new THREE.Vector3(),screenRight=new THREE.Vector3();
 
  const lights=preset.lights.map(spec=>{
   const light=spec.kind==='area'?new THREE.RectAreaLight(spec.color,spec.intensity,...(spec.size??[1,1])):new THREE.DirectionalLight(spec.color,spec.intensity);
@@ -62,6 +64,23 @@ export function createSceneEnvironment(scene:THREE.Scene,renderer:THREE.WebGLRen
    // Broad strips stay beside and just behind the subject in the current view.
    light.position.set(i?-5:5,1,-2).applyQuaternion(viewRotation).add(target);
    light.lookAt(target);
+   // Keep the entire emitter above the floor. A strip crossing the surface creates
+   // a sharp colored wedge at grazing views, even though the floor itself is flat.
+   rimUp.set(0,1,0).applyQuaternion(light.quaternion);
+   rimRight.set(1,0,0).applyQuaternion(light.quaternion);
+   const verticalExtent=Math.abs(rimUp.y)*light.height*.5+Math.abs(rimRight.y)*light.width*.5;
+   light.position.y=Math.max(light.position.y,FLOOR_Y+.3+verticalExtent);
+   if(camera instanceof THREE.PerspectiveCamera){
+    // Place every panel corner beyond the side of the current frustum, with overscan.
+    const side=i?-1:1,tanHalfWidth=Math.tan(THREE.MathUtils.degToRad(camera.getEffectiveFOV()/2))*camera.aspect;
+    let outward=0;
+    for(const x of [-1,1])for(const y of [-1,1]){
+     rimCorner.copy(light.position).addScaledVector(rimRight,x*light.width*.5).addScaledVector(rimUp,y*light.height*.5).applyMatrix4(camera.matrixWorldInverse);
+     outward=Math.max(outward,Math.max(0,-rimCorner.z)*tanHalfWidth*1.15-side*rimCorner.x+1.);
+    }
+    screenRight.set(1,0,0).applyQuaternion(viewRotation);
+    light.position.addScaledVector(screenRight,side*outward);
+   }
   });
  }
  return {update,updateView,dispose(){

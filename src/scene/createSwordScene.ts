@@ -1,3 +1,4 @@
+import {constrainCameraToFloor} from './cameraFloor';
 import {CopyShader} from 'three/addons/shaders/CopyShader.js';
 import {createProjectedSceneBounds} from './projectedSceneBounds';
 import {swordDisplayCenter,centeredSwordView} from './swordFraming';
@@ -105,6 +106,14 @@ function moveCamera(dt:number){
  cameraStep.copy(cameraRight).multiplyScalar(x).addScaledVector(cameraUp,y).normalize().multiplyScalar(camera.position.distanceTo(controls.target)*.35*dt);
  camera.position.add(cameraStep);controls.target.add(cameraStep);
 }
+// OrbitControls emits changes for pointer orbit, pan, dolly, and damping.
+function enforceCameraFloor(){
+ if(constrainCameraToFloor(camera.position,controls.target)){
+  camera.lookAt(controls.target);camera.updateMatrixWorld();
+ }
+}
+controls.addEventListener('change',enforceCameraFloor);
+cleanups.push(()=>controls.removeEventListener('change',enforceCameraFloor));
 controls.enabled=active&&!options.preview;
 // OrbitControls owns pointer capture during a camera gesture. End that gesture
 // through its normal cancel handler before hiding the retained canvas.
@@ -339,6 +348,7 @@ function update(settings: ViewerSettings){
  controls.autoRotate=settings.rotating&&settings.effect!=='bankai'&&(options.preview||dragTarget==='camera');
  if(!options.preview&&!showSheath&&settings.effect!=='shikai'&&settings.effect!=='bankai'&&(firstSettings||sheathChanged||(view&&'reset' in view))&&(!view||'reset' in view)){physics.restore();centerDefaultSwordView();}
  if(view&&!('reset' in view)){bankaiCameraAuto=false;applyCameraView(view);}
+ enforceCameraFloor();
 }
 function centerDefaultSwordView(){
  sword.updateWorldMatrix(true,false);
@@ -350,6 +360,7 @@ function applyCameraView(view:Pick<SwordViewState,'camera'|'target'>){
  const damping=controls.enableDamping,autoRotate=controls.autoRotate;
  controls.enableDamping=false;controls.autoRotate=false;controls.update(0);
  camera.position.fromArray(view.camera);controls.target.fromArray(view.target);
+ enforceCameraFloor();
  controls.maxDistance=Math.max(34,camera.position.distanceTo(controls.target));controls.update(0);
  controls.enableDamping=damping;controls.autoRotate=autoRotate;
 }
@@ -393,7 +404,7 @@ active=options.active??true;controls.enabled=active&&!options.preview;
 const observer=new ResizeObserver(resize);cleanups.push(()=>observer.disconnect());
 if(active){observer.observe(container);resize();}reset();
 let frame:number|null=null,lastFrameTime:number|null=null,stopped=false;
-function animate(now:number){frame=null;if(stopped||!active)return;frame=requestAnimationFrame(animate);const dt=lastFrameTime===null?0:Math.min((now-lastFrameTime)/1000,.1);lastFrameTime=now;if(document.hidden)return;meter.begin();if(bankai?.active){bankai.update(effectPaused?0:dt,effectSpeed,effectIntensity,petalGlow);}else{if(!options.preview&&dragTarget==='sword'&&spinRequested&&dragPointer===null)physics.rotateBy(dragTurn.setFromAxisAngle(spinAxis,dt*.07));physics.step(dt);shikai?.setPetalGlow(petalGlow);aura.update(effectPaused?0:dt,physics.draw);}if(shikai){const bankaiGlow=!!bankai?.glowing;bloom.enabled=shikai.visible||bankaiGlow;const pink=bankaiGlow?(bankai?.pinkGlow??0):shikai.pinkGlow;bloom.strength=glowStrength*THREE.MathUtils.lerp(.6,1,pink);bloom.radius=glowSpread*THREE.MathUtils.lerp(.7,1,pink);}if(isZangetsu)scabbard.userData.updateCloth(dt);updateShadowCache();syncBankaiCamera();moveCamera(dt);controls.update(dt);environment.updateView(camera,controls.target);updateReflectionPath();updateUpscaleBounds();composer.render(dt);meter.end();}
+function animate(now:number){frame=null;if(stopped||!active)return;frame=requestAnimationFrame(animate);const dt=lastFrameTime===null?0:Math.min((now-lastFrameTime)/1000,.1);lastFrameTime=now;if(document.hidden)return;meter.begin();if(bankai?.active){bankai.update(effectPaused?0:dt,effectSpeed,effectIntensity,petalGlow);}else{if(!options.preview&&dragTarget==='sword'&&spinRequested&&dragPointer===null)physics.rotateBy(dragTurn.setFromAxisAngle(spinAxis,dt*.07));physics.step(dt);shikai?.setPetalGlow(petalGlow);aura.update(effectPaused?0:dt,physics.draw);}if(shikai){const bankaiGlow=!!bankai?.glowing;bloom.enabled=shikai.visible||bankaiGlow;const pink=bankaiGlow?(bankai?.pinkGlow??0):shikai.pinkGlow;bloom.strength=glowStrength*THREE.MathUtils.lerp(.6,1,pink);bloom.radius=glowSpread*THREE.MathUtils.lerp(.7,1,pink);}if(isZangetsu)scabbard.userData.updateCloth(dt);updateShadowCache();syncBankaiCamera();moveCamera(dt);controls.update(dt);enforceCameraFloor();environment.updateView(camera,controls.target);updateReflectionPath();updateUpscaleBounds();composer.render(dt);meter.end();}
 function stopFrame(){if(frame!==null)cancelAnimationFrame(frame);frame=null;lastFrameTime=null;}
 function setActive(value:boolean){
  if(stopped||active===value)return;
