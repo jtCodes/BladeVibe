@@ -8,7 +8,7 @@ export const BANKAI_PRESENCE_HEIGHT=3.3,BANKAI_PRESENCE_DEPTH=10;
 /** Bankai staging only. The aura renderer remains independent of this choreography. */
 export function createBankaiPresence(scene:THREE.Scene){
  const aura=createDarkAura(73);aura.group.name='Bankai shadow presence';scene.add(aura.group);
- aura.setStyle({density:85,turbulence:.10,edgeBrightness:.20,speed:.30,breakup:.90});
+ aura.setStyle({density:95,turbulence:.10,edgeBrightness:.20,speed:.30,breakup:.84});
  // Outer contour traced from the supplied raised-sword reference (640 × 480).
  // This guides the flames only: no character artwork or interior features are rendered.
  const contour=[
