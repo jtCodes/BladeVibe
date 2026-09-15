@@ -75,7 +75,7 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
  const endPosition=new THREE.Vector3(),tip=bend(.095*.78,SENBONZAKURA_BLADE_LENGTH,0);
  // Align the straight handle axis vertically; the curved tip remains naturally offset.
  const downRotation=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1),Math.PI);
- // Present the blunt spine toward the frontal camera; the cutting edge faces the figure.
+ // Local +X is the dark back of the blade; point it toward the camera at world +Z.
  downRotation.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),Math.PI/2));
  const pivot=new THREE.Vector3(0,1.5,0),center=new THREE.Vector3(),temp=new THREE.Vector3();
  let active=false,time=0,furthestTime=0,contactTime=0,fallDistance=0,fallDuration=1;
@@ -97,6 +97,7 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
   startPosition.copy(sword.position);startRotation.copy(sword.quaternion);
   const pose=releasePose(startPosition,startRotation);
   center.copy(pose.center);endPosition.copy(pose.position);sword.scale.setScalar(cinematicScale);
+  sword.quaternion.copy(downRotation);sword.position.copy(endPosition);
   startPosition.copy(center).sub(temp.copy(pivot).multiply(sword.scale).applyQuaternion(startRotation));
   fallDistance=pose.distance;fallDuration=pose.duration;contactTime=pose.contactTime;
   // Match the camera to the actual hilt sinking below the surface, not its visibility timer.
@@ -129,9 +130,8 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
    uniforms.age.value=time-contactTime;
    uniforms.reveal.value=THREE.MathUtils.smoothstep(time,.2,contactTime)*(1-THREE.MathUtils.smoothstep(time,contactTime+3,contactTime+5));
    if(time<BANKAI_RELEASE_TIME){
-    const turn=THREE.MathUtils.smoothstep(time,0,BANKAI_RELEASE_TIME);
-    sword.quaternion.slerpQuaternions(startRotation,downRotation,turn);
-    sword.position.copy(center).sub(temp.copy(pivot).multiply(sword.scale).applyQuaternion(sword.quaternion));
+    // The held pose must already show the chosen blade side, including paused frame zero.
+    sword.quaternion.copy(downRotation);sword.position.copy(endPosition);
    }else{
     sword.quaternion.copy(downRotation);sword.position.copy(endPosition);
     const falling=Math.min(fallDuration,time-BANKAI_RELEASE_TIME)*BANKAI_SWORD_TIME_SCALE;
