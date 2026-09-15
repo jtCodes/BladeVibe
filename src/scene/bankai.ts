@@ -142,7 +142,7 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
  function render(previousTime:number){
    const elapsed=time-contactTime-formationDelay;
    const formationTime=bankaiFormationTime(elapsed);
-   formation.update(formationTime,intensity,petalGlow);
+   formation.update(formationTime,intensity,petalGlow,time);
    uniforms.power.value=Math.min(2,Math.max(0,intensity));
    uniforms.age.value=time-contactTime;
    uniforms.reveal.value=THREE.MathUtils.smoothstep(time,.2,contactTime)*(1-THREE.MathUtils.smoothstep(time,contactTime+3,contactTime+5));
