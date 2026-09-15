@@ -8,7 +8,7 @@ const root=fileURLToPath(new URL('../',import.meta.url));
 const source=name=>loadSource(path.join(root,`src/scene/${name}.ts`));
 const {createKatanaBladeGeometry}=source('katanaGeometry');
 const {createSakuraRandom,createSakuraSurfaceSampler}=source('sakuraPetals');
-const {petalBreakup}=source('petalBreakup');
+const {petalBreakup,bankaiPetalBreakup}=source('petalBreakup');
 const {SAKURA_COUNTS,SAKURA_FIELDS}=source('sakuraParticleData');
 const {FLOOR_Y}=source('sceneDimensions');
 const {SHIKAI_HEIGHT,SHIKAI_DISSOLVE_AT,SHIKAI_DISSOLVE_DURATION,BANKAI_HEIGHT,BANKAI_BLADES,BANKAI_DISSOLVE_AT,BANKAI_DISSOLVE_DURATION,createBankaiRows}=source('sakuraLayout');
@@ -27,7 +27,7 @@ for(const kind of Object.keys(SAKURA_COUNTS)){
  for(let i=0;i<count;i++){
   let p=sampleSurface();while(p.y<=0)p=sampleSurface();
   const row=placement[i%BANKAI_BLADES];
-  const threshold=THREE.MathUtils.clamp(1-p.y/(bankai?BANKAI_HEIGHT:SHIKAI_HEIGHT)+petalBreakup(p.x,p.y,bankai?row.delay:0),.003,.997);
+  const threshold=THREE.MathUtils.clamp(1-p.y/(bankai?BANKAI_HEIGHT:SHIKAI_HEIGHT)+(bankai?bankaiPetalBreakup(p.x,p.y,dissolveDelays[i%BANKAI_BLADES]):petalBreakup(p.x,p.y,0)),.003,.997);
   if(bankai){const y=p.y,mirror=-row.side;p.x*=mirror;p.z*=mirror;origins.set([row.side*4.3+p.x,FLOOR_Y+y,row.z+p.z],i*3);}
   else origins.set([p.x,p.y,p.z],i*3);
   const angle=random()*Math.PI*2,launch=.7+random()*2;

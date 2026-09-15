@@ -44,7 +44,7 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
   shader.fragmentShader=(shader.fragmentShader.includes('float petalPermute(')?'':PETAL_BREAKUP_GLSL)+'varying float groundHeight;uniform float formationPower;varying float bladeWidth;uniform float formationTime;varying float dissolveDelay;varying float bladeHeight;varying float rowDelay;varying vec3 breakupPoint;\n'+shader.fragmentShader;
   shader.fragmentShader=shader.fragmentShader.replace('#include <clipping_planes_fragment>',`#include <clipping_planes_fragment>
    float dissolve=clamp((formationTime-${DISSOLVE_AT}-dissolveDelay)/${DISSOLVE_DURATION},0.,1.);
-   float breakupNoise=petalBreakup(breakupPoint.xy,rowDelay);
+   float breakupNoise=bankaiPetalBreakup(breakupPoint.xy,dissolveDelay);
    float threshold=clamp(1.-bladeHeight+breakupNoise,.003,.997);
    if(dissolve>=threshold)discard;
    float glowDistance=(threshold-dissolve)*5.02;
@@ -64,10 +64,10 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
   `);
   shader.fragmentShader=shader.fragmentShader.replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
    // Bright edges surround a shaded steel center, rather than bleaching the full face.
-   totalEmissiveRadiance+=sakuraBladeEmission(bladeWidth,colorShift,riseLight,glowDistance,dissolve,pink)*formationPower*rootBlend;
+   totalEmissiveRadiance+=sakuraBladeEmission(bladeWidth,colorShift,riseLight,glowDistance,dissolve,pink)*formationPower*rootBlend*mix(1.,.65,smoothstep(0.,.18,dissolve));
   `);
  };
- material.customProgramCacheKey=()=>baseKey+'-bankai-progress-glow-v18';
+ material.customProgramCacheKey=()=>baseKey+'-bankai-progress-glow-v20';
  }
  const blades=new THREE.InstancedMesh(geometry,materials,BLADES);blades.frustumCulled=false;
  blades.instanceMatrix.setUsage(THREE.DynamicDrawUsage);group.add(blades);

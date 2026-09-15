@@ -12,6 +12,10 @@ export function petalBreakup(x:number,y:number,delay:number){
  const qx=x*7+delay*43,qy=y*5+delay*17;
  return .055*(noise(qx,qy)-.5)+.025*(noise(qx*2.07+31,qy*2.07+17)-.5);
 }
+// Larger irregular losses for the giant blades, kept identical in the asset bake and shader.
+export function bankaiPetalBreakup(x:number,y:number,delay:number){
+ return petalBreakup(x,y,delay)+.08*(noise(x*1.1+delay*19,y*.65+delay*29)-.5);
+}
 export const PETAL_BREAKUP_GLSL=`
  float petalPermute(float x){x=mod(x,289.);return mod((x*34.+1.)*x,289.);}
  float petalHash(vec2 p){return petalPermute(petalPermute(p.x)+p.y)/289.;}
@@ -22,5 +26,8 @@ export const PETAL_BREAKUP_GLSL=`
  float petalBreakup(vec2 p,float delay){
   vec2 q=p*vec2(7.,5.)+delay*vec2(43.,17.);
   return .055*(petalNoise(q)-.5)+.025*(petalNoise(q*2.07+vec2(31.,17.))-.5);
+ }
+ float bankaiPetalBreakup(vec2 p,float delay){
+  return petalBreakup(p,delay)+.08*(petalNoise(p*vec2(1.1,.65)+delay*vec2(19.,29.))-.5);
  }
 `;
