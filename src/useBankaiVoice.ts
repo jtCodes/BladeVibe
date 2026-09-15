@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useRef,type RefObject} from 'react';
 import type {EffectSeekRequest,SwordScene} from './scene/createSwordScene';
-import voiceUrl from './assets/audio/senbonzakura-release.wav?url';
+import voiceUrl from './assets/audio/senbonzakura-sequence.m4a?url';
 
 interface Options {active:boolean;paused:boolean;speed:number;enabled:boolean;seekRequest?:EffectSeekRequest}
 /** Audio is armed only by Play/Release, never by loading a link or scrubbing. */
@@ -9,8 +9,8 @@ export function useBankaiVoice(scene:RefObject<SwordScene|null>,{active,paused,s
  const context=useRef<AudioContext|null>(null),buffer=useRef<AudioBuffer|null>(null),loading=useRef<Promise<void>|null>(null);
  const source=useRef<AudioBufferSourceNode|null>(null),armed=useRef(false),disposed=useRef(false);
  const stop=useCallback(()=>{source.current?.stop();source.current?.disconnect();source.current=null;},[]);
- const arm=useCallback(()=>{
-  if(!enabled||typeof AudioContext==='undefined')return;
+ const arm=useCallback((enableFromGesture=false)=>{
+  if((!enabled&&!enableFromGesture)||typeof AudioContext==='undefined')return;
   armed.current=true;
   const ctx=context.current??=new AudioContext();
   // Resume synchronously from the user's click, including Safari's audio gesture gate.
@@ -32,7 +32,7 @@ export function useBankaiVoice(scene:RefObject<SwordScene|null>,{active,paused,s
   const sync=()=>{
    const ctx=context.current,clip=buffer.current,time=scene.current?.getEffectTimeline('bankai')?.time;
    if(document.hidden||!armed.current||!ctx||ctx.state!=='running'||!clip||time===undefined){stop();return;}
-   if(time>=clip.duration){stop();if(timer!==undefined)window.clearInterval(timer);return;}
+   if(time>=clip.duration){stop();return;}
    const expected=sourceOffset+(ctx.currentTime-sourceStarted)*speed;
    if(source.current&&Math.abs(expected-time)<.15)return;
    stop();const node=ctx.createBufferSource();node.buffer=clip;node.playbackRate.value=speed;

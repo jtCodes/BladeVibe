@@ -78,7 +78,8 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
   const tensaActive=clothWrapped&&bankaiActive;
   const bankaiCinematic=bankaiActive&&!clothWrapped;
   const hasSheath=!tensaActive;
-  const armBankaiVoice=useBankaiVoice(viewerScene,{active:active&&sword.model==='senbonzakura'&&bankaiActive,paused:effectPaused,speed:effectSpeed,enabled:false,seekRequest:effectSeek});
+  const [soundEnabled,setSoundEnabled]=useState(false);
+  const armBankaiVoice=useBankaiVoice(viewerScene,{active:active&&sword.model==='senbonzakura'&&bankaiActive,paused:effectPaused,speed:effectSpeed,enabled:soundEnabled,seekRequest:effectSeek});
 
 
   // Dedicated form pages repeat; paused shared moments and editor inspection stay still.
@@ -180,7 +181,7 @@ export default function SwordEditor({sword,active=true,editing=true,shareHash=''
     </SceneHeader>
     <div className="experience-body">
       {!editing&&<SceneOverlay title={sword.name}>
-        <SwordReplayControls sword={sword} sceneRef={viewerScene} visible={active} effect={effect} selected={timelineEffect} paused={effectPaused} speed={effectSpeed} intensity={effectIntensity} onSelect={play} onResetView={resetSwordView} onReplay={()=>play()} onPause={togglePlayback} onSeek={time=>inspectEffect(time,true)} onOriginal={originalForm} options={<SceneOptions>
+        <SwordReplayControls sword={sword} sceneRef={viewerScene} visible={active} effect={effect} selected={timelineEffect} paused={effectPaused} speed={effectSpeed} intensity={effectIntensity} onSelect={play} onResetView={resetSwordView} onReplay={()=>play()} onPause={togglePlayback} onSeek={time=>inspectEffect(time,true)} onOriginal={originalForm} soundControl={sword.model==='senbonzakura'&&bankaiActive?<IconButton icon={soundEnabled?'sound':'muted'} label={soundEnabled?'Mute audio':'Enable audio'} aria-pressed={soundEnabled} onClick={()=>{if(!soundEnabled)armBankaiVoice(true);setSoundEnabled(!soundEnabled);}}/>:undefined} options={<SceneOptions>
           {sword.model==='longsword'&&<SwordEffectSelect compact value={effect} onChange={selectSwordEffect}/>}
           {sword.model==='senbonzakura'&&bankaiActive&&<BankaiVariantSelect compact value={bankaiPetalMotion} onChange={setBankaiPetalMotion}/>}
           {hasSheath&&!bankaiCinematic&&effect!=='shikai'&&<><SwordSheathToggle compact visible={showSheath} onChange={changeSheathVisibility} wrapping={clothWrapped}/><SwordDrawSlider compact value={draw} onChange={changeDraw} disabled={!showSheath||dropped} wrapping={clothWrapped}/></>}

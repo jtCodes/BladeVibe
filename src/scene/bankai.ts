@@ -1,4 +1,5 @@
-import {BANKAI_RELEASE_TIME,BANKAI_SWORD_TIME_SCALE} from './bankaiTiming';
+import {BANKAI_AUDIO_DURATION} from '../bankaiVoiceCues';
+import {BANKAI_RELEASE_TIME,BANKAI_SWORD_TIME_SCALE,BANKAI_FORMATION_START,BANKAI_CAGE_HOLD,bankaiFormationTime} from './bankaiTiming';
 import {bend} from './katanaGeometry';
 import {SENBONZAKURA_BLADE_LENGTH} from './senbonzakuraDimensions';
 import {createBankaiFormation} from './bankaiFormation';
@@ -129,7 +130,7 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
    if(depth<sinkDepth)low=t;else high=t;
   }
   submersionDuration=(low+high)/2/BANKAI_SWORD_TIME_SCALE;
-  formationDelay=submersionDuration+.6;
+  formationDelay=Math.max(submersionDuration+.6,BANKAI_FORMATION_START-contactTime);
   cameraPullbackEnd=contactTime+submersionDuration-.12;
   formation.start(formationOrigin.x,formationOrigin.z);
   gripWorld.copy(grip).multiply(sword.scale).applyQuaternion(downRotation).add(endPosition);
@@ -146,7 +147,9 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
  }
  // All phase state derives from one clock, so scrubbing never needs to replay the drop.
  function render(previousTime:number){
-   formation.update(time-contactTime-formationDelay,intensity,petalGlow);
+   const elapsed=time-contactTime-formationDelay;
+   const formationTime=bankaiFormationTime(elapsed);
+   formation.update(formationTime,intensity,petalGlow);
    uniforms.power.value=Math.min(2,Math.max(0,intensity));
    uniforms.age.value=time-contactTime;
    uniforms.reveal.value=THREE.MathUtils.smoothstep(time,.2,contactTime)*(1-THREE.MathUtils.smoothstep(time,contactTime+3,contactTime+5));
@@ -170,7 +173,7 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
     sword.userData.shadowRevision=(sword.userData.shadowRevision??0)+1;
    }
    sword.updateMatrixWorld(true);
-   presence.update(time,sword.localToWorld(gripWorld.copy(grip)),time-contactTime-formationDelay);
+   presence.update(time,sword.localToWorld(gripWorld.copy(grip)),formationTime);
    sword.visible=visible;furthestTime=Math.max(furthestTime,time);
  }
  async function warmup(renderFrame:()=>Promise<void>){
@@ -183,7 +186,7 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
   try{
    start();
    // Warm clipped drop, overlapping lights, complete rows, and released particles.
-   for(const sample of [0,contactTime+2.7,contactTime+formationDelay+4.5,contactTime+formationDelay+formation.duration]){
+   for(const sample of [0,contactTime+2.7,contactTime+formationDelay+4.5,contactTime+formationDelay+formation.duration+BANKAI_CAGE_HOLD]){
     const previous=time;time=sample;render(previous);await renderFrame();
    }
   }finally{
@@ -198,7 +201,7 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
   }
  }
  return {get cameraPullbackEnd(){return cameraPullbackEnd;},get cameraFollowDrop(){return time<BANKAI_RELEASE_TIME?0:Math.max(0,endPosition.y-sword.position.y);},get formationOrigin(){return {x:formationOrigin.x,z:formationOrigin.z};},get active(){return active;},get glowing(){return formation.glowing;},get pinkGlow(){return formation.pinkGlow;},
-  get time(){return time;},get cycleDuration(){return contactTime+formationDelay+formation.duration;},get duration(){return active?Math.max(contactTime+formationDelay+formation.duration,furthestTime):releasePose(sword.position,sword.quaternion).contactTime+formationDelay+formation.duration;},start,cancel,warmup,
+  get time(){return time;},get cycleDuration(){return Math.max(BANKAI_AUDIO_DURATION,contactTime+formationDelay+formation.duration+BANKAI_CAGE_HOLD);},get duration(){return active?Math.max(BANKAI_AUDIO_DURATION,contactTime+formationDelay+formation.duration+BANKAI_CAGE_HOLD,furthestTime):Math.max(BANKAI_AUDIO_DURATION,releasePose(sword.position,sword.quaternion).contactTime+formationDelay+formation.duration+BANKAI_CAGE_HOLD);},start,cancel,warmup,
   setPetalMotion:formation.setPetalMotion,
   seek(seconds:number){
    if(!Number.isFinite(seconds))return;
