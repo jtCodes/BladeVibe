@@ -96,7 +96,7 @@ export function createDarkAura(seed=1){
     float visibility=mix(1.,islands*gaps,breakup);
     float warped=distanceToShape+(n-.5)*turbulence+(drift-.5)*breakup*.07;
     // Stretched rising noise tears the rim into tongues instead of tracing a clean line.
-    float width=max(mix(.005,.018,n),fwidth(distanceToShape)*1.2);
+    float width=max(mix(.007,.024,n),fwidth(distanceToShape)*1.2);
     float contour=exp(-abs(warped)/width)*smoothstep(.24,.58,n);
     float wisps=exp(-abs(warped-.032)/.027)*smoothstep(.40,.75,n);
     // Fade in only on the outside of the silhouette; no interior flame sources.
