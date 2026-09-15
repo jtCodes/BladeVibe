@@ -1,3 +1,4 @@
+import {createAuraOutlineField} from './auraOutlineField';
 import * as THREE from 'three';
 
 /** Positions/radii are in the aura group's local space. Shapes may be posed each frame. */
@@ -10,7 +11,10 @@ export function createDarkAura(seed=1){
  const group=new THREE.Group();group.name='Dark aura silhouette';
  const starts=Array.from({length:MAX_SHAPES},()=>new THREE.Vector4());
  const ends=Array.from({length:MAX_SHAPES},()=>new THREE.Vector4());
+ const emptyField=new THREE.DataTexture(new Uint8Array([255]),1,1,THREE.RedFormat);emptyField.needsUpdate=true;
+ let outlineField:ReturnType<typeof createAuraOutlineField>|null=null;
  const uniforms={
+  outlineField:{value:emptyField},outlineRect:{value:new THREE.Vector4()},outlineRange:{value:.4},outlineDepth:{value:.14},
   outline:{value:Array.from({length:48},()=>new THREE.Vector2())},outlineCount:{value:0},
   shapeStart:{value:starts},shapeEnd:{value:ends},shapeCount:{value:0},
   time:{value:0},seed:{value:seed},opacity:{value:0},density:{value:32},
@@ -25,7 +29,7 @@ export function createDarkAura(seed=1){
   vertexShader:`uniform vec3 extent,center;varying vec3 exitPoint;
    void main(){exitPoint=position*extent+center;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
   fragmentShader:`
-   uniform vec2 outline[48];uniform int outlineCount;
+   uniform sampler2D outlineField;uniform vec4 outlineRect;uniform float outlineRange,outlineDepth;uniform int outlineCount;
    uniform vec4 shapeStart[12],shapeEnd[12];uniform int shapeCount;
    uniform float time,seed,opacity,density,turbulence,speed,edgeBrightness,floorHeight,breakup;
    uniform vec3 eye,extent,center;varying vec3 exitPoint;
@@ -33,18 +37,14 @@ export function createDarkAura(seed=1){
    float noise(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
     return mix(mix(mix(hash(i),hash(i+vec3(1,0,0)),f.x),mix(hash(i+vec3(0,1,0)),hash(i+vec3(1,1,0)),f.x),f.y),
      mix(mix(hash(i+vec3(0,0,1)),hash(i+vec3(1,0,1)),f.x),mix(hash(i+vec3(0,1,1)),hash(i+vec3(1,1,1)),f.x),f.y),f.z);}
-   float tracedDistance(vec2 p){
-    float d=100.,side=1.;vec2 previous=outline[outlineCount-1];
-    for(int i=0;i<48;i++){if(i>=outlineCount)break;
-     vec2 current=outline[i],edge=current-previous,w=p-previous;
-     float t=clamp(dot(w,edge)/max(dot(edge,edge),.000001),0.,1.);
-     d=min(d,length(w-edge*t));
-     if((previous.y>p.y)!=(current.y>p.y)){
-      float crossing=previous.x+(p.y-previous.y)*edge.x/edge.y;
-      if(p.x<crossing)side=-side;
-     }
-     previous=current;
-    }return d*side;
+   float tracedVolume(vec3 p){
+    vec2 uv=(p.xy-outlineRect.xy)/outlineRect.zw;
+    float planar=(texture2D(outlineField,clamp(uv,0.,1.)).r-.5)*2.*outlineRange;
+    planar+=length((uv-clamp(uv,0.,1.))*outlineRect.zw);
+    // Rounded depth: narrow extremities stay slender, the coat has a fuller profile.
+    float depth=outlineDepth*(.5+.5*smoothstep(.01,.10,-planar));
+    vec2 d=vec2(planar+.018,abs(p.z)-depth+.018);
+    return min(max(d.x,d.y),0.)+length(max(d,0.))-.018;
    }
    void main(){
     if(opacity<=0.)discard;
@@ -60,12 +60,19 @@ export function createDarkAura(seed=1){
     // One union evaluation per pixel, instead of marching the entire volume.
     float distanceToShape=10.,outlineDistance=10.;vec3 surface=center;
     if(outlineCount>0){
-     // Traced contours live in the local XY plane; volume shapes remain available separately.
-     if(abs(ray.z)<.0001)discard;
-     float hit=-eye.z/ray.z;if(hit<0.)discard;
-     surface=eye+ray*hit;
-     outlineDistance=tracedDistance(surface.xy);
-     distanceToShape=tracedDistance((surface-displacement).xy);
+     vec3 safeRay=sign(ray+vec3(.0000001))*max(abs(ray),vec3(.00001));
+     vec3 low=center-extent*.5,high=center+extent*.5;
+     vec3 a=(low-eye)/safeRay,b=(high-eye)/safeRay;
+     vec3 lo=min(a,b),hi=max(a,b);
+     float near=max(0.,max(lo.x,max(lo.y,lo.z))),far=min(hi.x,min(hi.y,hi.z));
+     if(far<=near)discard;
+     // Fixed, bounded texture samples replace hundreds of polygon/shape evaluations.
+     for(int i=0;i<32;i++){
+      vec3 p=eye+ray*mix(near,far,(float(i)+.5)/32.);
+      outlineDistance=min(outlineDistance,tracedVolume(p));
+      float d=tracedVolume(p-displacement);
+      if(d<distanceToShape){distanceToShape=d;surface=p;}
+     }
     }else for(int j=0;j<12;j++){if(j>=shapeCount)break;
      vec3 a=shapeStart[j].xyz,v=shapeEnd[j].xyz-a,offset=a-sourceEye;
      vec3 projectedV=v-ray*dot(v,ray),projectedOffset=offset-ray*dot(offset,ray);
@@ -125,14 +132,19 @@ export function createDarkAura(seed=1){
  let disposed=false;
  return {
   group,
-  /** Optional front-facing outline in local XY space; null returns to volume shapes. */
-  setOutline(points:readonly THREE.Vector2[]|null){
+  /** Extrude a traced XY outline into a rounded 3D aura; null returns to capsule shapes. */
+  setOutline(points:readonly THREE.Vector2[]|null,halfDepth=.14){
    if(points&&(points.length<3||points.length>48))throw new RangeError('Aura outline requires 3–48 points');
+   outlineField?.texture.dispose();outlineField=points?createAuraOutlineField(points):null;
+   uniforms.outlineField.value=outlineField?.texture??emptyField;
+   if(outlineField){uniforms.outlineRect.value.copy(outlineField.rect);uniforms.outlineRange.value=outlineField.range;}
+   uniforms.outlineDepth.value=THREE.MathUtils.clamp(halfDepth,.03,.5);
    uniforms.outlineCount.value=points?.length??0;
    points?.forEach((p,i)=>uniforms.outline.value[i].copy(p));
    if(points){
     bounds.makeEmpty();
     for(const p of points)bounds.expandByPoint(point.set(p.x,p.y,0));
+    bounds.min.z=Math.min(bounds.min.z,-uniforms.outlineDepth.value);bounds.max.z=Math.max(bounds.max.z,uniforms.outlineDepth.value);
     bounds.expandByScalar(.22);bounds.max.y+=.24;
     bounds.getCenter(uniforms.center.value);bounds.getSize(uniforms.extent.value);
     mesh.position.copy(uniforms.center.value);mesh.scale.copy(uniforms.extent.value);
@@ -152,6 +164,7 @@ export function createDarkAura(seed=1){
     const p=uniforms.outline.value[i];bounds.expandByPoint(point.set(p.x,p.y,0));
    }
    if(shapes.length||uniforms.outlineCount.value){
+    bounds.min.z=Math.min(bounds.min.z,-uniforms.outlineDepth.value);bounds.max.z=Math.max(bounds.max.z,uniforms.outlineDepth.value);
     bounds.expandByScalar(.22);bounds.max.y+=.24;
     bounds.getCenter(uniforms.center.value);bounds.getSize(uniforms.extent.value);
     mesh.position.copy(uniforms.center.value);mesh.scale.copy(uniforms.extent.value);
@@ -170,6 +183,6 @@ export function createDarkAura(seed=1){
    uniforms.opacity.value=THREE.MathUtils.clamp(opacity,0,1);
    group.visible=!disposed&&(uniforms.shapeCount.value>0||uniforms.outlineCount.value>0)&&uniforms.opacity.value>0;
   },
-  dispose(){if(disposed)return;disposed=true;group.removeFromParent();geometry.dispose();material.dispose();},
+  dispose(){if(disposed)return;disposed=true;group.removeFromParent();geometry.dispose();material.dispose();outlineField?.texture.dispose();emptyField.dispose();},
  };
 }

@@ -3,6 +3,15 @@ import {createRequire} from 'node:module';
 import {loadSource} from './load-source.mjs';
 const THREE=createRequire(import.meta.url)('three');
 const {createDarkAura}=loadSource('src/scene/effects/darkAura.ts');
+const {createAuraOutlineField}=loadSource('src/scene/effects/auraOutlineField.ts');
+const field=createAuraOutlineField([new THREE.Vector2(-.2,0),new THREE.Vector2(.2,0),new THREE.Vector2(.2,1),new THREE.Vector2(-.2,1)]);
+const sample=(x,y)=>{
+ const {width,height,data}=field.texture.image,r=field.rect;
+ return data[Math.floor((y-r.y)/r.w*height)*width+Math.floor((x-r.x)/r.z*width)];
+};
+assert.ok(sample(0,.5)<128,'Cached field must identify the interior');
+assert.ok(sample(.3,.5)>128,'Cached field must identify the exterior');
+field.texture.dispose();
 const {createBankaiPresence}=loadSource('src/scene/bankaiPresence.ts');
 const v=(x,y,z)=>new THREE.Vector3(x,y,z);
 const aura=createDarkAura(12);
