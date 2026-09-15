@@ -23,6 +23,20 @@ export function useBankaiVoice(scene:RefObject<SwordScene|null>,{active,paused,s
   disposed.current=false;
   return()=>{disposed.current=true;stop();void context.current?.close();context.current=null;loading.current=null;};
  },[stop]);
+ // A fresh visit may suspend audible autoplay. Retry inside the first real gesture,
+ // rather than requiring the user to switch an already-enabled sound toggle off/on.
+ useEffect(()=>{
+  if(!active||!enabled)return;
+  const unlock=()=>{if(context.current?.state!=='running')arm();};
+  window.addEventListener('pointerup',unlock,true);
+  window.addEventListener('click',unlock,true);
+  window.addEventListener('keydown',unlock,true);
+  return()=>{
+   window.removeEventListener('pointerup',unlock,true);
+   window.removeEventListener('click',unlock,true);
+   window.removeEventListener('keydown',unlock,true);
+  };
+ },[active,enabled,arm]);
  useEffect(()=>{
   stop();
   // Seeking is silent until the next explicit Play/Replay gesture.
