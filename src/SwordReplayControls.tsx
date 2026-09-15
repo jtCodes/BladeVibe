@@ -17,7 +17,7 @@ export function SwordReplayControls({sword,sceneRef,visible,effect,selected,paus
   const refresh=()=>{const next=sceneRef.current?.getEffectTimeline(selected)??null;setTimeline(previous=>previous?.time===next?.time&&previous?.cycleDuration===next?.cycleDuration?previous:next);};
   refresh();const interval=window.setInterval(refresh,100);return()=>window.clearInterval(interval);
  },[visible,timed,selected,sceneRef]);
- const resetControl=<IconButton icon="replay" label="Reset sword and camera" onClick={onResetView}/>;
+ const resetControl=<IconButton icon="reset-view" label="Reset sword and camera" onClick={onResetView}/>;
  if(sword.model==='zangetsu')return <div className="replay-controls simple-controls">
   <div className="form-selector"><button aria-pressed={effect!=='bankai'} onClick={onOriginal}>Shikai</button><button aria-pressed={effect==='bankai'} onClick={()=>onSelect('bankai')}>Bankai</button></div>{resetControl}{options}
  </div>;
