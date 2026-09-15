@@ -59,15 +59,36 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
   shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
    floorPoint=position.xy;transformed.z+=floorHeight(position.xy);
   `);
-  shader.fragmentShader=heightShader+'varying vec2 floorPoint;\n'+shader.fragmentShader;
+  shader.fragmentShader=heightShader+`varying vec2 floorPoint;
+   float floorHash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+   float floorNoise(vec2 p){vec2 cell=floor(p),f=fract(p);f=f*f*(3.-2.*f);
+    return mix(mix(floorHash(cell),floorHash(cell+vec2(1.,0.)),f.x),mix(floorHash(cell+vec2(0.,1.)),floorHash(cell+vec2(1.)),f.x),f.y);}
+  `+shader.fragmentShader;
+  shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
+   // Quiet, irregular mineral/cloud variation anchored to the floor, never the camera.
+   float floorCloud=floorNoise(floorPoint*.22)*.65+floorNoise(floorPoint*.85+17.)*.35;
+   float grainFade=1.-smoothstep(.02,.09,max(length(dFdx(floorPoint)),length(dFdy(floorPoint))));
+   float floorGrain=(floorNoise(floorPoint*24.)-.5)*grainFade;
+   diffuseColor.rgb*=mix(.86,1.08,floorCloud)+floorGrain*.025;
+  `);
+  shader.fragmentShader=shader.fragmentShader.replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
+   float nearContact=exp(-dot(floorPoint-rippleCenter,floorPoint-rippleCenter)/32.);
+   roughnessFactor=clamp(mix(.76,.67,floorCloud)-nearContact*.07+floorGrain*.012,.56,.85);
+  `);
+  // Keep the receiving surface in the reference's blue-black palette, including specular spill.
+  shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>',`
+   outgoingLight*=vec3(.48,.56,.72);
+   #include <opaque_fragment>
+  `);
   shader.fragmentShader=shader.fragmentShader.replace('#include <normal_fragment_begin>',`#include <normal_fragment_begin>
    float dx=(floorHeight(floorPoint+vec2(.015,0.))-floorHeight(floorPoint-vec2(.015,0.)))/.03;
    float dy=(floorHeight(floorPoint+vec2(0.,.015))-floorHeight(floorPoint-vec2(0.,.015)))/.03;
    // The floor is rotated -90 degrees about X; shade its moving slope in view space.
-   normal=normalize(mat3(viewMatrix)*vec3(-dx,1.,dy));
+   float surfaceDetail=(floorNoise(floorPoint*7.+31.)-.5)*grainFade;
+   normal=normalize(mat3(viewMatrix)*vec3(-dx+surfaceDetail*.008,1.,dy+floorGrain*.006));
   `);
  };
- rippleMaterial.customProgramCacheKey=()=> 'bankai-floor-ripples-v1';
+ rippleMaterial.customProgramCacheKey=()=> 'bankai-floor-ripples-v3-cool-surface';
  const startPosition=new THREE.Vector3(),startRotation=new THREE.Quaternion();
  const savedPosition=new THREE.Vector3(),savedScale=new THREE.Vector3(1,1,1),formationOrigin=new THREE.Vector3();
  const cinematicScale=.3;

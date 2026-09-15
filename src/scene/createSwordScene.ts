@@ -1,3 +1,4 @@
+import {attachColorGrade,BANKAI_COLOR_GRADE,type ColorGradeSettings} from './colorGrade';
 import {constrainCameraToFloor} from './cameraFloor';
 import {CopyShader} from 'three/addons/shaders/CopyShader.js';
 import {createProjectedSceneBounds} from './projectedSceneBounds';
@@ -35,7 +36,7 @@ import { initializePhysics, createSwordPhysics, FLOOR_Y, type MotionStatus } fro
 import { createBladeAura, type EffectMode } from './aura';
 export type TimelineEffect='bankai'|'shikai';
 export interface EffectSeekRequest { effect:TimelineEffect; time:number; paused:boolean }
-export interface ViewerSettings { bankaiPetalMotion?:BankaiPetalMotion; viewState?:SwordViewRequest; effectSeek?:EffectSeekRequest; effectPaused?:boolean; glowStrength?:number; glowSpread?:number; petalGlow?:number; upscaling?:'native'|'ultra'|'quality'; dragTarget?:'sword'|'camera'; antiAliasing?:'standard'|'smooth'|'high'; showPerformance?:boolean; lighting?: LightingSettings; rotating: boolean; draw: number; reflections: boolean; lightAngle: number; floorColor?: string; backgroundColor?: string; cameraHeight: number; showSheath?: boolean; swordRotation?: number; effect: EffectMode; effectSpeed: number; effectIntensity: number }
+export interface ViewerSettings { colorGrade?:Partial<ColorGradeSettings>|false; bankaiPetalMotion?:BankaiPetalMotion; viewState?:SwordViewRequest; effectSeek?:EffectSeekRequest; effectPaused?:boolean; glowStrength?:number; glowSpread?:number; petalGlow?:number; upscaling?:'native'|'ultra'|'quality'; dragTarget?:'sword'|'camera'; antiAliasing?:'standard'|'smooth'|'high'; showPerformance?:boolean; lighting?: LightingSettings; rotating: boolean; draw: number; reflections: boolean; lightAngle: number; floorColor?: string; backgroundColor?: string; cameraHeight: number; showSheath?: boolean; swordRotation?: number; effect: EffectMode; effectSpeed: number; effectIntensity: number }
 export interface EffectTimeline { time:number; duration:number; cycleDuration:number }
 export interface SwordScene { getViewState():SwordViewState; setActive(active:boolean):void; getEffectTimeline(effect?:TimelineEffect):EffectTimeline|null; seekEffect(time:number,paused?:boolean):void; update(settings: ViewerSettings): void; reset(): void; release(): boolean; dispose(): void }
 export async function createSwordScene(container: HTMLDivElement, onError: (message: string) => void, onStatus: (status: MotionStatus) => void, signal: AbortSignal, options:{preview?:boolean;model?:SwordModel;active?:boolean;waitUntilActive?:()=>Promise<void>}={}): Promise<SwordScene> {
@@ -248,6 +249,7 @@ Object.assign(output.uniforms,{displayBrightness});
 output.material.fragmentShader=output.material.fragmentShader
  .replace('uniform sampler2D tDiffuse;', 'uniform sampler2D tDiffuse;\nuniform float displayBrightness;')
  .replace(/}\s*$/, 'gl_FragColor.rgb *= displayBrightness;\n}');
+const colorGrade=attachColorGrade(output);
 composer.addPass(output);
 // Smooth the final display-space edges, including postprocessing and shader cutouts.
 const edgeAA=new ShaderPass(FXAAShader);composer.addPass(edgeAA);
@@ -308,6 +310,7 @@ function update(settings: ViewerSettings){
  performanceRequested=!options.preview&&!!settings.showPerformance;meter.setEnabled(active&&performanceRequested);
  displayBrightness.value=environment.update({lighting:settings.lighting,backgroundColor:settings.backgroundColor,floorColor:settings.floorColor,floor:floorMaterial,lightAngle:settings.lightAngle,fogDensity:isKatana&&settings.effect==='bankai'?SENBONZAKURA_BANKAI_FOG:environmentPreset.fogDensity});
  bankai?.setPetalMotion(settings.bankaiPetalMotion??'storm');
+ colorGrade.set(settings.colorGrade===false?null:settings.colorGrade?{...BANKAI_COLOR_GRADE,...settings.colorGrade}:isKatana&&settings.effect==='bankai'?BANKAI_COLOR_GRADE:null);
  effectSpeed=settings.effectSpeed;effectIntensity=settings.effectIntensity;effectPaused=settings.effectPaused??false;effectMode=settings.effect;
  glowStrength=THREE.MathUtils.clamp(settings.glowStrength??.42,0,1.5);glowSpread=THREE.MathUtils.clamp(settings.glowSpread??.8,0,1);petalGlow=THREE.MathUtils.clamp(settings.petalGlow??4,0,8);
  if(bankai?.active&&settings.effect!=='bankai'){bankai.cancel();physics.setDraw(settings.draw/100);physics.restore();}
@@ -404,7 +407,7 @@ active=options.active??true;controls.enabled=active&&!options.preview;
 const observer=new ResizeObserver(resize);cleanups.push(()=>observer.disconnect());
 if(active){observer.observe(container);resize();}reset();
 let frame:number|null=null,lastFrameTime:number|null=null,stopped=false;
-function animate(now:number){frame=null;if(stopped||!active)return;frame=requestAnimationFrame(animate);const dt=lastFrameTime===null?0:Math.min((now-lastFrameTime)/1000,.1);lastFrameTime=now;if(document.hidden)return;meter.begin();if(bankai?.active){bankai.update(effectPaused?0:dt,effectSpeed,effectIntensity,petalGlow);}else{if(!options.preview&&dragTarget==='sword'&&spinRequested&&dragPointer===null)physics.rotateBy(dragTurn.setFromAxisAngle(spinAxis,dt*.07));physics.step(dt);shikai?.setPetalGlow(petalGlow);aura.update(effectPaused?0:dt,physics.draw);}if(shikai){const bankaiGlow=!!bankai?.glowing;bloom.enabled=shikai.visible||bankaiGlow;const pink=bankaiGlow?(bankai?.pinkGlow??0):shikai.pinkGlow;bloom.strength=glowStrength*THREE.MathUtils.lerp(.6,1,pink);bloom.radius=glowSpread*THREE.MathUtils.lerp(.7,1,pink);}if(isZangetsu)scabbard.userData.updateCloth(dt);updateShadowCache();syncBankaiCamera();moveCamera(dt);controls.update(dt);enforceCameraFloor();environment.updateView(camera,controls.target);updateReflectionPath();updateUpscaleBounds();composer.render(dt);meter.end();}
+function animate(now:number){frame=null;if(stopped||!active)return;frame=requestAnimationFrame(animate);const dt=lastFrameTime===null?0:Math.min((now-lastFrameTime)/1000,.1);lastFrameTime=now;if(document.hidden)return;meter.begin();if(bankai?.active){bankai.update(effectPaused?0:dt,effectSpeed,effectIntensity,petalGlow);}else{if(!options.preview&&dragTarget==='sword'&&spinRequested&&dragPointer===null)physics.rotateBy(dragTurn.setFromAxisAngle(spinAxis,dt*.07));physics.step(dt);shikai?.setPetalGlow(petalGlow);aura.update(effectPaused?0:dt,physics.draw);}if(shikai){const bankaiGlow=!!bankai?.glowing;bloom.enabled=shikai.visible||bankaiGlow;const pink=bankaiGlow?(bankai?.pinkGlow??0):shikai.pinkGlow;bloom.strength=glowStrength*THREE.MathUtils.lerp(.6,bankaiGlow?.68:1,pink);bloom.radius=glowSpread*THREE.MathUtils.lerp(.7,bankaiGlow?.65:1,pink);}if(isZangetsu)scabbard.userData.updateCloth(dt);updateShadowCache();syncBankaiCamera();moveCamera(dt);controls.update(dt);enforceCameraFloor();environment.updateView(camera,controls.target);updateReflectionPath();updateUpscaleBounds();composer.render(dt);meter.end();}
 function stopFrame(){if(frame!==null)cancelAnimationFrame(frame);frame=null;lastFrameTime=null;}
 function setActive(value:boolean){
  if(stopped||active===value)return;

@@ -26,9 +26,9 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
  const material=materials[index],original=sourceMaterials[index];
  // Give the enlarged formation its own steel response instead of a near-white face.
  if(material instanceof THREE.MeshStandardMaterial){
-  material.color.set(index===0?0x87939f:0x596672);
+  material.color.set(index===0?0x657381:0x414e5d);
   material.roughness=index===0?.46:.56;material.metalness=.82;
-  material.envMapIntensity=.6;
+  material.envMapIntensity=.45;
  }
  const inherit=original.onBeforeCompile.bind(original),baseKey=original.customProgramCacheKey();
  material.clippingPlanes=[new THREE.Plane(new THREE.Vector3(0,1,0),-FLOOR_Y)];
@@ -67,7 +67,7 @@ export function createBankaiFormation(scene:THREE.Scene,sword:THREE.Group){
    totalEmissiveRadiance+=sakuraBladeEmission(bladeWidth,colorShift,riseLight,glowDistance,dissolve,pink)*formationPower*rootBlend;
   `);
  };
- material.customProgramCacheKey=()=>baseKey+'-bankai-progress-glow-v17';
+ material.customProgramCacheKey=()=>baseKey+'-bankai-progress-glow-v18';
  }
  const blades=new THREE.InstancedMesh(geometry,materials,BLADES);blades.frustumCulled=false;
  blades.instanceMatrix.setUsage(THREE.DynamicDrawUsage);group.add(blades);
