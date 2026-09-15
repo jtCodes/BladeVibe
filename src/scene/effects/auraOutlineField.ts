@@ -11,10 +11,11 @@ export function createAuraOutlineField(points:readonly THREE.Vector2[]){
   for(let i=0,j=points.length-1;i<points.length;j=i++){
    const a=points[j],b=points[i],ex=b.x-a.x,ey=b.y-a.y,wx=px-a.x,wy=py-a.y;
    const t=Math.max(0,Math.min(1,(wx*ex+wy*ey)/Math.max(ex*ex+ey*ey,1e-12)));
-   distance=Math.min(distance,Math.hypot(wx-ex*t,wy-ey*t));
+   const dx=wx-ex*t,dy=wy-ey*t;
+   distance=Math.min(distance,dx*dx+dy*dy);
    if((a.y>py)!==(b.y>py)&&px<a.x+(py-a.y)*ex/ey)inside=!inside;
   }
-  data[y*width+x]=Math.round(THREE.MathUtils.clamp(.5+(inside?-distance:distance)/(2*range),0,1)*255);
+  data[y*width+x]=Math.round(THREE.MathUtils.clamp(.5+(inside?-1:1)*Math.sqrt(distance)/(2*range),0,1)*255);
  }
  const texture=new THREE.DataTexture(data,width,height,THREE.RedFormat);
  texture.minFilter=texture.magFilter=THREE.LinearFilter;texture.generateMipmaps=false;texture.needsUpdate=true;

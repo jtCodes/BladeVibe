@@ -1,5 +1,5 @@
 import {BANKAI_AUDIO_DURATION} from '../bankaiVoiceCues';
-import {BANKAI_RELEASE_TIME,BANKAI_SWORD_CONTACT_TIME,BANKAI_SWORD_SUBMERGED_TIME,bankaiSwordDepth,BANKAI_FORMATION_COMPLETE_TIME,BANKAI_FORMATION_START,BANKAI_CAGE_HOLD,bankaiFormationTime} from './bankaiTiming';
+import {BANKAI_RELEASE_TIME,BANKAI_SWORD_CONTACT_TIME,BANKAI_SWORD_SUBMERGED_TIME,bankaiSwordDepth,BANKAI_PETAL_RELEASE_TIME,BANKAI_FORMATION_COMPLETE_TIME,BANKAI_FORMATION_START,BANKAI_CAGE_HOLD,bankaiFormationTime} from './bankaiTiming';
 import {bend} from './katanaGeometry';
 import {SENBONZAKURA_BLADE_LENGTH} from './senbonzakuraDimensions';
 import {createBankaiFormation} from './bankaiFormation';
@@ -172,8 +172,9 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
    hadShadowRevision:Object.hasOwn(sword.userData,'shadowRevision'),age:uniforms.age.value,reveal:uniforms.reveal.value,power:uniforms.power.value,rippleCenter:uniforms.rippleCenter.value.clone()};
   try{
    start();
-   // Warm clipped drop, overlapping lights, complete rows, and released particles.
-   for(const sample of [0,contactTime+2.7,contactTime+formationDelay+4.5,contactTime+formationDelay+formation.duration+BANKAI_CAGE_HOLD]){
+   // Two states cover the clipped sword/floor/aura and the overlapping cage/particles.
+   // Separate full-cage and spent-particle renders only repeat those shader variants.
+   for(const sample of [0,BANKAI_PETAL_RELEASE_TIME+2]){
     const previous=time;time=sample;render(previous);await renderFrame();
    }
   }finally{

@@ -393,7 +393,8 @@ function resize(){
  renderer.setPixelRatio(pixelRatio);composer.setPixelRatio(pixelRatio*renderScale);renderer.setSize(w,h);camera.aspect=w/h;camera.fov=options.preview?34:w<700?44:34;camera.updateProjectionMatrix();composer.setSize(w,h);const renderWidth=Math.max(1,Math.floor(composer.renderTarget1.width)),renderHeight=Math.max(1,Math.floor(composer.renderTarget1.height));edgeAA.uniforms.resolution.value.set(1/renderWidth,1/renderHeight);upscale.uniforms.inputSize.value.set(renderWidth,renderHeight);meter.setRenderSize(renderWidth,renderHeight)}
 function assertContextAvailable(){if(renderer.getContext().isContextLost())throw new Error('The 3D renderer was interrupted. Reload this page to restore the sword.');}
 await yieldScenePreparation(signal);
-await renderer.compileAsync(scene,camera);
+// The effect warmup compiles the base scene too; avoid compiling it twice.
+if(!(active&&bankai&&shikai&&!options.preview))await renderer.compileAsync(scene,camera);
 signal.throwIfAborted();
 if(active&&bankai&&shikai&&!options.preview){
  reset();
