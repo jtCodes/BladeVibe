@@ -1,5 +1,5 @@
 import {BANKAI_AUDIO_DURATION} from '../bankaiVoiceCues';
-import {BANKAI_RELEASE_TIME,BANKAI_SWORD_TIME_SCALE,BANKAI_FORMATION_START,BANKAI_CAGE_HOLD,bankaiFormationTime} from './bankaiTiming';
+import {BANKAI_RELEASE_TIME,BANKAI_SWORD_CONTACT_TIME,BANKAI_SWORD_SUBMERGED_TIME,bankaiSwordDepth,BANKAI_FORMATION_START,BANKAI_CAGE_HOLD,bankaiFormationTime} from './bankaiTiming';
 import {bend} from './katanaGeometry';
 import {SENBONZAKURA_BLADE_LENGTH} from './senbonzakuraDimensions';
 import {createBankaiFormation} from './bankaiFormation';
@@ -110,7 +110,7 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
    position.z-BANKAI_PRESENCE_DEPTH+BANKAI_PRESENCE_HEIGHT*.18);
   const releaseCenter=pivot.clone().multiplyScalar(cinematicScale).applyQuaternion(downRotation).add(releasePosition);
   const releaseTip=tip.clone().multiplyScalar(cinematicScale).applyQuaternion(downRotation).add(releasePosition);
-  const distance=Math.max(.1,releaseTip.y-waterY),duration=Math.sqrt(2*distance/9.8)/BANKAI_SWORD_TIME_SCALE;
+  const distance=Math.max(.1,releaseTip.y-waterY),duration=BANKAI_SWORD_CONTACT_TIME-BANKAI_RELEASE_TIME;
   return {center:releaseCenter,position:releasePosition,distance,duration,contactTime:BANKAI_RELEASE_TIME+duration};
  }
  function start(){
@@ -122,14 +122,7 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
   sword.quaternion.copy(downRotation);sword.position.copy(endPosition);
   startPosition.copy(center).sub(temp.copy(pivot).multiply(sword.scale).applyQuaternion(startRotation));
   fallDistance=pose.distance;fallDuration=pose.duration;contactTime=pose.contactTime;
-  // Match the camera to the actual hilt sinking below the surface, not its visibility timer.
-  const sinkDepth=(SENBONZAKURA_BLADE_LENGTH-SENBONZAKURA_POMMEL_TIP_Y)*cinematicScale;
-  let low=0,high=3;
-  for(let i=0;i<24;i++){
-   const t=(low+high)/2,depth=2.7*t+(9.8*fallDuration*BANKAI_SWORD_TIME_SCALE-2.7)*(1-Math.exp(-3*t))/3;
-   if(depth<sinkDepth)low=t;else high=t;
-  }
-  submersionDuration=(low+high)/2/BANKAI_SWORD_TIME_SCALE;
+  submersionDuration=BANKAI_SWORD_SUBMERGED_TIME-contactTime;
   formationDelay=Math.max(submersionDuration+.6,BANKAI_FORMATION_START-contactTime);
   cameraPullbackEnd=contactTime+submersionDuration-.12;
   formation.start(formationOrigin.x,formationOrigin.z);
@@ -158,14 +151,8 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
     sword.quaternion.copy(downRotation);sword.position.copy(endPosition);
    }else{
     sword.quaternion.copy(downRotation);sword.position.copy(endPosition);
-    const falling=Math.min(fallDuration,time-BANKAI_RELEASE_TIME)*BANKAI_SWORD_TIME_SCALE;
-    let depth=.5*9.8*falling*falling;
-    if(time>=contactTime){
-     const t=Math.min(3,(time-contactTime)*BANKAI_SWORD_TIME_SCALE);
-     // Water slows the fall continuously, then draws the entire hilt below the surface.
-     const entrySpeed=9.8*fallDuration*BANKAI_SWORD_TIME_SCALE;
-     depth=fallDistance+2.7*t+(entrySpeed-2.7)*(1-Math.exp(-3*t))/3;
-    }
+    const sinkDepth=(SENBONZAKURA_BLADE_LENGTH-SENBONZAKURA_POMMEL_TIP_Y)*cinematicScale+.02;
+    const depth=bankaiSwordDepth(time,fallDistance,sinkDepth);
     sword.position.y-=depth;
    }
    const visible=time<contactTime+submersionDuration+.1;
