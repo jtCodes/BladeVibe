@@ -1,16 +1,16 @@
 import {useCallback,useEffect,useRef,type RefObject} from 'react';
 import type {EffectSeekRequest,SwordScene} from './scene/createSwordScene';
-import voiceUrl from './assets/audio/senbonzakura-release.wav?url';
+import voiceUrl from './assets/audio/senbonzakura-sequence.m4a?url';
 
 interface Options {active:boolean;paused:boolean;speed:number;enabled:boolean;seekRequest?:EffectSeekRequest}
-/** Audio is armed only by Play/Release, never by loading a link or scrubbing. */
+/** Attempt audible autoplay when enabled; Play and the sound toggle also unlock audio on a gesture. */
 export function useBankaiVoice(scene:RefObject<SwordScene|null>,{active,paused,speed,enabled,seekRequest}:Options){
  const lastSeek=useRef<EffectSeekRequest|undefined>(undefined);
  const context=useRef<AudioContext|null>(null),buffer=useRef<AudioBuffer|null>(null),loading=useRef<Promise<void>|null>(null);
  const source=useRef<AudioBufferSourceNode|null>(null),armed=useRef(false),disposed=useRef(false);
  const stop=useCallback(()=>{source.current?.stop();source.current?.disconnect();source.current=null;},[]);
- const arm=useCallback(()=>{
-  if(!enabled||typeof AudioContext==='undefined')return;
+ const arm=useCallback((enableFromGesture=false)=>{
+  if((!enabled&&!enableFromGesture)||typeof AudioContext==='undefined')return;
   armed.current=true;
   const ctx=context.current??=new AudioContext();
   // Resume synchronously from the user's click, including Safari's audio gesture gate.
@@ -23,16 +23,31 @@ export function useBankaiVoice(scene:RefObject<SwordScene|null>,{active,paused,s
   disposed.current=false;
   return()=>{disposed.current=true;stop();void context.current?.close();context.current=null;loading.current=null;};
  },[stop]);
+ // A fresh visit may suspend audible autoplay. Retry inside the first real gesture,
+ // rather than requiring the user to switch an already-enabled sound toggle off/on.
+ useEffect(()=>{
+  if(!active||!enabled)return;
+  const unlock=()=>{if(context.current?.state!=='running')arm();};
+  window.addEventListener('pointerup',unlock,true);
+  window.addEventListener('click',unlock,true);
+  window.addEventListener('keydown',unlock,true);
+  return()=>{
+   window.removeEventListener('pointerup',unlock,true);
+   window.removeEventListener('click',unlock,true);
+   window.removeEventListener('keydown',unlock,true);
+  };
+ },[active,enabled,arm]);
  useEffect(()=>{
   stop();
   // Seeking is silent until the next explicit Play/Replay gesture.
   if(seekRequest!==lastSeek.current){if(seekRequest?.paused)armed.current=false;lastSeek.current=seekRequest;}
   if(!active||!enabled||paused||speed<=0)return;
+  arm();
   let sourceOffset=0,sourceStarted=0,timer:number|undefined;
   const sync=()=>{
    const ctx=context.current,clip=buffer.current,time=scene.current?.getEffectTimeline('bankai')?.time;
    if(document.hidden||!armed.current||!ctx||ctx.state!=='running'||!clip||time===undefined){stop();return;}
-   if(time>=clip.duration){stop();if(timer!==undefined)window.clearInterval(timer);return;}
+   if(time>=clip.duration){stop();return;}
    const expected=sourceOffset+(ctx.currentTime-sourceStarted)*speed;
    if(source.current&&Math.abs(expected-time)<.15)return;
    stop();const node=ctx.createBufferSource();node.buffer=clip;node.playbackRate.value=speed;
@@ -42,6 +57,6 @@ export function useBankaiVoice(scene:RefObject<SwordScene|null>,{active,paused,s
   };
   timer=window.setInterval(sync,50);sync();
   return()=>{window.clearInterval(timer);stop();};
- },[active,paused,speed,enabled,seekRequest,scene,stop]);
+ },[active,paused,speed,enabled,seekRequest,scene,stop,arm]);
  return arm;
 }

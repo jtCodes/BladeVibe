@@ -30,7 +30,7 @@ export function createSakuraAtmosphere(clock:{value:number},power:{value:number}
     float build=smoothstep(0.,${BANKAI_DISSOLVE_DURATION},age);
     float linger=1.-smoothstep(${BANKAI_DISSOLVE_END+3.5},${BANKAI_DISSOLVE_END+6},formationTime);
     
-    float alpha=feather*build*linger*formationPower*petalPower*.045;
+    float alpha=feather*build*linger*formationPower*petalPower*.027;
     alpha*=smoothstep(0.,1.2,groundHeight)*smoothstep(.5,3.,eyeDistance);
     gl_FragColor=vec4(.95,.22,.63,alpha);
    }`});

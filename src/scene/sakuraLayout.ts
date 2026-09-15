@@ -11,9 +11,12 @@ export const BANKAI_DISSOLVE_END=BANKAI_DISSOLVE_AT+BANKAI_DISSOLVE_WINDOW+BANKA
 export function createBankaiRows(){
  const delays=new Float32Array(BANKAI_BLADES);
  for(let i=0;i<BANKAI_BLADES;i++)delays[i]=(BANKAI_PAIRS-1-Math.floor(i/2))*BANKAI_RISE_STAGGER;
- const dissolveDelays=Float32Array.from(delays,delay=>{
-  const depth=delay/((BANKAI_PAIRS-1)*BANKAI_RISE_STAGGER);
-  return BANKAI_DISSOLVE_WINDOW*(1-Math.pow(1-depth,2));
+ // Independent, reproducible offsets break the diagonal dissolve wave across the rows.
+ const offsets=Array.from({length:BANKAI_BLADES},(_,i)=>{const n=Math.sin((i+1)*127.1+19.7)*43758.5453;return n-Math.floor(n);});
+ const low=Math.min(...offsets),range=Math.max(...offsets)-low;
+ const dissolveDelays=Float32Array.from(offsets,(n,i)=>{
+  const depth=delays[i]/((BANKAI_PAIRS-1)*BANKAI_RISE_STAGGER);
+  return BANKAI_DISSOLVE_WINDOW*((1-Math.pow(1-depth,2))*.7+(n-low)/range*.3);
  });
  const placement=Array.from({length:BANKAI_BLADES},(_,i)=>({side:i%2===0?-1:1,z:BANKAI_FRONT_Z-Math.floor(i/2)*BANKAI_ROW_SPACING,delay:delays[i]}));
  return {delays,dissolveDelays,placement};

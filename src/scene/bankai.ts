@@ -1,12 +1,18 @@
+import {BANKAI_AUDIO_DURATION} from '../bankaiVoiceCues';
+import {BANKAI_RELEASE_TIME,BANKAI_SWORD_CONTACT_TIME,BANKAI_SWORD_SUBMERGED_TIME,bankaiSwordDepth,BANKAI_PETAL_RELEASE_TIME,BANKAI_FORMATION_COMPLETE_TIME,BANKAI_FORMATION_START,BANKAI_CAGE_HOLD,bankaiFormationTime} from './bankaiTiming';
 import {bend} from './katanaGeometry';
 import {SENBONZAKURA_BLADE_LENGTH} from './senbonzakuraDimensions';
 import {createBankaiFormation} from './bankaiFormation';
+import {createBankaiPresence,BANKAI_PRESENCE_HEIGHT,BANKAI_PRESENCE_DEPTH} from './bankaiPresence';
+import {SENBONZAKURA_GRIP_TOP_Y,SENBONZAKURA_GRIP_BOTTOM_Y,SENBONZAKURA_POMMEL_TIP_Y} from './senbonzakuraDimensions';
 import * as THREE from 'three';
 import {FLOOR_Y} from './swordPhysics';
 
 // A cinematic release owns the displayed pose while ordinary drop physics is paused.
 export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scene){
  const formation=createBankaiFormation(scene,sword);
+ const presence=createBankaiPresence(scene);presence.hide();
+ const grip=new THREE.Vector3(0,(SENBONZAKURA_GRIP_TOP_Y+SENBONZAKURA_GRIP_BOTTOM_Y)/2,0),gripWorld=new THREE.Vector3();
  const waterY=FLOOR_Y+.002;
  // Retain one shader layout in both forms; only the plane's uniform moves.
  const inactivePlaneDistance=1e6;
@@ -54,72 +60,107 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
   shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
    floorPoint=position.xy;transformed.z+=floorHeight(position.xy);
   `);
-  shader.fragmentShader=heightShader+'varying vec2 floorPoint;\n'+shader.fragmentShader;
+  shader.fragmentShader=heightShader+`varying vec2 floorPoint;
+   float floorHash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+   float floorNoise(vec2 p){vec2 cell=floor(p),f=fract(p);f=f*f*(3.-2.*f);
+    return mix(mix(floorHash(cell),floorHash(cell+vec2(1.,0.)),f.x),mix(floorHash(cell+vec2(0.,1.)),floorHash(cell+vec2(1.)),f.x),f.y);}
+  `+shader.fragmentShader;
+  shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
+   // Quiet, irregular mineral/cloud variation anchored to the floor, never the camera.
+   float floorCloud=floorNoise(floorPoint*.22)*.65+floorNoise(floorPoint*.85+17.)*.35;
+   float grainFade=1.-smoothstep(.02,.09,max(length(dFdx(floorPoint)),length(dFdy(floorPoint))));
+   float floorGrain=(floorNoise(floorPoint*24.)-.5)*grainFade;
+   diffuseColor.rgb*=mix(.86,1.08,floorCloud)+floorGrain*.025;
+  `);
+  shader.fragmentShader=shader.fragmentShader.replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
+   float nearContact=exp(-dot(floorPoint-rippleCenter,floorPoint-rippleCenter)/32.);
+   roughnessFactor=clamp(mix(.76,.67,floorCloud)-nearContact*.07+floorGrain*.012,.56,.85);
+  `);
+  // Keep the receiving surface in the reference's blue-black palette, including specular spill.
+  shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>',`
+   outgoingLight*=vec3(.48,.56,.72);
+   #include <opaque_fragment>
+  `);
   shader.fragmentShader=shader.fragmentShader.replace('#include <normal_fragment_begin>',`#include <normal_fragment_begin>
    float dx=(floorHeight(floorPoint+vec2(.015,0.))-floorHeight(floorPoint-vec2(.015,0.)))/.03;
    float dy=(floorHeight(floorPoint+vec2(0.,.015))-floorHeight(floorPoint-vec2(0.,.015)))/.03;
    // The floor is rotated -90 degrees about X; shade its moving slope in view space.
-   normal=normalize(mat3(viewMatrix)*vec3(-dx,1.,dy));
+   float surfaceDetail=(floorNoise(floorPoint*7.+31.)-.5)*grainFade;
+   normal=normalize(mat3(viewMatrix)*vec3(-dx+surfaceDetail*.008,1.,dy+floorGrain*.006));
   `);
  };
- rippleMaterial.customProgramCacheKey=()=> 'bankai-floor-ripples-v1';
+ rippleMaterial.customProgramCacheKey=()=> 'bankai-floor-ripples-v3-cool-surface';
  const startPosition=new THREE.Vector3(),startRotation=new THREE.Quaternion();
+ const savedPosition=new THREE.Vector3(),savedScale=new THREE.Vector3(1,1,1),formationOrigin=new THREE.Vector3();
+ const cinematicScale=.3;
+ let cameraPullbackEnd=6.5,submersionDuration=4.5,formationDelay=5.1;
  const endPosition=new THREE.Vector3(),tip=bend(.095*.78,SENBONZAKURA_BLADE_LENGTH,0);
  // Align the straight handle axis vertically; the curved tip remains naturally offset.
  const downRotation=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1),Math.PI);
+ // Local +X is the dark back of the blade; point it toward the camera at world +Z.
+ downRotation.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),Math.PI/2));
  const pivot=new THREE.Vector3(0,1.5,0),center=new THREE.Vector3(),temp=new THREE.Vector3();
  let active=false,time=0,furthestTime=0,contactTime=0,fallDistance=0,fallDuration=1;
  let intensity=1,petalGlow=4,manualTimeline=false;
  const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
- function releasePose(position:THREE.Vector3,rotation:THREE.Quaternion){
-  const releaseCenter=pivot.clone().applyQuaternion(rotation).add(position);
-  const releasePosition=releaseCenter.clone().sub(pivot.clone().applyQuaternion(downRotation));
-  const releaseTip=tip.clone().applyQuaternion(downRotation).add(releasePosition);
-  const distance=Math.max(.1,releaseTip.y-waterY),duration=Math.sqrt(2*distance/9.8);
-  return {center:releaseCenter,position:releasePosition,distance,duration,contactTime:.65+duration};
+ function releasePose(position:THREE.Vector3,_rotation:THREE.Quaternion){
+  // Stage the performer centrally inside the aisle; the sword shares that scale and depth.
+  const releasePosition=new THREE.Vector3(position.x,
+   waterY+BANKAI_PRESENCE_HEIGHT*.73+grip.y*cinematicScale,
+   position.z-BANKAI_PRESENCE_DEPTH+BANKAI_PRESENCE_HEIGHT*.18);
+  const releaseCenter=pivot.clone().multiplyScalar(cinematicScale).applyQuaternion(downRotation).add(releasePosition);
+  const releaseTip=tip.clone().multiplyScalar(cinematicScale).applyQuaternion(downRotation).add(releasePosition);
+  const distance=Math.max(.1,releaseTip.y-waterY),duration=BANKAI_SWORD_CONTACT_TIME-BANKAI_RELEASE_TIME;
+  return {center:releaseCenter,position:releasePosition,distance,duration,contactTime:BANKAI_RELEASE_TIME+duration};
  }
  function start(){
   active=true;time=0;furthestTime=0;manualTimeline=false;sword.visible=true;floor.geometry=rippleGeometry;floor.material=rippleMaterial;
+  savedPosition.copy(sword.position);savedScale.copy(sword.scale);formationOrigin.copy(sword.position);
   startPosition.copy(sword.position);startRotation.copy(sword.quaternion);
   const pose=releasePose(startPosition,startRotation);
-  center.copy(pose.center);endPosition.copy(pose.position);
+  center.copy(pose.center);endPosition.copy(pose.position);sword.scale.setScalar(cinematicScale);
+  sword.quaternion.copy(downRotation);sword.position.copy(endPosition);
+  startPosition.copy(center).sub(temp.copy(pivot).multiply(sword.scale).applyQuaternion(startRotation));
   fallDistance=pose.distance;fallDuration=pose.duration;contactTime=pose.contactTime;
-  formation.start(endPosition.x,endPosition.z);
+  submersionDuration=BANKAI_SWORD_SUBMERGED_TIME-contactTime;
+  formationDelay=Math.max(submersionDuration+.6,BANKAI_FORMATION_START-contactTime);
+  cameraPullbackEnd=BANKAI_FORMATION_COMPLETE_TIME;
+  formation.start(formationOrigin.x,formationOrigin.z);
+  gripWorld.copy(grip).multiply(sword.scale).applyQuaternion(downRotation).add(endPosition);
+  presence.configure({x:formationOrigin.x,z:formationOrigin.z},gripWorld);
   uniforms.rippleCenter.value.set(endPosition.x,-endPosition.z);uniforms.age.value=-1;uniforms.reveal.value=0;
   plane.constant=-waterY;
  }
  function cancel(){
   if(!active)return;
-  active=false;formation.hide();sword.visible=true;floor.geometry=originalGeometry;floor.material=originalMaterial;
+  active=false;formation.hide();presence.hide();sword.visible=true;floor.geometry=originalGeometry;floor.material=originalMaterial;
   plane.constant=inactivePlaneDistance;
+  sword.scale.copy(savedScale);sword.position.copy(savedPosition);sword.quaternion.copy(startRotation);
   sword.userData.shadowRevision=(sword.userData.shadowRevision??0)+1;
  }
  // All phase state derives from one clock, so scrubbing never needs to replay the drop.
  function render(previousTime:number){
-   formation.update(time-contactTime-2.6,intensity,petalGlow);
+   const elapsed=time-contactTime-formationDelay;
+   const formationTime=bankaiFormationTime(elapsed);
+   formation.update(formationTime,intensity,petalGlow,time);
    uniforms.power.value=Math.min(2,Math.max(0,intensity));
    uniforms.age.value=time-contactTime;
    uniforms.reveal.value=THREE.MathUtils.smoothstep(time,.2,contactTime)*(1-THREE.MathUtils.smoothstep(time,contactTime+3,contactTime+5));
-   if(time<.65){
-    const turn=THREE.MathUtils.smoothstep(time,0,.65);
-    sword.quaternion.slerpQuaternions(startRotation,downRotation,turn);
-    sword.position.copy(center).sub(temp.copy(pivot).applyQuaternion(sword.quaternion));
+   if(time<BANKAI_RELEASE_TIME){
+    // The held pose must already show the chosen blade side, including paused frame zero.
+    sword.quaternion.copy(downRotation);sword.position.copy(endPosition);
    }else{
     sword.quaternion.copy(downRotation);sword.position.copy(endPosition);
-    const falling=Math.min(fallDuration,time-.65);
-    let depth=.5*9.8*falling*falling;
-    if(time>=contactTime){
-     const t=Math.min(3,time-contactTime);
-     // Water slows the fall continuously, then draws the entire hilt below the surface.
-     const entrySpeed=9.8*fallDuration;
-     depth=fallDistance+2.7*t+(entrySpeed-2.7)*(1-Math.exp(-3*t))/3;
-    }
+    const sinkDepth=(SENBONZAKURA_BLADE_LENGTH-SENBONZAKURA_POMMEL_TIP_Y)*cinematicScale+.02;
+    const depth=bankaiSwordDepth(time,fallDistance,sinkDepth);
     sword.position.y-=depth;
    }
-   const visible=time<contactTime+2.9;
+   const visible=time<contactTime+submersionDuration+.1;
    if(sword.visible!==visible||(time!==previousTime&&Math.min(time,previousTime)<contactTime+5)){
     sword.userData.shadowRevision=(sword.userData.shadowRevision??0)+1;
    }
+   sword.updateMatrixWorld(true);
+   presence.update(time,sword.localToWorld(gripWorld.copy(grip)),formationTime);
    sword.visible=visible;furthestTime=Math.max(furthestTime,time);
  }
  async function warmup(renderFrame:()=>Promise<void>){
@@ -131,8 +172,9 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
    hadShadowRevision:Object.hasOwn(sword.userData,'shadowRevision'),age:uniforms.age.value,reveal:uniforms.reveal.value,power:uniforms.power.value,rippleCenter:uniforms.rippleCenter.value.clone()};
   try{
    start();
-   // Warm clipped drop, overlapping lights, complete rows, and released particles.
-   for(const sample of [0,contactTime+2.7,contactTime+2.6+4.5,contactTime+2.6+formation.duration]){
+   // Two states cover the clipped sword/floor/aura and the overlapping cage/particles.
+   // Separate full-cage and spent-particle renders only repeat those shader variants.
+   for(const sample of [0,BANKAI_PETAL_RELEASE_TIME+2]){
     const previous=time;time=sample;render(previous);await renderFrame();
    }
   }finally{
@@ -142,12 +184,12 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
    time=state.time;furthestTime=state.furthestTime;contactTime=state.contactTime;fallDistance=state.fallDistance;fallDuration=state.fallDuration;manualTimeline=state.manualTimeline;
    startPosition.copy(state.startPosition);startRotation.copy(state.startRotation);endPosition.copy(state.endPosition);center.copy(state.center);temp.copy(state.temp);
    uniforms.age.value=state.age;uniforms.reveal.value=state.reveal;uniforms.power.value=state.power;uniforms.rippleCenter.value.copy(state.rippleCenter);
-   formation.update(-1,intensity,petalGlow);formation.start(endPosition.x,endPosition.z);
+   formation.update(-1,intensity,petalGlow);formation.start(formationOrigin.x,formationOrigin.z);
    if(state.hadShadowRevision)sword.userData.shadowRevision=state.shadowRevision;else delete sword.userData.shadowRevision;
   }
  }
- return {get formationOrigin(){return {x:endPosition.x,z:endPosition.z};},get active(){return active;},get glowing(){return formation.glowing;},get pinkGlow(){return formation.pinkGlow;},
-  get time(){return time;},get cycleDuration(){return contactTime+2.6+formation.duration;},get duration(){return active?Math.max(contactTime+2.6+formation.duration,furthestTime):releasePose(sword.position,sword.quaternion).contactTime+2.6+formation.duration;},start,cancel,warmup,
+ return {get cameraPullbackEnd(){return cameraPullbackEnd;},get cameraFollowDrop(){return time<BANKAI_RELEASE_TIME?0:Math.max(0,endPosition.y-sword.position.y);},get formationOrigin(){return {x:formationOrigin.x,z:formationOrigin.z};},get active(){return active;},get glowing(){return formation.glowing;},get pinkGlow(){return formation.pinkGlow;},
+  get time(){return time;},get cycleDuration(){return Math.max(BANKAI_AUDIO_DURATION,contactTime+formationDelay+formation.duration+BANKAI_CAGE_HOLD);},get duration(){return active?Math.max(BANKAI_AUDIO_DURATION,contactTime+formationDelay+formation.duration+BANKAI_CAGE_HOLD,furthestTime):Math.max(BANKAI_AUDIO_DURATION,releasePose(sword.position,sword.quaternion).contactTime+formationDelay+formation.duration+BANKAI_CAGE_HOLD);},start,cancel,warmup,
   setPetalMotion:formation.setPetalMotion,
   seek(seconds:number){
    if(!Number.isFinite(seconds))return;
@@ -164,7 +206,7 @@ export function createBankai(sword:THREE.Group,floor:THREE.Mesh,scene:THREE.Scen
   },dispose(){
    cancel();
    for(const [material,previous] of saved){material.clippingPlanes=previous.planes;material.clipShadows=previous.shadows;material.needsUpdate=true;}
-   formation.dispose();rippleGeometry.dispose();rippleMaterial.dispose();
+   presence.dispose();formation.dispose();rippleGeometry.dispose();rippleMaterial.dispose();
   }
  };
 }

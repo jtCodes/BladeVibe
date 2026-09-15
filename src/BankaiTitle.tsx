@@ -14,7 +14,7 @@ function fade(time:number,start:number,shown:number,leave:number,end:number){
 }
 export function bankaiTitleFrame(time:number){
  return {
-  label:fade(time,.08,.8,BANKAI_VOICE_CUES.label.end+.25,BANKAI_VOICE_CUES.label.end+1.05),
+  label:fade(time,BANKAI_VOICE_CUES.label.start-.12,BANKAI_VOICE_CUES.label.start+.3,BANKAI_VOICE_CUES.label.end+.25,BANKAI_VOICE_CUES.label.end+1.05),
   name:fade(time,BANKAI_VOICE_CUES.name.start-.25,BANKAI_VOICE_CUES.name.start+.55,BANKAI_VOICE_CUES.name.end-.15,NAME_HANDOFF),
   subtitle:fade(time,NAME_HANDOFF,BANKAI_VOICE_CUES.subtitle.start+.55,BANKAI_VOICE_CUES.subtitle.end+.25,TITLE_END),
  };

@@ -1,3 +1,5 @@
+import {attachColorGrade,BANKAI_COLOR_GRADE,type ColorGradeSettings} from './colorGrade';
+import {constrainCameraToFloor} from './cameraFloor';
 import {CopyShader} from 'three/addons/shaders/CopyShader.js';
 import {createProjectedSceneBounds} from './projectedSceneBounds';
 import {swordDisplayCenter,centeredSwordView} from './swordFraming';
@@ -7,7 +9,7 @@ export type {LightingSettings} from './sceneEnvironment';
 import {swordEnvironmentPreset,SENBONZAKURA_BANKAI_FOG} from './sceneEnvironmentPresets';
 import {yieldScenePreparation} from './yieldScenePreparation';
 import {SENBONZAKURA_POMMEL_TIP_Y,SENBONZAKURA_BLADE_LENGTH} from './senbonzakuraDimensions';
-import {getBankaiCameraView} from './bankaiCamera';
+import {getBankaiOpeningView} from './bankaiCamera';
 import type {SwordViewState,SwordViewRequest} from './swordViewState';
 import {prepareSurfaceAssets} from './surfaceAssets';
 import {prepareSakuraAssets} from './sakuraAssets';
@@ -34,7 +36,7 @@ import { initializePhysics, createSwordPhysics, FLOOR_Y, type MotionStatus } fro
 import { createBladeAura, type EffectMode } from './aura';
 export type TimelineEffect='bankai'|'shikai';
 export interface EffectSeekRequest { effect:TimelineEffect; time:number; paused:boolean }
-export interface ViewerSettings { bankaiPetalMotion?:BankaiPetalMotion; viewState?:SwordViewRequest; effectSeek?:EffectSeekRequest; effectPaused?:boolean; glowStrength?:number; glowSpread?:number; petalGlow?:number; upscaling?:'native'|'ultra'|'quality'; dragTarget?:'sword'|'camera'; antiAliasing?:'standard'|'smooth'|'high'; showPerformance?:boolean; lighting?: LightingSettings; rotating: boolean; draw: number; reflections: boolean; lightAngle: number; floorColor?: string; backgroundColor?: string; cameraHeight: number; showSheath?: boolean; swordRotation?: number; effect: EffectMode; effectSpeed: number; effectIntensity: number }
+export interface ViewerSettings { colorGrade?:Partial<ColorGradeSettings>|false; bankaiPetalMotion?:BankaiPetalMotion; viewState?:SwordViewRequest; effectSeek?:EffectSeekRequest; effectPaused?:boolean; glowStrength?:number; glowSpread?:number; petalGlow?:number; upscaling?:'native'|'ultra'|'quality'; dragTarget?:'sword'|'camera'; antiAliasing?:'standard'|'smooth'|'high'; showPerformance?:boolean; lighting?: LightingSettings; rotating: boolean; draw: number; reflections: boolean; lightAngle: number; floorColor?: string; backgroundColor?: string; cameraHeight: number; showSheath?: boolean; swordRotation?: number; effect: EffectMode; effectSpeed: number; effectIntensity: number }
 export interface EffectTimeline { time:number; duration:number; cycleDuration:number }
 export interface SwordScene { getViewState():SwordViewState; setActive(active:boolean):void; getEffectTimeline(effect?:TimelineEffect):EffectTimeline|null; seekEffect(time:number,paused?:boolean):void; update(settings: ViewerSettings): void; reset(): void; release(): boolean; dispose(): void }
 export async function createSwordScene(container: HTMLDivElement, onError: (message: string) => void, onStatus: (status: MotionStatus) => void, signal: AbortSignal, options:{preview?:boolean;model?:SwordModel;active?:boolean;waitUntilActive?:()=>Promise<void>}={}): Promise<SwordScene> {
@@ -85,14 +87,34 @@ cleanups.push(()=>{
  document.removeEventListener('visibilitychange',clearArrows);document.removeEventListener('focusin',focusChanged);renderer.domElement.removeEventListener('pointerdown',focusCanvas);
 });
 }
+let bankaiCameraAuto=false,bankaiCameraSettled=false;
+const reducedCameraMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function stopBankaiCamera(){bankaiCameraAuto=false;}
+controls.addEventListener('start',stopBankaiCamera);
+cleanups.push(()=>controls.removeEventListener('start',stopBankaiCamera));
+function syncBankaiCamera(force=false){
+ if(!bankaiCameraAuto||!bankai?.active)return;
+ if(!force&&bankaiCameraSettled&&bankai.time>=bankai.cameraPullbackEnd)return;
+ applyCameraView(getBankaiOpeningView(bankai.formationOrigin,camera.aspect,camera.fov,reducedCameraMotion?bankai.cameraPullbackEnd:bankai.time,bankai.cameraPullbackEnd,bankai.cameraFollowDrop));
+ bankaiCameraSettled=bankai.time>=bankai.cameraPullbackEnd;
+}
 function moveCamera(dt:number){
  const x=Number(heldArrows.has('ArrowRight'))-Number(heldArrows.has('ArrowLeft'));
  const y=Number(heldArrows.has('ArrowUp'))-Number(heldArrows.has('ArrowDown'));
  if(!x&&!y)return;
+ stopBankaiCamera();
  camera.updateMatrix();cameraRight.setFromMatrixColumn(camera.matrix,0);cameraUp.setFromMatrixColumn(camera.matrix,1);
  cameraStep.copy(cameraRight).multiplyScalar(x).addScaledVector(cameraUp,y).normalize().multiplyScalar(camera.position.distanceTo(controls.target)*.35*dt);
  camera.position.add(cameraStep);controls.target.add(cameraStep);
 }
+// OrbitControls emits changes for pointer orbit, pan, dolly, and damping.
+function enforceCameraFloor(){
+ if(constrainCameraToFloor(camera.position,controls.target)){
+  camera.lookAt(controls.target);camera.updateMatrixWorld();
+ }
+}
+controls.addEventListener('change',enforceCameraFloor);
+cleanups.push(()=>controls.removeEventListener('change',enforceCameraFloor));
 controls.enabled=active&&!options.preview;
 // OrbitControls owns pointer capture during a camera gesture. End that gesture
 // through its normal cancel handler before hiding the retained canvas.
@@ -227,6 +249,7 @@ Object.assign(output.uniforms,{displayBrightness});
 output.material.fragmentShader=output.material.fragmentShader
  .replace('uniform sampler2D tDiffuse;', 'uniform sampler2D tDiffuse;\nuniform float displayBrightness;')
  .replace(/}\s*$/, 'gl_FragColor.rgb *= displayBrightness;\n}');
+const colorGrade=attachColorGrade(output);
 composer.addPass(output);
 // Smooth the final display-space edges, including postprocessing and shader cutouts.
 const edgeAA=new ShaderPass(FXAAShader);composer.addPass(edgeAA);
@@ -287,6 +310,7 @@ function update(settings: ViewerSettings){
  performanceRequested=!options.preview&&!!settings.showPerformance;meter.setEnabled(active&&performanceRequested);
  displayBrightness.value=environment.update({lighting:settings.lighting,backgroundColor:settings.backgroundColor,floorColor:settings.floorColor,floor:floorMaterial,lightAngle:settings.lightAngle,fogDensity:isKatana&&settings.effect==='bankai'?SENBONZAKURA_BANKAI_FOG:environmentPreset.fogDensity});
  bankai?.setPetalMotion(settings.bankaiPetalMotion??'storm');
+ colorGrade.set(settings.colorGrade===false?null:settings.colorGrade?{...BANKAI_COLOR_GRADE,...settings.colorGrade}:isKatana&&settings.effect==='bankai'?BANKAI_COLOR_GRADE:null);
  effectSpeed=settings.effectSpeed;effectIntensity=settings.effectIntensity;effectPaused=settings.effectPaused??false;effectMode=settings.effect;
  glowStrength=THREE.MathUtils.clamp(settings.glowStrength??.42,0,1.5);glowSpread=THREE.MathUtils.clamp(settings.glowSpread??.8,0,1);petalGlow=THREE.MathUtils.clamp(settings.petalGlow??4,0,8);
  if(bankai?.active&&settings.effect!=='bankai'){bankai.cancel();physics.setDraw(settings.draw/100);physics.restore();}
@@ -307,9 +331,10 @@ function update(settings: ViewerSettings){
  }
  aura.configure(settings.effect,settings.effectSpeed,settings.effectIntensity);
  if(bankai&&!bankai.active&&settings.effect==='bankai'){
+  bankaiCameraAuto=false;
   physics.setDraw(1);physics.restore();shikai?.update(0,0);bankai.start();
   if(!options.preview&&(!view||'reset' in view)){
-   applyCameraView(getBankaiCameraView(bankai.formationOrigin,camera.aspect,camera.fov));
+   bankaiCameraAuto=true;bankaiCameraSettled=false;syncBankaiCamera(true);
   }
  }
  if(seekRequest){
@@ -325,7 +350,8 @@ function update(settings: ViewerSettings){
  reflectionsRequested=settings.reflections;reflections.output=SSRPass.OUTPUT.Default;updateReflectionPath();
  controls.autoRotate=settings.rotating&&settings.effect!=='bankai'&&(options.preview||dragTarget==='camera');
  if(!options.preview&&!showSheath&&settings.effect!=='shikai'&&settings.effect!=='bankai'&&(firstSettings||sheathChanged||(view&&'reset' in view))&&(!view||'reset' in view)){physics.restore();centerDefaultSwordView();}
- if(view&&!('reset' in view))applyCameraView(view);
+ if(view&&!('reset' in view)){bankaiCameraAuto=false;applyCameraView(view);}
+ enforceCameraFloor();
 }
 function centerDefaultSwordView(){
  sword.updateWorldMatrix(true,false);
@@ -337,6 +363,7 @@ function applyCameraView(view:Pick<SwordViewState,'camera'|'target'>){
  const damping=controls.enableDamping,autoRotate=controls.autoRotate;
  controls.enableDamping=false;controls.autoRotate=false;controls.update(0);
  camera.position.fromArray(view.camera);controls.target.fromArray(view.target);
+ enforceCameraFloor();
  controls.maxDistance=Math.max(34,camera.position.distanceTo(controls.target));controls.update(0);
  controls.enableDamping=damping;controls.autoRotate=autoRotate;
 }
@@ -349,6 +376,7 @@ function getEffectTimeline(effect?:TimelineEffect):EffectTimeline|null {
 function seekEffect(time:number,paused=true){
  const controller=timelineController();if(!controller||!Number.isFinite(time))return;
  effectPaused=paused;controller.seek(THREE.MathUtils.clamp(time,0,Math.max(120,controller.duration)));
+ if(effectMode==='bankai')syncBankaiCamera(true);
 }
 function reset(){stopSwordDrag();physics.resetOrientation();clearArrows();bankai?.cancel();if(options.preview){
  physics.setDraw(1);physics.restore();
@@ -365,7 +393,8 @@ function resize(){
  renderer.setPixelRatio(pixelRatio);composer.setPixelRatio(pixelRatio*renderScale);renderer.setSize(w,h);camera.aspect=w/h;camera.fov=options.preview?34:w<700?44:34;camera.updateProjectionMatrix();composer.setSize(w,h);const renderWidth=Math.max(1,Math.floor(composer.renderTarget1.width)),renderHeight=Math.max(1,Math.floor(composer.renderTarget1.height));edgeAA.uniforms.resolution.value.set(1/renderWidth,1/renderHeight);upscale.uniforms.inputSize.value.set(renderWidth,renderHeight);meter.setRenderSize(renderWidth,renderHeight)}
 function assertContextAvailable(){if(renderer.getContext().isContextLost())throw new Error('The 3D renderer was interrupted. Reload this page to restore the sword.');}
 await yieldScenePreparation(signal);
-await renderer.compileAsync(scene,camera);
+// The effect warmup compiles the base scene too; avoid compiling it twice.
+if(!(active&&bankai&&shikai&&!options.preview))await renderer.compileAsync(scene,camera);
 signal.throwIfAborted();
 if(active&&bankai&&shikai&&!options.preview){
  reset();
@@ -379,7 +408,7 @@ active=options.active??true;controls.enabled=active&&!options.preview;
 const observer=new ResizeObserver(resize);cleanups.push(()=>observer.disconnect());
 if(active){observer.observe(container);resize();}reset();
 let frame:number|null=null,lastFrameTime:number|null=null,stopped=false;
-function animate(now:number){frame=null;if(stopped||!active)return;frame=requestAnimationFrame(animate);const dt=lastFrameTime===null?0:Math.min((now-lastFrameTime)/1000,.1);lastFrameTime=now;if(document.hidden)return;meter.begin();if(bankai?.active){bankai.update(effectPaused?0:dt,effectSpeed,effectIntensity,petalGlow);}else{if(!options.preview&&dragTarget==='sword'&&spinRequested&&dragPointer===null)physics.rotateBy(dragTurn.setFromAxisAngle(spinAxis,dt*.07));physics.step(dt);shikai?.setPetalGlow(petalGlow);aura.update(effectPaused?0:dt,physics.draw);}if(shikai){const bankaiGlow=!!bankai?.glowing;bloom.enabled=shikai.visible||bankaiGlow;const pink=bankaiGlow?(bankai?.pinkGlow??0):shikai.pinkGlow;bloom.strength=glowStrength*THREE.MathUtils.lerp(.6,1,pink);bloom.radius=glowSpread*THREE.MathUtils.lerp(.7,1,pink);}if(isZangetsu)scabbard.userData.updateCloth(dt);updateShadowCache();moveCamera(dt);controls.update(dt);environment.updateView(camera,controls.target);updateReflectionPath();updateUpscaleBounds();composer.render(dt);meter.end();}
+function animate(now:number){frame=null;if(stopped||!active)return;frame=requestAnimationFrame(animate);const dt=lastFrameTime===null?0:Math.min((now-lastFrameTime)/1000,.1);lastFrameTime=now;if(document.hidden)return;meter.begin();if(bankai?.active){bankai.update(effectPaused?0:dt,effectSpeed,effectIntensity,petalGlow);}else{if(!options.preview&&dragTarget==='sword'&&spinRequested&&dragPointer===null)physics.rotateBy(dragTurn.setFromAxisAngle(spinAxis,dt*.07));physics.step(dt);shikai?.setPetalGlow(petalGlow);aura.update(effectPaused?0:dt,physics.draw);}if(shikai){const bankaiGlow=!!bankai?.glowing;bloom.enabled=shikai.visible||bankaiGlow;const pink=bankaiGlow?(bankai?.pinkGlow??0):shikai.pinkGlow;bloom.strength=glowStrength*THREE.MathUtils.lerp(.6,bankaiGlow?.68:1,pink);bloom.radius=glowSpread*THREE.MathUtils.lerp(.7,bankaiGlow?.65:1,pink);}if(isZangetsu)scabbard.userData.updateCloth(dt);updateShadowCache();syncBankaiCamera();moveCamera(dt);controls.update(dt);enforceCameraFloor();environment.updateView(camera,controls.target);updateReflectionPath();updateUpscaleBounds();composer.render(dt);meter.end();}
 function stopFrame(){if(frame!==null)cancelAnimationFrame(frame);frame=null;lastFrameTime=null;}
 function setActive(value:boolean){
  if(stopped||active===value)return;

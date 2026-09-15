@@ -1,2 +1,3 @@
-// Phrase boundaries in the generated Japanese release recording, in seconds.
-export const BANKAI_VOICE_CUES={"label":{"start":0.2,"end":1.026},"name":{"start":2.676,"end":4.044},"subtitle":{"start":4.364,"end":5.216}} as const;
+// Subtitle-guided positions in the uncut source soundtrack. Word handoff is approximate.
+export const BANKAI_VOICE_CUES={label:{start:3.75,end:4.9},name:{start:10.2,end:11.1},subtitle:{start:11.1,end:11.95}} as const;
+export const BANKAI_AUDIO_DURATION=23;

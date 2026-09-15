@@ -23,7 +23,7 @@ export function createSakuraRandom(seed:number){
 
 export function createSakuraParticles(data:SakuraParticleData,clock:THREE.IUniform<number>){
  const {origins,velocities,spins,releases,sizes,phases}=data,COUNT=sizes.length;
- const petalStorm={value:0},petalCamera={value:new THREE.Vector3()},inverseWorld=new THREE.Matrix4();
+ const petalWind={value:0},petalRushAge={value:-1},petalStorm={value:0},petalCamera={value:new THREE.Vector3()},inverseWorld=new THREE.Matrix4();
  const petalGeometry=createSakuraPetalGeometry(4);
  for(const [name,array,size] of [['petalOrigin',origins,3],['petalVelocity',velocities,3],['petalSpin',spins,3],['petalRelease',releases,1],['petalSize',sizes,1],['petalPhase',phases,1]] as const){
   petalGeometry.setAttribute(name,new THREE.InstancedBufferAttribute(array,size));
@@ -31,7 +31,7 @@ export function createSakuraParticles(data:SakuraParticleData,clock:THREE.IUnifo
  const petalMaterial=new THREE.MeshStandardMaterial({color:0xffc6e6,metalness:.08,roughness:.45,
   emissive:0xff91d3,emissiveIntensity:4,side:THREE.DoubleSide});
  petalMaterial.onBeforeCompile=shader=>{
-  shader.uniforms.formationTime=clock;shader.uniforms.petalStorm=petalStorm;shader.uniforms.petalCamera=petalCamera;
+  shader.uniforms.formationTime=clock;shader.uniforms.petalStorm=petalStorm;shader.uniforms.petalCamera=petalCamera;shader.uniforms.petalWind=petalWind;shader.uniforms.petalRushAge=petalRushAge;
   shader.vertexShader=PETAL_STORM_GLSL+`uniform float formationTime;
    attribute vec3 petalOrigin;attribute vec3 petalVelocity;attribute vec3 petalSpin;
    attribute float petalRelease;attribute float petalSize;attribute float petalPhase;
@@ -42,8 +42,9 @@ export function createSakuraParticles(data:SakuraParticleData,clock:THREE.IUnifo
    }
   `+shader.vertexShader;
   shader.vertexShader=shader.vertexShader.replace('#include <beginnormal_vertex>',`#include <beginnormal_vertex>
-   float flight=max(0.,formationTime-petalRelease);
-   vec3 angles=petalSpin*flight*mix(1.,2.4,petalStorm)+vec3(petalPhase);
+   float flight=petalFlightAge(formationTime,petalRelease);
+   vec3 angles=petalSpin*flight*mix(1.,2.4,petalStorm*smoothstep(0.,1.,petalRushAge))+vec3(petalPhase);
+   angles+=petalWind*(sin(vec3(flight*.85,flight*1.1,flight*.7)+petalSpin)-sin(petalSpin))*.45;
    objectNormal=tumble(objectNormal,angles);
   `);
   shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
@@ -56,7 +57,7 @@ export function createSakuraParticles(data:SakuraParticleData,clock:THREE.IUnifo
    transformed=applyPetalStorm(petalOrigin,petalOrigin+drift,flight,petalPhase)+tumble(position*petalSize*birth,angles);
   `);
  };
- petalMaterial.customProgramCacheKey=()=> 'sakura-petals-motion-variants-v5';
+ petalMaterial.customProgramCacheKey=()=> 'sakura-petals-motion-variants-v9';
  const petals=new THREE.InstancedMesh(petalGeometry,petalMaterial,COUNT);petals.frustumCulled=false;petals.visible=false;
  // A separate fine layer gives depth between the larger, cupped petals.
  const DUST_COUNT=COUNT*2,{dustPositions,dustVelocity,dustRelease,dustPhase}=data;
@@ -66,9 +67,9 @@ export function createSakuraParticles(data:SakuraParticleData,clock:THREE.IUnifo
  dustGeometry.setAttribute('releaseAt',new THREE.BufferAttribute(dustRelease,1));
  dustGeometry.setAttribute('phase',new THREE.BufferAttribute(dustPhase,1));
  const dustMaterial=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
-  uniforms:{formationTime:clock,petalStorm,petalCamera},
+  uniforms:{formationTime:clock,petalStorm,petalCamera,petalWind,petalRushAge},
   vertexShader:PETAL_STORM_GLSL+`uniform float formationTime;attribute vec3 drift;attribute float releaseAt;attribute float phase;varying float glow;
-   void main(){float age=max(0.,formationTime-releaseAt);
+   void main(){float age=petalFlightAge(formationTime,releaseAt);
     float coast=(1.-exp(-age*.46))/.2;
     vec3 p=position+drift*coast;
     p.x+=.45*(sin(age*.8+phase)-sin(phase));
@@ -93,7 +94,8 @@ export function createSakuraParticles(data:SakuraParticleData,clock:THREE.IUnifo
  for(const mesh of [petals,dust])mesh.onBeforeRender=(_renderer,_scene,camera)=>{
   camera.getWorldPosition(petalCamera.value);inverseWorld.copy(mesh.matrixWorld).invert();petalCamera.value.applyMatrix4(inverseWorld);
  };
- return {petals,dust,setMotion(variant:BankaiPetalMotion){petalStorm.value=variant==='storm'?1:0;},
+ return {petals,dust,setMotion(variant:BankaiPetalMotion){petalWind.value=1;petalStorm.value=variant==='storm'?1:0;},
+  setRushAge(age:number){petalRushAge.value=age;},
   update(intensity:number,emission:number,visible:boolean){
    petals.visible=visible&&intensity>0;dust.visible=petals.visible;
    petals.count=Math.round(COUNT*Math.min(1,Math.max(0,intensity)/2));
